@@ -1,0 +1,93 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/errors/app_exception.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
+import '../application/redemptions_list_controller.dart';
+import 'redemption_tile.dart';
+
+class RedemptionsListScreen extends ConsumerStatefulWidget {
+  const RedemptionsListScreen({super.key});
+
+  @override
+  ConsumerState<RedemptionsListScreen> createState() => _RedemptionsListScreenState();
+}
+
+class _RedemptionsListScreenState extends ConsumerState<RedemptionsListScreen> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels > _scrollController.position.maxScrollExtent - 200) {
+      ref.read(redemptionsListControllerProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(redemptionsListControllerProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Redemptions')),
+      body: SafeArea(
+        child: state.when(
+          loading: () => ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            itemCount: 6,
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            itemBuilder: (_, __) => const LoadingSkeletonCard(),
+          ),
+          error: (error, _) => ErrorState(
+            error: error is AppException ? error : const UnknownAppException(),
+            onRetry: () => ref.read(redemptionsListControllerProvider.notifier).refresh(),
+          ),
+          data: (data) {
+            if (data.items.isEmpty) {
+              return const EmptyState(
+                icon: Icons.qr_code_2_rounded,
+                title: 'No redemptions yet',
+                message: 'Town Coin redemptions you make at participating merchants will show up here.',
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () => ref.read(redemptionsListControllerProvider.notifier).refresh(),
+              child: ListView.separated(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                itemCount: data.items.length + (data.hasMore ? 1 : 0),
+                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                itemBuilder: (context, index) {
+                  if (index >= data.items.length) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final redemption = data.items[index];
+                  return RedemptionTile(redemption: redemption, onTap: () => context.push('/redemptions/${redemption.id}'));
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
