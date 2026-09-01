@@ -15,20 +15,27 @@ import 'models/nearby_merchant.dart';
 /// specifically), so this client always receives the same
 /// `MerchantPublicResource` shape a guest would.
 ///
-/// Only `category_id` and `association_id` are real filters on `index()` —
-/// there is no `town_id` filter and no text-search parameter on this
-/// endpoint today (confirmed by reading `MerchantController::index()`
-/// directly), so this repository does not expose either.
+/// `category_id` and `accepts_town_coin` are the real filters this client
+/// uses on `index()` (`association_id` is also backend-supported but has
+/// no client use case yet) — there is no `town_id` filter and no
+/// text-search parameter on this endpoint today (confirmed by reading
+/// `MerchantController::index()` directly), so this repository does not
+/// expose either.
 class MerchantsRepository {
   MerchantsRepository(this._dio);
 
   final Dio _dio;
 
-  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId}) async {
+  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId, bool? acceptsTownCoin}) async {
     try {
       final response = await _dio.get(
         '/merchants',
-        queryParameters: {'page': page, 'per_page': perPage, if (categoryId != null) 'category_id': categoryId},
+        queryParameters: {
+          'page': page,
+          'per_page': perPage,
+          if (categoryId != null) 'category_id': categoryId,
+          if (acceptsTownCoin == true) 'accepts_town_coin': 1,
+        },
       );
       final items = (ApiEnvelope.data(response) as List<dynamic>)
           .map((e) => Merchant.fromJson(e as Map<String, dynamic>))

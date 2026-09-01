@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 
-/// Icon + accent color for each of the backend's 17 `NotificationType`
-/// values (`App\Domain\Notification\Enums\NotificationType`) — no type
-/// beyond that enum is ever handled here; [fallback] covers any future
-/// value this client doesn't know about yet rather than crashing.
+/// Icon + accent color for each customer-relevant `NotificationType` value
+/// (`App\Domain\Notification\Enums\NotificationType`). The backend enum
+/// also has `merchant.approved`/`merchant.rejected` -- deliberately not
+/// mapped here, since those only ever notify a Merchant Owner/Staff
+/// account and this is the customer-only app (DEC-16: separate app per
+/// role, no cross-surface notification delivery); they'd fall through to
+/// [_fallback] if they somehow ever arrived here, same as any other
+/// future/unknown type.
 class NotificationTypeDisplay {
   const NotificationTypeDisplay(this.icon, this.color);
 
@@ -17,6 +21,8 @@ class NotificationTypeDisplay {
   static const Map<String, NotificationTypeDisplay> _byType = {
     'purchase.recorded': NotificationTypeDisplay(Icons.receipt_long_rounded, AppColors.info),
     'purchase.coupon_generated': NotificationTypeDisplay(Icons.confirmation_number_rounded, AppColors.pending),
+    'purchase.submitted': NotificationTypeDisplay(Icons.hourglass_top_rounded, AppColors.pending),
+    'purchase.rejected': NotificationTypeDisplay(Icons.cancel_rounded, AppColors.error),
     'redemption.initiated': NotificationTypeDisplay(Icons.qr_code_rounded, AppColors.info),
     'redemption.completed': NotificationTypeDisplay(Icons.check_circle_rounded, AppColors.success),
     'redemption.cancelled': NotificationTypeDisplay(Icons.cancel_rounded, AppColors.error),
@@ -32,6 +38,7 @@ class NotificationTypeDisplay {
     'payment.failed': NotificationTypeDisplay(Icons.error_outline_rounded, AppColors.error),
     'payment.invoice_available': NotificationTypeDisplay(Icons.description_rounded, AppColors.info),
     'payment.refund_confirmed': NotificationTypeDisplay(Icons.replay_rounded, AppColors.success),
+    'draw.won': NotificationTypeDisplay(Icons.emoji_events_rounded, AppColors.success),
   };
 
   static NotificationTypeDisplay forType(String type) => _byType[type] ?? _fallback;

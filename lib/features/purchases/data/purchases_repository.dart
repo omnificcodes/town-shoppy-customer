@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
 import '../../../core/networking/offset_page.dart';
+import 'models/merchant_purchase_qr_resolution.dart';
 import 'models/purchase.dart';
 
 /// `GET /purchases` / `GET /purchases/{id}` — for a customer account,
@@ -46,6 +47,40 @@ class PurchasesRepository {
   Future<Purchase> show(int id) async {
     try {
       final response = await _dio.get('/purchases/$id');
+      return Purchase.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// Method 1, step 1 — resolves a scanned merchant/branch Purchase QR for
+  /// display, before the customer types a bill amount. A 404
+  /// (`NotFoundException`) means the QR is invalid or revoked.
+  Future<MerchantPurchaseQrResolution> resolveMerchantQr(String token) async {
+    try {
+      final response = await _dio.post('/purchases/qr/resolve', data: {'token': token});
+      return MerchantPurchaseQrResolution.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// Method 1, step 2 — submits the bill amount against the SAME token
+  /// that was scanned (never merchant_id/branch_id) so the backend
+  /// re-resolves the target itself; the customer cannot end up requesting
+  /// against a different merchant/branch than the one they scanned.
+  /// `Idempotency-Key` required, same pattern as RedemptionsRepository.initiate().
+  Future<Purchase> requestPurchase({
+    required String token,
+    required double billAmount,
+    required String idempotencyKey,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/purchases/requests',
+        data: {'token': token, 'bill_amount': billAmount},
+        options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+      );
       return Purchase.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);

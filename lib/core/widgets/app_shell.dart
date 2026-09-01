@@ -6,11 +6,14 @@ import '../../features/notifications/application/unread_count_provider.dart';
 import '../../shared/widgets/app_bottom_navigation.dart';
 import '../../shared/widgets/notification_badge.dart';
 
-const _tabPaths = ['/home', '/notifications', '/profile'];
+const _tabPaths = ['/home', '/wallet', '/coupons', '/notifications', '/profile'];
 
-/// Shared shell for the three authenticated top-level destinations
-/// (section 31/32) — a single, compact bottom nav rather than a
-/// per-feature navigation pattern.
+/// Shared shell for the five authenticated top-level destinations -- Wallet
+/// and Coupons (which also fronts Lucky Draw) were promoted from
+/// Home-only links to first-class tabs once both grew into full screens of
+/// their own, matching how central "my coins" and "my Lucky Draw entries"
+/// are to the product; Purchases/Redemptions/Referrals stay reachable from
+/// Home/Profile rather than adding a 6th/7th tab.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -33,6 +36,8 @@ class AppShell extends ConsumerWidget {
         onTap: (index) => context.go(_tabPaths[index]),
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+          const BottomNavigationBarItem(icon: Icon(Icons.savings_rounded), label: 'Wallet'),
+          const BottomNavigationBarItem(icon: Icon(Icons.confirmation_number_rounded), label: 'Coupons'),
           BottomNavigationBarItem(
             icon: NotificationBadge(count: unreadCount, child: const Icon(Icons.notifications_rounded)),
             label: 'Notifications',

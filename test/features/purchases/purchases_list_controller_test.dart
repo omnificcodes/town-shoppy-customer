@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/features/purchases/application/purchases_list_controller.dart';
+import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 
@@ -18,6 +19,8 @@ Purchase _purchase(int id) {
     coinsAwarded: 10,
     couponsIssued: null,
     status: 'recorded',
+    reviewedAt: null,
+    rejectionReason: null,
     createdAt: DateTime(2026, 1, 1),
   );
 }
@@ -50,6 +53,16 @@ class FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<List<Purchase>> recent({int limit = 3}) async => throw UnimplementedError();
+
+  @override
+  Future<MerchantPurchaseQrResolution> resolveMerchantQr(String token) async => throw UnimplementedError();
+
+  @override
+  Future<Purchase> requestPurchase({
+    required String token,
+    required double billAmount,
+    required String idempotencyKey,
+  }) async => throw UnimplementedError();
 }
 
 /// Polls the controller until its [AsyncValue] reports an error — Riverpod

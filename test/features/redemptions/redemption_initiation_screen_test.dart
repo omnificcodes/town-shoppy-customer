@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/merchants/application/merchant_branches_provider.dart';
 import 'package:customer/features/merchants/application/merchant_detail_provider.dart';
@@ -9,6 +10,7 @@ import 'package:customer/features/merchants/data/models/merchant.dart';
 import 'package:customer/features/merchants/data/models/merchant_branch_ref.dart';
 import 'package:customer/features/redemptions/presentation/redemption_initiation_screen.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
+import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
 import 'package:customer/features/wallet/data/wallet_repository.dart';
 
 import '../../helpers/responsive_test_helper.dart';
@@ -17,6 +19,9 @@ class _FakeWalletRepository implements WalletRepository {
   @override
   Future<SilverWalletBalance> balance() async =>
       const SilverWalletBalance(balance: 800, balanceInrEquivalent: 8, updatedAt: null);
+
+  @override
+  Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
 }
 
 Merchant _merchant({required bool eligible}) {

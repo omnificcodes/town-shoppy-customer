@@ -58,6 +58,38 @@ class PurchaseDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (purchase.isPending) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  AppCard(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.hourglass_top_rounded, size: 20),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'Waiting for the merchant to approve this request. You\'ll be notified once it\'s reviewed.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (purchase.isRejected && purchase.rejectionReason != null && purchase.rejectionReason!.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  AppCard(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 20),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text('Reason: ${purchase.rejectionReason}', style: Theme.of(context).textTheme.bodySmall),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 AppCard(
                   child: Column(

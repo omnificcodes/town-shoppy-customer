@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/relative_time.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/error_state.dart';
@@ -81,6 +82,31 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: Text(
+                      'Coupons',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton(onPressed: () => context.push('/coupons'), child: const Text('See all')),
+                ],
+              ),
+              AppCard(
+                onTap: () => context.push('/coupons'),
+                child: Row(
+                  children: [
+                    const Icon(Icons.confirmation_number_outlined, color: AppColors.orange),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Expanded(child: Text('View your Lucky Draw coupons')),
+                    const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
                       'Redemptions',
                       style: Theme.of(context).textTheme.titleMedium,
                       overflow: TextOverflow.ellipsis,
@@ -96,6 +122,18 @@ class HomeScreen extends ConsumerWidget {
                     const Icon(Icons.qr_code_2_rounded, color: AppColors.silverDark),
                     const SizedBox(width: AppSpacing.sm),
                     const Expanded(child: Text('View your Town Coin redemption history')),
+                    const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppCard(
+                onTap: () => context.push('/redeem'),
+                child: Row(
+                  children: [
+                    const Icon(Icons.storefront_rounded, color: AppColors.orange),
+                    const SizedBox(width: AppSpacing.sm),
+                    const Expanded(child: Text('See where you can redeem Town Coin')),
                     const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
                   ],
                 ),
@@ -170,6 +208,7 @@ class _WalletCard extends ConsumerWidget {
     final isRefreshing = ref.watch(walletRefreshingProvider);
 
     return AppCard(
+      onTap: () => context.push('/wallet'),
       child: Row(
         children: [
           Container(
@@ -200,7 +239,7 @@ class _WalletCard extends ConsumerWidget {
                 switch (wallet) {
                   AsyncData(:final value) => Text(
                       '${value.balance} coins',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: AppTypography.numericFinancialMedium,
                     ),
                   AsyncError() => Text('Unable to load', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
                   _ => const LoadingSkeleton(width: 100, height: 22),

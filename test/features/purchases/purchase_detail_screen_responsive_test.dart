@@ -19,6 +19,8 @@ final _purchase = Purchase(
   coinsAwarded: 500000,
   couponsIssued: 12,
   status: 'recorded',
+  reviewedAt: null,
+  rejectionReason: null,
   createdAt: DateTime(2026, 1, 1, 14, 30),
 );
 

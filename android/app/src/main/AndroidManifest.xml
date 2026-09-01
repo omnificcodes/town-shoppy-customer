@@ -1,10 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- "Nearby merchants" search sends the device's coordinates to
-         GET /merchants/nearby -- coarse is enough for a merchant-radius
+         GET /merchants/nearby - coarse is enough for a merchant-radius
          search, fine is requested too since it's what most users grant by
          default and geolocator falls back to whichever the OS allows. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- 3-way purchase architecture: scanning a merchant's Purchase QR
+         (Method 1) or a customer's identity QR (merchant-side, Method 3)
+         both need the camera. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
         android:label="customer"
         android:name="${applicationName}"

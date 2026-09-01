@@ -103,22 +103,32 @@ class _RedemptionVerificationScreenState extends ConsumerState<RedemptionVerific
           data: (redemption) {
             _stopPollingIfTerminal(redemption.status);
 
-            return switch (redemption.status) {
-              'settled' => _ConfirmationView(redemption: redemption),
-              'expired' => _TerminalView(
-                  icon: Icons.timer_off_rounded,
-                  title: 'This redemption expired',
-                  message: 'The verification window closed before it was completed. Start a new redemption to try again.',
-                  redemption: redemption,
-                ),
-              'cancelled' => _TerminalView(
-                  icon: Icons.cancel_rounded,
-                  title: 'Redemption cancelled',
-                  message: 'This redemption was cancelled.',
-                  redemption: redemption,
-                ),
-              _ => _WaitingView(redemption: redemption, otpCode: _otpCode),
-            };
+            // A short cross-fade, not a hard cut, for the moment this screen's
+            // whole job is building toward -- the merchant verifying the code
+            // and the view flipping from "waiting" to settled/expired/
+            // cancelled. Matches the product brief's call for subtle motion
+            // on approval-state changes; 200ms/fade only, nothing bouncy.
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: switch (redemption.status) {
+                'settled' => _ConfirmationView(key: const ValueKey('settled'), redemption: redemption),
+                'expired' => _TerminalView(
+                    key: const ValueKey('expired'),
+                    icon: Icons.timer_off_rounded,
+                    title: 'This redemption expired',
+                    message: 'The verification window closed before it was completed. Start a new redemption to try again.',
+                    redemption: redemption,
+                  ),
+                'cancelled' => _TerminalView(
+                    key: const ValueKey('cancelled'),
+                    icon: Icons.cancel_rounded,
+                    title: 'Redemption cancelled',
+                    message: 'This redemption was cancelled.',
+                    redemption: redemption,
+                  ),
+                _ => _WaitingView(key: const ValueKey('waiting'), redemption: redemption, otpCode: _otpCode),
+              },
+            );
           },
         ),
       ),
@@ -127,7 +137,7 @@ class _RedemptionVerificationScreenState extends ConsumerState<RedemptionVerific
 }
 
 class _WaitingView extends StatelessWidget {
-  const _WaitingView({required this.redemption, required this.otpCode});
+  const _WaitingView({super.key, required this.redemption, required this.otpCode});
 
   final Redemption redemption;
   final String? otpCode;
@@ -191,7 +201,7 @@ class _WaitingView extends StatelessWidget {
 }
 
 class _ConfirmationView extends StatelessWidget {
-  const _ConfirmationView({required this.redemption});
+  const _ConfirmationView({super.key, required this.redemption});
 
   final Redemption redemption;
 
@@ -249,7 +259,7 @@ class _ConfirmationView extends StatelessWidget {
 }
 
 class _TerminalView extends StatelessWidget {
-  const _TerminalView({required this.icon, required this.title, required this.message, required this.redemption});
+  const _TerminalView({super.key, required this.icon, required this.title, required this.message, required this.redemption});
 
   final IconData icon;
   final String title;

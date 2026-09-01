@@ -43,7 +43,21 @@ class _PurchasesListScreenState extends ConsumerState<PurchasesListScreen> {
     final state = ref.watch(purchasesListControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Purchases')),
+      appBar: AppBar(
+        title: const Text('Purchases'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_rounded),
+            tooltip: 'My QR code',
+            onPressed: () => context.push('/purchases/my-qr'),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/purchases/scan'),
+        icon: const Icon(Icons.qr_code_scanner_rounded),
+        label: const Text('Scan to pay'),
+      ),
       body: SafeArea(
         child: state.when(
           loading: () => ListView.separated(

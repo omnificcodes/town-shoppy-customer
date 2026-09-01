@@ -29,6 +29,8 @@ class Purchase {
     required this.coinsAwarded,
     required this.couponsIssued,
     required this.status,
+    required this.reviewedAt,
+    required this.rejectionReason,
     required this.createdAt,
   });
 
@@ -46,6 +48,8 @@ class Purchase {
       coinsAwarded: json['coins_awarded'] as int? ?? 0,
       couponsIssued: json['coupons_issued'] as int?,
       status: json['status'] as String,
+      reviewedAt: json['reviewed_at'] != null ? DateTime.tryParse(json['reviewed_at'] as String) : null,
+      rejectionReason: json['rejection_reason'] as String?,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
     );
   }
@@ -60,10 +64,18 @@ class Purchase {
   final int coinsAwarded;
   final int? couponsIssued;
   final String status;
+  final DateTime? reviewedAt;
+  final String? rejectionReason;
   final DateTime? createdAt;
 
   /// Falls back to a stable placeholder when the relation wasn't loaded
   /// (should not happen for any customer-facing call, but a purchase list
   /// must never crash or show a raw id if it ever does).
   String get merchantName => merchant?.name ?? 'Merchant #$merchantId';
+
+  /// Method 1 (3-way purchase architecture) — a customer-submitted request
+  /// still awaiting the merchant's approve/reject decision.
+  bool get isPending => status == 'pending';
+
+  bool get isRejected => status == 'rejected';
 }

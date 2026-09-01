@@ -153,7 +153,8 @@ class _TabToggleSegment extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            // Same touch-target fix as CategoryChip -- see its own comment.
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
               label,
               textAlign: TextAlign.center,
@@ -431,7 +432,7 @@ class _CategoryFilterRow extends ConsumerWidget {
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         child: SizedBox(
-          height: 36,
+          height: 40,
           child: Row(
             children: [
               LoadingSkeleton(width: 80, height: 32, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusLg))),
@@ -449,10 +450,14 @@ class _CategoryFilterRow extends ConsumerWidget {
         if (categories.isEmpty) return const SizedBox.shrink();
 
         return SizedBox(
-          height: 52,
+          height: 56,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            // Vertical padding reduced from AppSpacing.sm so each
+            // CategoryChip has room to reach the app's touchTarget minimum
+            // within this row's own fixed height -- see CategoryChip's
+            // padding comment for the full accessibility rationale.
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
             itemCount: categories.length + 1,
             separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {

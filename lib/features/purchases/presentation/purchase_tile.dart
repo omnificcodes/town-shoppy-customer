@@ -15,36 +15,44 @@ class PurchaseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    // Same "never color-only" reasoning as MerchantCard/NotificationTile --
+    // without this, a screen reader gets no button role and no single
+    // composed announcement for the row, just its disconnected Text children.
+    return Semantics(
+      button: onTap != null,
+      label: '${purchase.merchantName}, ₹${purchase.billAmount.toStringAsFixed(2)}, ${purchase.status}'
+          '${purchase.coinsAwarded > 0 ? ', +${purchase.coinsAwarded} coins' : ''}',
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(purchase.merchantName, style: Theme.of(context).textTheme.titleSmall, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(
+                    '₹${purchase.billAmount.toStringAsFixed(2)} · ${purchase.createdAt != null ? relativeTime(purchase.createdAt!) : ''}',
+                    style: Theme.of(context).textTheme.labelSmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(purchase.merchantName, style: Theme.of(context).textTheme.titleSmall, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(
-                  '₹${purchase.billAmount.toStringAsFixed(2)} · ${purchase.createdAt != null ? relativeTime(purchase.createdAt!) : ''}',
-                  style: Theme.of(context).textTheme.labelSmall,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                StatusBadge(label: purchase.status, tone: purchaseStatusTone(purchase.status)),
+                if (purchase.coinsAwarded > 0) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text('+${purchase.coinsAwarded} coins', style: Theme.of(context).textTheme.labelSmall),
+                ],
               ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              StatusBadge(label: purchase.status, tone: purchaseStatusTone(purchase.status)),
-              if (purchase.coinsAwarded > 0) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text('+${purchase.coinsAwarded} coins', style: Theme.of(context).textTheme.labelSmall),
-              ],
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

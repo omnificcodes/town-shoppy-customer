@@ -25,7 +25,15 @@ class CategoryChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            // Vertical padding deliberately larger than AppSpacing.sm --
+            // AppSpacing.touchTarget (48) is this app's minimum tap-target
+            // constant (applied to every AppButton via app_theme.dart), but
+            // this chip's own rendered height was never checked against it
+            // and came out to ~36px. Paired with the reduced ListView/Row
+            // padding at each of this chip's two call sites (merchants list
+            // filter row, tab toggle), this brings the tappable area up to
+            // ~44-48px without changing the chip's outer allotted space.
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

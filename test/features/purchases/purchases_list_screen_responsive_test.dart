@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 import 'package:customer/features/purchases/presentation/purchases_list_screen.dart';
@@ -24,6 +25,8 @@ class _FakePurchasesRepository implements PurchasesRepository {
         coinsAwarded: 50000,
         couponsIssued: null,
         status: 'recorded',
+        reviewedAt: null,
+        rejectionReason: null,
         createdAt: DateTime(2026, 1, 1),
       ),
     ],
@@ -37,6 +40,16 @@ class _FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<List<Purchase>> recent({int limit = 3}) async => throw UnimplementedError();
+
+  @override
+  Future<MerchantPurchaseQrResolution> resolveMerchantQr(String token) async => throw UnimplementedError();
+
+  @override
+  Future<Purchase> requestPurchase({
+    required String token,
+    required double billAmount,
+    required String idempotencyKey,
+  }) async => throw UnimplementedError();
 }
 
 Widget _wrap() {

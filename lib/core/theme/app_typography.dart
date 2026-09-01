@@ -45,4 +45,34 @@ class AppTypography {
           color: AppColors.textSecondary,
         ),
       );
+
+  /// Numeric/financial display variant — Town Coin balances, purchase and
+  /// redemption amounts. Tabular figures so digits don't jitter width as a
+  /// balance updates, and a distinct letter-spacing from prose headings so a
+  /// number reads as data, not as a heading that happens to be a number.
+  static const numericFinancialLarge = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: 40,
+    fontWeight: FontWeight.w700,
+    height: 1.1,
+    letterSpacing: -0.5,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
+  static const numericFinancialMedium = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    height: 1.15,
+    letterSpacing: -0.25,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
+  static const numericFinancialSmall = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
@@ -10,6 +11,7 @@ import 'package:customer/features/home/presentation/home_screen.dart';
 import 'package:customer/features/purchases/application/recent_purchases_provider.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
+import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
 import 'package:customer/features/wallet/data/wallet_repository.dart';
 
 import '../../helpers/responsive_test_helper.dart';
@@ -39,6 +41,9 @@ class _FakeWalletRepository implements WalletRepository {
   @override
   Future<SilverWalletBalance> balance() async =>
       const SilverWalletBalance(balance: 1234567, balanceInrEquivalent: 12345.67, updatedAt: null);
+
+  @override
+  Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
 }
 
 Purchase _purchase({required String merchantName}) {
@@ -53,6 +58,8 @@ Purchase _purchase({required String merchantName}) {
     coinsAwarded: 5000,
     couponsIssued: null,
     status: 'recorded',
+    reviewedAt: null,
+    rejectionReason: null,
     createdAt: DateTime(2026, 1, 1),
   );
 }

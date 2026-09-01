@@ -105,15 +105,22 @@ class _NavRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.orange),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(label, style: Theme.of(context).textTheme.titleSmall)),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-        ],
+    // Same "never color-only" reasoning as MerchantCard/NotificationTile --
+    // without this, a screen reader gets no button role and no composed
+    // announcement for the row.
+    return Semantics(
+      button: true,
+      label: label,
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.orange),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(label, style: Theme.of(context).textTheme.titleSmall)),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+          ],
+        ),
       ),
     );
   }
