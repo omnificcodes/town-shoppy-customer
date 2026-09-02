@@ -14,10 +14,8 @@ import 'draw_tile.dart';
 
 /// Lucky Draw results -- every coupon's eventual destination. Only
 /// COMPLETE draws are ever returned here (the backend never exposes an
-/// in-progress draw's pool to a customer); if none exist yet (the
-/// `lucky_draw` feature flag stays off pending legal review -- see
-/// purchase-architecture.md), the empty state explains that plainly rather
-/// than implying something is broken.
+/// in-progress draw's pool to a customer); if none exist yet, the empty
+/// state explains that plainly rather than implying something is broken.
 class DrawsListScreen extends ConsumerStatefulWidget {
   const DrawsListScreen({super.key});
 
