@@ -22,6 +22,9 @@ class AppTextField extends StatelessWidget {
     this.prefixText,
     this.maxLength,
     this.semanticsLabel,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.textInputAction,
   });
 
   final String label;
@@ -40,6 +43,16 @@ class AppTextField extends StatelessWidget {
   final int? maxLength;
   final String? semanticsLabel;
 
+  /// Hides the entered text (a password/secret field) — `counterText`/
+  /// length-limiting behavior is unaffected, so a password field can still
+  /// combine this with [inputFormatters]/[maxLength] normally.
+  final bool obscureText;
+
+  /// A trailing widget (e.g. a show/hide-password toggle button).
+  final Widget? suffixIcon;
+
+  final TextInputAction? textInputAction;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
@@ -53,11 +66,14 @@ class AppTextField extends StatelessWidget {
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       maxLength: maxLength,
+      obscureText: obscureText,
+      textInputAction: textInputAction,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
         errorText: errorText,
         prefixText: prefixText,
+        suffixIcon: suffixIcon,
         counterText: '',
         semanticCounterText: semanticsLabel,
       ),

@@ -8,8 +8,7 @@ import 'package:customer/features/auth/application/auth_state.dart';
 import 'package:customer/features/auth/data/auth_repository.dart';
 import 'package:customer/features/auth/data/models/account.dart';
 import 'package:customer/features/auth/data/models/customer_profile.dart';
-import 'package:customer/features/auth/data/models/otp_request_result.dart';
-import 'package:customer/features/auth/presentation/mobile_number_screen.dart';
+import 'package:customer/features/auth/presentation/login_screen.dart';
 import 'package:customer/features/merchants/application/merchant_branches_provider.dart';
 import 'package:customer/features/merchants/application/merchant_detail_provider.dart';
 import 'package:customer/features/merchants/data/models/association_ref.dart';
@@ -37,12 +36,12 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<void> logout() async {}
   @override
-  Future<OtpRequestResult> requestOtp({required String mobileNumber, String? channel}) async => throw UnimplementedError();
+  Future<AuthResult> login({required String mobileNumber, required String password}) async => throw UnimplementedError();
   @override
-  Future<VerifyOtpResult> verifyOtp({
-    required int otpRequestId,
-    required String code,
-    String? name,
+  Future<AuthResult> register({
+    required String mobileNumber,
+    required String name,
+    required String password,
     String? referralCode,
   }) async => throw UnimplementedError();
 }
@@ -161,7 +160,7 @@ Future<void> _pumpAtScale(WidgetTester tester, double factor, Widget Function() 
 
 void main() {
   for (final scale in [1.3, 2.0]) {
-    testWidgets('MobileNumberScreen survives ${scale}x text scaling without overflow', (tester) async {
+    testWidgets('LoginScreen survives ${scale}x text scaling without overflow', (tester) async {
       await _pumpAtScale(
         tester,
         scale,
@@ -172,12 +171,12 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: _scaled(scale, const MobileNumberScreen()),
+            home: _scaled(scale, const LoginScreen()),
           ),
         ),
       );
 
-      expect(tester.takeException(), isNull, reason: 'MobileNumberScreen overflowed at ${scale}x text scale');
+      expect(tester.takeException(), isNull, reason: 'LoginScreen overflowed at ${scale}x text scale');
     });
 
     testWidgets('MerchantDetailScreen survives ${scale}x text scaling without overflow', (tester) async {

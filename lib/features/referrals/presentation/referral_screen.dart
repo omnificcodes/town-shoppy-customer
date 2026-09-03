@@ -16,8 +16,8 @@ import '../data/models/referral_summary.dart';
 /// Shows the customer's own referral code/link and history, from the one
 /// real referral endpoint the backend exposes (`GET /referrals/me`).
 /// Applying a code happens elsewhere, during registration — see
-/// `CompleteProfileScreen` — since the backend only accepts a referral code
-/// at that moment, never afterward.
+/// `RegisterScreen` — since the backend only accepts a referral code at
+/// that moment, never afterward.
 class ReferralScreen extends ConsumerWidget {
   const ReferralScreen({super.key});
 

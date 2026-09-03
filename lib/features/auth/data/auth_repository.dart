@@ -4,62 +4,57 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
 import 'models/account.dart';
-import 'models/otp_request_result.dart';
 
-class VerifyOtpResult {
-  const VerifyOtpResult({required this.account, required this.token, required this.isNewAccount});
+class AuthResult {
+  const AuthResult({required this.account, required this.token});
 
   final Account account;
   final String token;
-  final bool isNewAccount;
 }
 
-/// Talks to the real `/auth/*` endpoints only — `AuthController.php`
-/// (requestOtp/verifyOtp/me/logout). There is no password-based flow used
-/// here even though the backend also exposes `POST /auth/login`: the phase
-/// brief is explicit that the customer app is OTP-only.
+/// Talks to the real `/auth/*` endpoints — password login/register, `me`,
+/// and `logout`. Mobile-number ownership is not proven at signup (no OTP);
+/// the same trade-off the admin web app already makes for merchant/admin
+/// registration via `POST /auth/register`.
 class AuthRepository {
   AuthRepository(this._dio);
 
   final Dio _dio;
 
-  Future<OtpRequestResult> requestOtp({required String mobileNumber, String? channel}) async {
+  Future<AuthResult> login({required String mobileNumber, required String password}) async {
     try {
-      final response = await _dio.post(
-        '/auth/otp/request',
-        data: {'mobile_number': mobileNumber, if (channel != null) 'channel': channel},
-      );
-      return OtpRequestResult.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+      final response = await _dio.post('/auth/login', data: {'mobile_number': mobileNumber, 'password': password});
+      return _parseAuthResult(ApiEnvelope.data(response) as Map<String, dynamic>);
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }
   }
 
-  Future<VerifyOtpResult> verifyOtp({
-    required int otpRequestId,
-    required String code,
-    String? name,
+  Future<AuthResult> register({
+    required String mobileNumber,
+    required String name,
+    required String password,
     String? referralCode,
   }) async {
     try {
       final response = await _dio.post(
-        '/auth/otp/verify',
+        '/auth/register',
         data: {
-          'otp_request_id': otpRequestId,
-          'code': code,
-          if (name != null && name.isNotEmpty) 'name': name,
+          'mobile_number': mobileNumber,
+          'name': name,
+          'password': password,
+          'password_confirmation': password,
           if (referralCode != null && referralCode.isNotEmpty) 'referral_code': referralCode,
         },
       );
-      final data = ApiEnvelope.data(response) as Map<String, dynamic>;
-      return VerifyOtpResult(
-        account: Account.fromJson(data['account'] as Map<String, dynamic>),
-        token: data['token'] as String,
-        isNewAccount: data['is_new_account'] as bool? ?? false,
-      );
+      return _parseAuthResult(ApiEnvelope.data(response) as Map<String, dynamic>);
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }
+  }
+
+  AuthResult _parseAuthResult(Map<String, dynamic> data) {
+    return AuthResult(account: Account.fromJson(data['account'] as Map<String, dynamic>), token: data['token'] as String);
   }
 
   Future<Account> me() async {

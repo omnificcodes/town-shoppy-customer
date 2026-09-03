@@ -65,97 +65,46 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<void> requestOtp(String mobileNumber) async {
-    state = const AuthUnauthenticated(isRequestingOtp: true);
+  /// The isSubmitting guard is the actual duplicate-submission prevention
+  /// (not just a disabled button in the UI) — a second call while the first
+  /// is still in flight is a no-op.
+  bool get _isSubmitting => state is AuthUnauthenticated && (state as AuthUnauthenticated).isSubmitting;
+
+  Future<void> login(String mobileNumber, String password) async {
+    if (_isSubmitting) return;
+
+    state = const AuthUnauthenticated(isSubmitting: true);
     try {
-      final result = await _repository.requestOtp(mobileNumber: mobileNumber);
-      state = AuthOtpSent(
-        otpRequestId: result.otpRequestId,
-        mobileNumber: mobileNumber,
-        expiresAt: DateTime.now().add(Duration(seconds: result.expiresInSeconds)),
-        channelUsed: result.channelUsed,
-        debugCode: result.debugCode,
-      );
+      final result = await _repository.login(mobileNumber: mobileNumber, password: password);
+      await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
+      ref.read(sessionEpochProvider.notifier).bump();
+      state = AuthAuthenticated(result.account);
     } on AppException catch (e) {
       state = AuthUnauthenticated(error: e);
     }
   }
 
-  Future<void> resendOtp() async {
-    final current = state;
-    if (current is! AuthOtpSent) return;
+  Future<void> register(String mobileNumber, String name, String password, {String? referralCode}) async {
+    if (_isSubmitting) return;
 
-    state = current.copyWith(isResending: true, clearError: true);
+    state = const AuthUnauthenticated(isSubmitting: true);
     try {
-      final result = await _repository.requestOtp(mobileNumber: current.mobileNumber);
-      state = current.copyWith(
-        otpRequestId: result.otpRequestId,
-        expiresAt: DateTime.now().add(Duration(seconds: result.expiresInSeconds)),
-        channelUsed: result.channelUsed,
-        debugCode: result.debugCode,
-        clearDebugCode: result.debugCode == null,
-        isResending: false,
-      );
-    } on AppException catch (e) {
-      state = current.copyWith(isResending: false, error: e);
-    }
-  }
-
-  Future<void> verifyOtp(String code) async {
-    final current = state;
-    if (current is! AuthOtpSent) return;
-
-    state = current.copyWith(isVerifying: true, clearError: true);
-    try {
-      final result = await _repository.verifyOtp(otpRequestId: current.otpRequestId, code: code);
-      await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
-      ref.read(sessionEpochProvider.notifier).bump();
-      state = AuthAuthenticated(result.account);
-    } on ValidationAppException catch (e) {
-      if (e.fieldErrors.containsKey('name')) {
-        // A genuinely new account — the backend needs a name (and will
-        // optionally accept a referral code) before it can finish creating
-        // the CustomerProfile. Not an error to show; a real next step.
-        state = AuthProfileRequired(otpRequestId: current.otpRequestId, code: code, mobileNumber: current.mobileNumber);
-      } else {
-        state = current.copyWith(isVerifying: false, error: e);
-      }
-    } on AppException catch (e) {
-      state = current.copyWith(isVerifying: false, error: e);
-    }
-  }
-
-  /// Resubmits the same (still-idempotent) OTP verification, this time with
-  /// the name required to complete a genuinely new account's registration,
-  /// and an optional referral code — the only moment the backend ever
-  /// accepts one (see [AuthProfileRequired]'s docblock).
-  Future<void> completeRegistration({required String name, String? referralCode}) async {
-    final current = state;
-    // The isSubmitting guard is the actual duplicate-submission prevention
-    // (not just a disabled button in the UI) — a second call while the
-    // first is still in flight is a no-op.
-    if (current is! AuthProfileRequired || current.isSubmitting) return;
-
-    state = current.copyWith(isSubmitting: true, clearError: true);
-    try {
-      final result = await _repository.verifyOtp(
-        otpRequestId: current.otpRequestId,
-        code: current.code,
-        name: name,
-        referralCode: referralCode,
-      );
+      final result = await _repository.register(mobileNumber: mobileNumber, name: name, password: password, referralCode: referralCode);
       await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
       ref.read(sessionEpochProvider.notifier).bump();
       state = AuthAuthenticated(result.account);
     } on AppException catch (e) {
-      state = current.copyWith(isSubmitting: false, error: e);
+      state = AuthUnauthenticated(error: e);
     }
   }
 
-  /// Lets the mobile-number screen re-render without losing the "otp sent"
-  /// context entirely broken — used by the "use a different number" action.
-  void backToMobileEntry() {
-    state = const AuthUnauthenticated();
+  /// Clears any error/submitting flag left over from a previous attempt —
+  /// called when a Login/Register screen first mounts, so navigating
+  /// between them never shows the other screen's stale error message.
+  void clearError() {
+    if (state is AuthUnauthenticated) {
+      state = const AuthUnauthenticated();
+    }
   }
 
   Future<void> logout() async {

@@ -4,9 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
-import '../../features/auth/presentation/complete_profile_screen.dart';
-import '../../features/auth/presentation/mobile_number_screen.dart';
-import '../../features/auth/presentation/otp_verify_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
 import '../../features/coupons/presentation/coupon_detail_screen.dart';
 import '../../features/coupons/presentation/coupons_list_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -34,8 +33,7 @@ import '../widgets/app_shell.dart';
 
 const _splashPath = '/splash';
 const _loginPath = '/login';
-const _otpPath = '/otp';
-const _completeProfilePath = '/complete-profile';
+const _registerPath = '/register';
 const _homePath = '/home';
 const _walletPath = '/wallet';
 const _notificationsPath = '/notifications';
@@ -60,9 +58,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) => _redirect(ref.read(authControllerProvider), state.matchedLocation),
     routes: [
       GoRoute(path: _splashPath, builder: (context, state) => const _SplashScreen()),
-      GoRoute(path: _loginPath, builder: (context, state) => const MobileNumberScreen()),
-      GoRoute(path: _otpPath, builder: (context, state) => const OtpVerifyScreen()),
-      GoRoute(path: _completeProfilePath, builder: (context, state) => const CompleteProfileScreen()),
+      GoRoute(path: _loginPath, builder: (context, state) => const LoginScreen()),
+      GoRoute(path: _registerPath, builder: (context, state) => const RegisterScreen()),
       GoRoute(path: _purchasesPath, builder: (context, state) => const PurchasesListScreen()),
       // 3-way purchase architecture, Method 1/3 — registered before
       // /purchases/:id below so "scan"/"request"/"my-qr" are never parsed
@@ -131,15 +128,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 String? _redirect(AuthState authState, String location) {
   final onSplash = location == _splashPath;
   final onLogin = location == _loginPath;
-  final onOtp = location == _otpPath;
-  final onCompleteProfile = location == _completeProfilePath;
-  final onProtected = !onSplash && !onLogin && !onOtp && !onCompleteProfile;
+  final onRegister = location == _registerPath;
+  final onProtected = !onSplash && !onLogin && !onRegister;
 
   return switch (authState) {
     AuthInitial() => onSplash ? null : _splashPath,
-    AuthUnauthenticated() || AuthSessionExpired() => onLogin ? null : _loginPath,
-    AuthOtpSent() => onOtp ? null : _otpPath,
-    AuthProfileRequired() => onCompleteProfile ? null : _completeProfilePath,
+    AuthUnauthenticated() || AuthSessionExpired() => (onLogin || onRegister) ? null : _loginPath,
     AuthAuthenticated() => onProtected ? null : _homePath,
   };
 }

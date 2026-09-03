@@ -8,7 +8,6 @@ import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
 import 'package:customer/features/auth/data/auth_repository.dart';
 import 'package:customer/features/auth/data/models/account.dart';
-import 'package:customer/features/auth/data/models/otp_request_result.dart';
 
 Account _newAccount() {
   return Account.fromJson({
@@ -22,45 +21,51 @@ Account _newAccount() {
 }
 
 /// A scripted fake, mirroring the phase-1 `FakeAuthRepository` pattern —
-/// queued responses let each test arrange the exact backend sequence a real
-/// registration flow (OTP verify -> "name required" -> resubmit) would
-/// produce, without a live backend.
+/// queued responses let each test arrange the exact backend outcome a real
+/// login/register call would produce, without a live backend.
 class FakeAuthRepository implements AuthRepository {
-  final List<Object> _verifyResponses = [];
-  final List<Map<String, String?>> verifyCalls = [];
-  int verifyCallCount = 0;
-  Completer<VerifyOtpResult>? _pending;
+  final List<Object> _loginResponses = [];
+  final List<Object> _registerResponses = [];
+  int loginCallCount = 0;
+  int registerCallCount = 0;
+  Map<String, String?>? lastRegisterCall;
+  Completer<AuthResult>? _pendingLogin;
 
-  void queueVerifySuccess(VerifyOtpResult result) => _verifyResponses.add(result);
-  void queueVerifyError(AppException error) => _verifyResponses.add(error);
+  void queueLoginSuccess(AuthResult result) => _loginResponses.add(result);
+  void queueLoginError(AppException error) => _loginResponses.add(error);
+  void queueRegisterSuccess(AuthResult result) => _registerResponses.add(result);
+  void queueRegisterError(AppException error) => _registerResponses.add(error);
 
-  /// Makes the *next* [verifyOtp] call hang until the returned completer is
+  /// Makes the *next* [login] call hang until the returned completer is
   /// completed — lets a test observe the in-flight "submitting" state
   /// before the request resolves, and exercise duplicate-submission
   /// prevention while a real request would still be in flight.
-  Completer<VerifyOtpResult> queueVerifyPending() {
-    final completer = Completer<VerifyOtpResult>();
-    _pending = completer;
+  Completer<AuthResult> queueLoginPending() {
+    final completer = Completer<AuthResult>();
+    _pendingLogin = completer;
     return completer;
   }
 
   @override
-  Future<OtpRequestResult> requestOtp({required String mobileNumber, String? channel}) async {
-    return const OtpRequestResult(otpRequestId: 1, expiresInSeconds: 300, channelUsed: 'sms', debugCode: '123456');
+  Future<AuthResult> login({required String mobileNumber, required String password}) async {
+    loginCallCount++;
+    final pending = _pendingLogin;
+    if (pending != null) {
+      _pendingLogin = null;
+      return pending.future;
+    }
+    final next = _loginResponses.removeAt(0);
+    if (next is AppException) throw next;
+    return next as AuthResult;
   }
 
   @override
-  Future<VerifyOtpResult> verifyOtp({required int otpRequestId, required String code, String? name, String? referralCode}) async {
-    verifyCallCount++;
-    verifyCalls.add({'name': name, 'referralCode': referralCode});
-    final pending = _pending;
-    if (pending != null) {
-      _pending = null;
-      return pending.future;
-    }
-    final next = _verifyResponses.removeAt(0);
+  Future<AuthResult> register({required String mobileNumber, required String name, required String password, String? referralCode}) async {
+    registerCallCount++;
+    lastRegisterCall = {'name': name, 'referralCode': referralCode};
+    final next = _registerResponses.removeAt(0);
     if (next is AppException) throw next;
-    return next as VerifyOtpResult;
+    return next as AuthResult;
   }
 
   @override
@@ -87,7 +92,7 @@ void main() {
   late FakeAuthRepository fakeRepository;
   late ProviderContainer container;
 
-  Future<AuthController> setUpVerifying() async {
+  AuthController setUpController() {
     container = ProviderContainer(
       overrides: [
         authRepositoryProvider.overrideWithValue(fakeRepository),
@@ -97,99 +102,119 @@ void main() {
     addTearDown(container.dispose);
 
     container.read(authControllerProvider);
-    await Future<void>.delayed(Duration.zero); // let the initial _restoreSession() settle
-
-    final notifier = container.read(authControllerProvider.notifier);
-    await notifier.requestOtp('9999900002');
-    await notifier.verifyOtp('123456'); // no name/referralCode -> backend will say "name required"
-    return notifier;
+    return container.read(authControllerProvider.notifier);
   }
 
   setUp(() {
     fakeRepository = FakeAuthRepository();
   });
 
-  group('registration completion (referral-code entry)', () {
-    test('a new account is routed to AuthProfileRequired when the backend requires a name', () async {
-      fakeRepository.queueVerifyError(const ValidationAppException('Validation failed.', {
-        'name': ['Name is required to complete registration.'],
-      }));
+  group('login', () {
+    test('a successful login reaches AuthAuthenticated', () async {
+      fakeRepository.queueLoginSuccess(AuthResult(account: _newAccount(), token: 'tok'));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero); // let the initial _restoreSession() settle
 
-      await setUpVerifying();
-
-      expect(container.read(authControllerProvider), isA<AuthProfileRequired>());
-    });
-
-    test('completing registration without a referral code sends referralCode as null', () async {
-      fakeRepository.queueVerifyError(const ValidationAppException('Validation failed.', {
-        'name': ['Name is required to complete registration.'],
-      }));
-      final notifier = await setUpVerifying();
-
-      fakeRepository.queueVerifySuccess(VerifyOtpResult(account: _newAccount(), token: 'tok', isNewAccount: true));
-      await notifier.completeRegistration(name: 'Jane Doe');
+      await notifier.login('9999900002', 'a-real-password');
 
       expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
-      expect(fakeRepository.verifyCalls.last, {'name': 'Jane Doe', 'referralCode': null});
+      expect(fakeRepository.loginCallCount, 1);
     });
 
-    test('a valid referral code is passed through and successfully applied', () async {
-      fakeRepository.queueVerifyError(const ValidationAppException('Validation failed.', {
-        'name': ['Name is required to complete registration.'],
+    test('an invalid-credentials error is attached to AuthUnauthenticated', () async {
+      fakeRepository.queueLoginError(const ValidationAppException('Validation failed.', {
+        'mobile_number': ['These credentials do not match our records.'],
       }));
-      final notifier = await setUpVerifying();
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
 
-      fakeRepository.queueVerifySuccess(VerifyOtpResult(account: _newAccount(), token: 'tok', isNewAccount: true));
-      await notifier.completeRegistration(name: 'Jane Doe', referralCode: 'ABC123');
-
-      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
-      expect(fakeRepository.verifyCalls.last, {'name': 'Jane Doe', 'referralCode': 'ABC123'});
-    });
-
-    test('a backend validation error on resubmit keeps AuthProfileRequired with the error attached', () async {
-      fakeRepository.queueVerifyError(const ValidationAppException('Validation failed.', {
-        'name': ['Name is required to complete registration.'],
-      }));
-      final notifier = await setUpVerifying();
-
-      fakeRepository.queueVerifyError(const ValidationAppException('Validation failed.', {
-        'name': ['The name field must be at least 2 characters.'],
-      }));
-      await notifier.completeRegistration(name: 'J');
+      await notifier.login('9999900002', 'wrong-password');
 
       final state = container.read(authControllerProvider);
-      expect(state, isA<AuthProfileRequired>());
-      expect((state as AuthProfileRequired).isSubmitting, isFalse);
-      expect(state.error, isA<ValidationAppException>());
+      expect(state, isA<AuthUnauthenticated>());
+      expect((state as AuthUnauthenticated).error, isA<ValidationAppException>());
+      expect(state.isSubmitting, isFalse);
     });
 
     test('shows a submitting state while the request is in flight, and blocks a duplicate submission', () async {
-      fakeRepository.queueVerifyError(const ValidationAppException('Validation failed.', {
-        'name': ['Name is required to complete registration.'],
-      }));
-      final notifier = await setUpVerifying();
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
 
-      final completer = fakeRepository.queueVerifyPending();
-      final pendingFirst = notifier.completeRegistration(name: 'Jane Doe');
+      final completer = fakeRepository.queueLoginPending();
+      final pendingFirst = notifier.login('9999900002', 'a-real-password');
       await Future<void>.delayed(Duration.zero); // let the async gap up to the network call happen
 
       expect(
-        (container.read(authControllerProvider) as AuthProfileRequired).isSubmitting,
+        (container.read(authControllerProvider) as AuthUnauthenticated).isSubmitting,
         isTrue,
         reason: 'state must flip to isSubmitting immediately, before the network call resolves',
       );
 
       // A second submission attempt while the first is in flight must be a
-      // no-op — the count stays at 2 (1 from setUpVerifying's initial
-      // verifyOtp call, 1 from the in-flight completeRegistration call
-      // above), never reaching 3.
-      await notifier.completeRegistration(name: 'Someone Else');
-      expect(fakeRepository.verifyCallCount, 2);
+      // no-op — the count stays at 1.
+      await notifier.login('9999900002', 'a-real-password');
+      expect(fakeRepository.loginCallCount, 1);
 
-      completer.complete(VerifyOtpResult(account: _newAccount(), token: 'tok', isNewAccount: true));
+      completer.complete(AuthResult(account: _newAccount(), token: 'tok'));
       await pendingFirst;
 
       expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    });
+  });
+
+  group('register', () {
+    test('a successful registration reaches AuthAuthenticated', () async {
+      fakeRepository.queueRegisterSuccess(AuthResult(account: _newAccount(), token: 'tok'));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+
+      await notifier.register('9999900002', 'Jane Doe', 'a-brand-new-password');
+
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+      expect(fakeRepository.lastRegisterCall, {'name': 'Jane Doe', 'referralCode': null});
+    });
+
+    test('an optional referral code is passed through', () async {
+      fakeRepository.queueRegisterSuccess(AuthResult(account: _newAccount(), token: 'tok'));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+
+      await notifier.register('9999900002', 'Jane Doe', 'a-brand-new-password', referralCode: 'ABC123');
+
+      expect(fakeRepository.lastRegisterCall, {'name': 'Jane Doe', 'referralCode': 'ABC123'});
+    });
+
+    test('a backend validation error (e.g. mobile number already registered) is attached to AuthUnauthenticated', () async {
+      fakeRepository.queueRegisterError(const ValidationAppException('Validation failed.', {
+        'mobile_number': ['An account already exists for this mobile number. Try signing in instead.'],
+      }));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+
+      await notifier.register('9999900002', 'Jane Doe', 'a-brand-new-password');
+
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthUnauthenticated>());
+      expect((state as AuthUnauthenticated).error, isA<ValidationAppException>());
+    });
+  });
+
+  group('clearError', () {
+    test('resets AuthUnauthenticated back to error-free, e.g. when navigating between Login and Register', () async {
+      fakeRepository.queueLoginError(const ValidationAppException('Validation failed.', {
+        'mobile_number': ['These credentials do not match our records.'],
+      }));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+
+      await notifier.login('9999900002', 'wrong-password');
+      expect((container.read(authControllerProvider) as AuthUnauthenticated).error, isNotNull);
+
+      notifier.clearError();
+
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthUnauthenticated>());
+      expect((state as AuthUnauthenticated).error, isNull);
     });
   });
 }
