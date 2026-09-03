@@ -10,10 +10,9 @@ import 'models/voucher.dart';
 
 /// `GET /draws*` -- deliberately callable while unauthenticated too (the
 /// backend route sits outside auth:sanctum on purpose, ADR-003's
-/// "unauthenticated public summary"), but this app always calls it from an
-/// authenticated context, so a 200-with-empty-list is the only shape ever
-/// actually seen client-side while the `lucky_draw` feature flag stays
-/// off. `GET /vouchers*` IS own-account-only ("my winnings").
+/// "unauthenticated public summary"). Draws are shipped and live; an
+/// authenticated caller with no eligible draws yet simply sees a
+/// 200-with-empty-list. `GET /vouchers*` IS own-account-only ("my winnings").
 class LuckyDrawRepository {
   LuckyDrawRepository(this._dio);
 

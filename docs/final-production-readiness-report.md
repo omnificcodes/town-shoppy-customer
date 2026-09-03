@@ -4,11 +4,89 @@
 
 ---
 
+## 0. FINAL CLOSURE PASS — current state and verdict (2026-09-03)
+
+**This section is the authoritative, up-to-date status of the whole platform.** §1 onward is the original production-readiness audit and is preserved as historical record (it remains accurate for everything it covers *except* where explicitly noted below — most notably, Lucky Draw's flag-disabled framing throughout §1/§2/§25/§26/§27 is now stale). Two further passes happened after §1–§27 were written and are not reflected in their prose: the **Lucky Draw 2.0 rebuild** (see [lucky-draw-final-report.md](./lucky-draw-final-report.md) §1–§21) and this **final closure pass** (email architecture, brand copy, prize-value display consistency, obsolete-blocker sweep — [lucky-draw-final-report.md](./lucky-draw-final-report.md) §22–§23).
+
+### Status by area
+
+| Area | Status | Notes |
+|---|---|---|
+| Backend (Laravel) | READY | 834/834 tests passing. No known BLOCKER. |
+| Database | READY, 3 HIGH follow-ups recommended | See §22 — subscriptions/merchant_branches/invoices race-condition hardening; approved-migration-away, not blocking. |
+| Customer (Flutter) | READY | 196/196 tests, `flutter analyze` clean, release build succeeds. |
+| Merchant (Admin web) | READY | Purchases, redemptions, prizes, offers, subscriptions all functional and tested. |
+| Association Admin | READY | Draws, prizes, merchants, fraud review, notifications all functional and tested; live-verified in-browser this pass. |
+| Super Admin | READY | Full cross-association visibility confirmed unchanged; no new gap found. |
+| Purchase flows (all 3 methods) | READY | See §3–§5; no regression. |
+| QR systems (4 types) | READY | See §4; no regression, no cross-type leakage. |
+| Town Coins | READY | See §6; no regression. |
+| Coupons | READY | See §7; no regression. |
+| Lucky Draw | READY, live, not flag-gated | The `lucky_draw` feature flag was removed as a backend access gate; the flag itself defaults `enabled: true` and is display-only in Super Admin (§21 of the Lucky Draw report). R-2's legal-classification question (`docs/decisions/risk-register.md#r-2`) is an **ACCEPTED RISK**, explicitly owner-waived for engineering purposes (2026-09-02) — real-money/real-user launch should still trigger the deferred legal review, but that is a business decision, not a code blocker. |
+| Prizes | READY | Full propose/approve/allocate/withdraw lifecycle live and tested; value now shown consistently across every prize interface (this closure pass). |
+| Winners | READY | Selection/uniqueness/masking/reveal all live and tested. |
+| Redemptions | READY | No regression. |
+| Referral | READY | No regression; Sybil-defense limitation remains a documented LOW (§26). |
+| Notifications | READY | In-app/SMS/WhatsApp/email all wired for every relevant `NotificationType`; DrawWon/PrizeWon confirmed end-to-end this closure pass. |
+| Email | READY (newly closed this pass) | `accounts.email`/`email_verified_at` + `merchants.contact_email` fallback now back the previously schema-less email channel — see below. No email-verification send/confirm flow exists (deliberate, OPTIONAL — see table). |
+| WhatsApp | READY | Channel and template-name wiring pre-existing and unchanged; message copy lives in Meta's template config, not this repo. |
+| Security | READY, follow-ups tracked | Two BLOCKERs found and fixed in the original audit (§19); one HIGH (voucher claim-code verification) remains open and is now **live-reachable** (see table below — its severity is unchanged but its exposure note in §11/§19 is stale, since Lucky Draw is no longer flag-gated). |
+| Concurrency | READY | Draw/purchase/redemption/wallet paths all row-locked and idempotency-keyed; see §15, §19, §22. |
+| Accessibility | READY | 196/196 Flutter tests (many are accessibility/overflow regression tests) passing; §21's fixes applied. |
+| Performance | READY | §20's four fixes applied; nothing outstanding above LOW. |
+| Tests | READY | Backend 834 passed (0 failures, 2659 assertions); Flutter 196/196; see §23 for the historical breakdown this number supersedes. |
+| Production builds | READY | Flutter release APK (72.3MB) and `npm run build` (56 admin routes) both succeed; admin `tsc`/`lint` both clean. |
+
+### Remaining issues (full list, this pass's classification)
+
+| # | Item | Severity | Detail |
+|---|---|---|---|
+| 1 | Voucher claim has no customer-presented code verification | **HIGH** | Unchanged from §11/§19 finding — `VoucherService::claim()` still never checks `qr_secret` (or any customer-presented code) against anything; any sponsor-merchant staff member can claim with a fabricated `delivery_proof_url`. **Correction to §11/§19:** those sections said this has "no live exposure today" because Lucky Draw sat behind a disabled flag — that is no longer true. Lucky Draw is live, so this gap is now reachable in production. Needs a product decision on the verification mechanism (customer-shown QR at hand-off vs. OTP), then a narrow, well-scoped implementation — not something to invent unilaterally in a closure pass. |
+| 2 | `subscriptions` — no lock/constraint against duplicate active subscriptions per merchant | HIGH | Unchanged from §22 finding #1 — needs an approved migration. |
+| 3 | `merchant_branches` — no DB-level "one primary per merchant" constraint | HIGH | Unchanged from §22 finding #2 — needs an approved migration. |
+| 4 | `invoices` — no `unique(payment_id)`, invariant held only by caller discipline | HIGH | Unchanged from §22 finding #3 — needs an approved migration. |
+| 5 | Lucky Draw legal classification (R-2) not actually reviewed | MEDIUM *(downgraded from the original BLOCKER)* | The product owner explicitly accepted this risk for engineering purposes and directed an unblocked ship (`risk-register.md#r-2`, resolved 2026-09-02) — this is no longer an engineering blocker. The underlying legal question is still genuinely unanswered and should be revisited before any real-money/real-user launch, per the risk register's own resolution note. |
+| 6 | Customer-facing "purchase request submitted" acknowledgment missing | MEDIUM | Unchanged from §26. |
+| 7 | Customer-facing "redemption failed" notice missing | MEDIUM | Unchanged from §26. |
+| 8 | `AppColors.orange` on white fails contrast at 3 sites | MEDIUM | Unchanged from §26. |
+| 9 | No email-verification send/confirm flow | OPTIONAL | New this pass — `email_verified_at` exists and resets correctly on change, but nothing sends a verification code. Deliberately out of scope: notifications are fire-and-forget, not an auth context, so a verified address isn't required for the feature this pass built. |
+| 10 | No customer/merchant-facing "add your email" settings UI | LOW | New this pass — `POST /auth/email` and the API exposure are complete and tested; no Admin/Flutter settings screen calls it yet, since none was named in scope. |
+| 11 | `cached_network_image` for merchant/prize logos | LOW | Unchanged from §26 — needs new-dependency approval. |
+| 12 | `AppCard` shared widget has no `semanticLabel` param | LOW | Unchanged from §26. |
+| 13 | Referral device/IP fingerprinting is advisory-only | LOW | Unchanged from §26 — pre-existing, self-documented. |
+| 14 | Sanctum tokens never expire, no ability scoping | LOW | Unchanged from §26 — session-policy decision. |
+| 15 | Broad `$fillable` on ~10 models | LOW | Unchanged from §26 — defense-in-depth hardening, zero live exploit today. |
+| 16 | `draw_eligibility_snapshots` missing `unique(draw_id, coupon_id)` | MEDIUM | Unchanged from §22 finding #4 — currently safe (PHP-deduped, parent-locked), not DB-enforced. |
+| 17 | Soft-deleted rows permanently block unique-value reuse (mobile_number/referral_code/qr_token) | LOW | Unchanged from §22 finding #5 — latent, no `destroy()` endpoint exists yet to trigger it. |
+| 18 | `AssociationAdminController::store()` unique-conflict not caught | LOW | Unchanged from §22 finding #6 — surfaces as a 500 instead of a graceful re-fetch under a genuine race; DB constraint itself is correct. |
+
+No BLOCKER-severity item remains anywhere in the platform as of this pass.
+
+### Final verdict: **READY**
+
+Every gate the closure pass required is genuinely met:
+- Email is genuinely wired to a real recipient field (`accounts.email`, with a `merchants.contact_email` fallback) — not faked, exercised by real HTTP+DB tests including real `DrawWonMail`/`PrizeWonMail` delivery.
+- All 834 backend tests pass (0 failures) — above the 825+ bar, including 7 new email tests and 2 new end-to-end notification tests.
+- All 196 Flutter tests pass.
+- `flutter analyze` passes clean.
+- `flutter build apk --release` succeeds.
+- Admin `npx tsc --noEmit` passes clean.
+- Admin `npm run lint` passes clean.
+- Admin `npm run build` succeeds.
+- Lucky Draw works end-to-end (verified via the full backend test suite covering every checklist item in this pass's regression pass, plus live browser verification of the association-admin console this pass).
+- No obsolete Lucky Draw production blocker remains — the two stale "still gated/disabled" doc comments found this pass were corrected; the `lucky_draw` feature flag is not an access gate; the legal-risk note is accurately marked as an accepted, revisit-before-real-launch risk rather than a live blocker.
+
+**Platform status: READY.** The 18 items above are the complete, non-hidden remaining-issue list — one HIGH item (voucher claim-code verification) is worth prioritizing soon given Lucky Draw is now live and reachable, but it does not block the platform: the current claim flow requires authenticated sponsor-merchant staff and a delivery-proof upload, it is not open to the public. The three database HIGH items are pre-existing, low-likelihood races recommended for prompt follow-up. Nothing else rises above MEDIUM.
+
+---
+
 ## 1. Executive summary
 
 Town Shoppy's core loyalty loop — purchase → coins/coupons → redemption, plus referrals — was already production-complete going into this pass (confirmed by full-repository audit, not assumed). This pass's main engineering contribution was completing the **Lucky Draw, Prize, Winner, and Voucher domains from zero to a fully tested, policy-gated, concurrency-safe engine** (ADR-003/ADR-006-compliant), closing the customer-facing **Wallet** screen, adding **redemption-offer discovery**, formalizing missing **design-system tokens** (financial typography, elevation), and running dedicated **security, performance, accessibility, database, notification-completeness, and admin-UI-consistency audits** across all three repos.
 
 The Lucky Draw engine is real, thoroughly tested (24 new backend tests, all passing; live end-to-end admin-UI verification in a running browser) but **deliberately shipped flag-disabled** (`lucky_draw` = off), because the legal classification of a prize draw under Indian lottery/gambling law is an unresolved, explicitly-flagged business decision (§25, §26) — architecture-readiness and the legal go-live decision are treated as separate concerns; the former is this pass's job, the latter is not.
+
+> **Superseded — see §0.** The `lucky_draw` flag was subsequently removed as a backend access gate and Lucky Draw shipped live (owner-directed, `risk-register.md#r-2`, 2026-09-02). Everything else in this paragraph — the engine being real, tested, and audited — remains accurate.
 
 Two **critical** security vulnerabilities (a password-reset account-takeover bug and a revoked-admin cross-association data-exposure bug) were found and fixed, with regression test coverage added. No other blocker was found. See §27 for the final launch recommendation.
 
@@ -25,10 +103,10 @@ Two **critical** security vulnerabilities (a password-reset account-takeover bug
 | Purchase approval | ✅ | ✅ | ✅ (status view) | ✅ (approve/reject) | — | ✅ | ✅ audited | ✅ | Complete |
 | Town Coins / Wallet | ✅ (pre-existing) | ✅ (pre-existing) | ✅ **new this pass** | — | ✅ (read) | ✅ | ✅ | ✅ | Complete |
 | Coupons | ✅ (pre-existing) | ✅ (pre-existing) | ✅ (pre-existing, phase 12) | — | ✅ (read) | ✅ | ✅ | ✅ | Complete |
-| Lucky Draw (Draws) | ✅ **new** | ✅ **new** | ✅ **new** | ✅ **new** | ✅ **new** | ✅ **new** | ✅ audited | ✅ | Built, flag-disabled — §25 |
-| Prizes (merchant sponsorship) | ✅ **new** | ✅ **new** | — (no customer-facing proposal) | ✅ **new** (propose/withdraw) | ✅ **new** (approve) | ✅ **new** | ✅ audited | ✅ | Built, gated with Lucky Draw |
-| Winners | ✅ **new** | ✅ **new** | ✅ **new** (masked, in draw detail) | — | ✅ **new** (confirm/forfeit) | ✅ **new** | ✅ audited | ✅ | Built, gated with Lucky Draw |
-| Vouchers / Claims | ✅ **new** | ✅ **new** | ✅ **new** (My winnings, claim QR) | ✅ **new** (claim) | — | ✅ **new** | ⚠ documented gap — §19 | ✅ | Built, gated with Lucky Draw |
+| Lucky Draw (Draws) | ✅ **new** | ✅ **new** | ✅ **new** | ✅ **new** | ✅ **new** | ✅ **new** | ✅ audited | ✅ | **Live — see §0** (was flag-disabled at time of original audit) |
+| Prizes (merchant sponsorship) | ✅ **new** | ✅ **new** | — (no customer-facing proposal) | ✅ **new** (propose/withdraw) | ✅ **new** (approve) | ✅ **new** | ✅ audited | ✅ | **Live — see §0** |
+| Winners | ✅ **new** | ✅ **new** | ✅ **new** (masked, in draw detail) | — | ✅ **new** (confirm/forfeit) | ✅ **new** | ✅ audited | ✅ | **Live — see §0** |
+| Vouchers / Claims | ✅ **new** | ✅ **new** | ✅ **new** (My winnings, claim QR) | ✅ **new** (claim) | — | ✅ **new** | ⚠ open HIGH, now live-reachable — §0 | ✅ | **Live — see §0** |
 | Redemptions | ✅ (pre-existing) | ✅ (pre-existing) | ✅ (pre-existing) + **offer discovery new** | ✅ (pre-existing, verify/cancel) | — | ✅ | ✅ audited | ✅ | Complete |
 | Redemption QR | ✅ (pre-existing) | ✅ (pre-existing) | ✅ (pre-existing) | ✅ (pre-existing) | — | ✅ | ✅ audited | ✅ | Complete |
 | Referrals | ✅ (pre-existing) | ✅ (pre-existing) | ✅ (pre-existing) | — | ✅ (read) | ✅ | ✅ audited | ✅ | Complete |
@@ -110,7 +188,7 @@ Merchant-sponsored prize lifecycle, built from zero this pass.
 - **Expiry**: `expires_at` (default 30 days, `config('lucky_draw.voucher_claim_window_days')`) is now enforced at claim time — a real bug (expiry was defined but never checked) found and fixed by this pass's security audit (§19, finding #5).
 - **Customer UX**: "My winnings" list + detail (`lib/features/lucky_draw/`), a claim QR (`qr_flutter`) shown only while `isActive`.
 - **Merchant UX**: `/merchant` → claim flow, resolves the acting staff/owner profile, requires a `delivery_proof_url`.
-- **Known gap (documented, not fixed)**: claim verification does not check `qr_secret` against anything at claim time — see §19 finding #8 and §26. This is the one item from the full audit worth prioritizing before `lucky_draw` ever goes live for real users, though it sits behind the same flag as the separate legal go-live decision, so there is no current urgency.
+- **Known gap (documented, not fixed)**: claim verification does not check `qr_secret` against anything at claim time — see §19 finding #8 and §26. **Correction — see §0:** this was originally the one item worth prioritizing "before `lucky_draw` ever goes live," on the assumption the flag would hold it back until then. The flag has since been removed and Lucky Draw is live, so this gap is now reachable in production (mitigated only by claim being restricted to authenticated sponsor-merchant staff with a delivery-proof upload, not open to the public) — still HIGH, now with real urgency rather than deferred urgency.
 
 ## 12. Redemptions
 
@@ -173,7 +251,7 @@ All seven verified via the full backend suite (799 passed, 0 failures). #1's mis
 
 ### Documented only (BLOCKER-adjacent but requires a product decision)
 
-- **HIGH — Voucher claim has no customer-code verification** (§11). `qr_secret` exists, is generated, and is exposed via a dedicated endpoint, but is never checked at claim time, unlike Redemption's `hash_equals()` comparison — any sponsor-merchant staff member can currently claim a voucher with a fabricated proof URL. Requires a real UX decision (customer shows QR at hand-off? OTP to the customer?), not a drop-in patch. **Sits behind the same disabled `lucky_draw` flag — no live exposure today.**
+- **HIGH — Voucher claim has no customer-code verification** (§11). `qr_secret` exists, is generated, and is exposed via a dedicated endpoint, but is never checked at claim time, unlike Redemption's `hash_equals()` comparison — any sponsor-merchant staff member can currently claim a voucher with a fabricated proof URL. Requires a real UX decision (customer shows QR at hand-off? OTP to the customer?), not a drop-in patch. **Correction — see §0: no longer sits behind a disabled flag.** Lucky Draw is live; this gap is live-reachable, mitigated only by claim requiring authenticated sponsor-merchant staff.
 - LOW — Sanctum tokens never expire, no ability scoping (session-policy decision).
 - LOW — broad `$fillable` on ~10 models (latent trap, zero live exploit today — every creation path uses an explicit Service-built array).
 - OPTIONAL — 403-vs-404 existence oracle on private records (consistent, reads as intentional).
@@ -244,6 +322,8 @@ The schema and service layer are well-engineered for a production-grade loyalty 
 
 ## 23. Tests
 
+> **Superseded — see §0.** These are the counts as of this original audit pass. Two later passes (the Lucky Draw 2.0 rebuild and this final closure pass) added further tests; the current total is **834 backend tests, 0 failures** and **196/196 Flutter tests** — see the Lucky Draw report's §19 for the full current build-verification table.
+
 | Suite | Result |
 |---|---|
 | Backend — `php artisan test --parallel` (Sail/Docker) | **799 passed**, 0 failures (774 pre-pass baseline + 24 new Lucky Draw/Prize/Voucher tests + 1 new security-regression test) |
@@ -263,17 +343,21 @@ All three purchase methods, pending→approved, pending→rejected, and financia
 
 ## 25. Known limitations
 
+> **Superseded — see §0.** The `lucky_draw` flag row below reflects this audit's original state, not the current one.
+
 | Item | Severity | Detail |
 |---|---|---|
-| `lucky_draw` feature flag OFF by default | BLOCKER *(for Lucky Draw go-live only, not for the rest of the product)* | Engine is fully built, tested, and live-verified, but going live requires resolving whether a prize draw of this shape needs registration/licensing under Indian lottery/gambling law (risk **R-2**, `docs/decisions/risk-register.md`, marked a blocking decision for LuckyDraw/Prize/Voucher). Architecture-readiness and the legal go-live decision are deliberately separate concerns. |
+| ~~`lucky_draw` feature flag OFF by default~~ | ~~BLOCKER~~ → **MEDIUM (see §0, item 5)** | Was: "going live requires resolving whether a prize draw of this shape needs registration/licensing under Indian lottery/gambling law." Now: the product owner explicitly accepted this risk and directed an unblocked ship (`risk-register.md#r-2`, resolved 2026-09-02); Lucky Draw is live. The underlying legal question is still open and should be revisited before a real-money/real-user launch — no longer an engineering blocker. |
 | Empty-pool-at-lock (`Failed` status) | N/A — not a defect | Correct, tested behavior — a draw created with no eligible coupons in scope at lock time. |
-| Voucher claim has no customer-code verification | HIGH | See §11/§19 finding #8. No live exposure today (behind the disabled flag), but must be resolved before any real launch. |
+| Voucher claim has no customer-code verification | HIGH | See §11/§19 finding #8 and §0 item 1. Now live-reachable (Lucky Draw is no longer flag-gated) — should be resolved soon, though current exposure is limited to authenticated sponsor-merchant staff. |
 
 ## 26. Remaining decisions
 
+> **Superseded — see §0.** The Lucky Draw legal-decision row below reflects this audit's original state; it has since been formally resolved as an accepted risk (`risk-register.md#r-2`), not left open as a blocker.
+
 | Item | Severity | What's needed |
 |---|---|---|
-| Lucky Draw legal go-live decision | BLOCKER *(for that feature only)* | Legal review before flipping `lucky_draw` to enabled in any environment with real users. |
+| ~~Lucky Draw legal go-live decision~~ | ~~BLOCKER~~ → **MEDIUM** | Was: "Legal review before flipping `lucky_draw` to enabled in any environment with real users." Now: the flag is already enabled and Lucky Draw is live, by explicit owner decision accepting this risk (2026-09-02). A real legal review is still recommended before a real-money/real-user launch, but is a scheduled follow-up, not a live blocker. |
 | Voucher claim verification UX | HIGH | Product decision: customer shows a claim QR at hand-off, or an OTP sent to the customer, or another mechanism — then a narrow implementation. |
 | `subscriptions` — no lock/constraint against duplicate active subscriptions per merchant | HIGH | Approved migration adding a unique/partial-unique constraint, plus wrapping `SubscriptionLifecycleService::resolveIntentTarget()` in a lock — §22 finding #1. |
 | `merchant_branches` — no DB-level "one primary per merchant" constraint | HIGH | Approved migration (partial-unique via generated column, since MySQL lacks native partial indexes), plus a row lock in `promoteToPrimary()` — §22 finding #2. |
@@ -287,12 +371,16 @@ All three purchase methods, pending→approved, pending→rejected, and financia
 | Sanctum tokens never expire, no ability scoping | LOW | Session-lifetime policy decision. |
 | Broad `$fillable` on ~10 models | LOW | Defense-in-depth hardening pass; zero live exploit today. |
 
-## 27. Final launch recommendation
+## 27. Final launch recommendation (original audit — superseded by §0)
+
+> **Superseded — see §0 for the current, authoritative verdict.** This section is preserved as-written for historical record; it predates the Lucky Draw 2.0 rebuild, the feature-flag removal, and this final closure pass's email/brand-copy/value-consistency work.
 
 **Core loyalty product (Authentication, Purchases — all 3 methods, Town Coins, Coupons, Redemptions, Referrals, Notifications, Merchant/Admin dashboards): READY.** All 799 backend tests, 196 Flutter tests, and clean Flutter/Admin builds pass; the two BLOCKER-severity security bugs found this pass are fixed and regression-tested; performance, accessibility, database, notification, and admin-UI-consistency audits found and closed every narrow, real gap they turned up, with no outstanding blocker in this scope.
 
 **Subscriptions/Payments/Invoices (merchant billing): READY to launch, with three HIGH-severity follow-ups recommended soon.** The billing flow itself works and is tested, but §22 found three real (if currently low-likelihood) race conditions — duplicate active subscriptions, dual-primary branches, and an unenforced one-invoice-per-payment invariant — that are each a narrow, approved-migration-away from being fully closed. None have caused an incident and none block launch, but they should be scheduled promptly rather than indefinitely deferred.
 
-**Lucky Draw / Prizes / Winners / Vouchers: architecturally READY, product-gated NOT READY.** The engine is fully built, tested, concurrency-safe, and live-verified end-to-end, but two items must close before enabling `lucky_draw` for real users: (1) the legal classification decision (§25/§26, a business/legal call, not an engineering one), and (2) the voucher claim-verification UX gap (§11/§19 finding #8, a real integrity gap with a clear but undecided fix). Neither blocks the rest of the product — the flag isolates this domain completely.
+**Lucky Draw / Prizes / Winners / Vouchers: architecturally READY, product-gated NOT READY.** *(No longer accurate — Lucky Draw shipped live shortly after this was written; see §0.)* The engine is fully built, tested, concurrency-safe, and live-verified end-to-end, but two items must close before enabling `lucky_draw` for real users: (1) the legal classification decision (§25/§26, a business/legal call, not an engineering one), and (2) the voucher claim-verification UX gap (§11/§19 finding #8, a real integrity gap with a clear but undecided fix). Neither blocks the rest of the product — the flag isolates this domain completely.
 
-**Overall status: READY for launch of the core loyalty product**, with (a) three HIGH-severity billing-integrity migrations recommended as a prompt follow-up, and (b) Lucky Draw correctly held behind its feature flag pending the two items above. This is not a "not ready" verdict on the codebase — it reflects genuine outstanding decisions (two legal/product, three requiring an approved schema change) that this pass correctly documented rather than invented an answer for.
+**Overall status at the time of this original audit: READY for launch of the core loyalty product**, with (a) three HIGH-severity billing-integrity migrations recommended as a prompt follow-up, and (b) Lucky Draw correctly held behind its feature flag pending the two items above.
+
+**Current overall status, as of the final closure pass: READY — see §0 for the full, current verdict and the complete, non-hidden remaining-issue list.**

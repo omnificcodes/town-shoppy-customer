@@ -61,7 +61,7 @@ Built this pass, reusing the existing `NotificationService`/`NotificationType`/c
 - **New: Email channel.** No email-sending capability existed anywhere in this codebase before this pass. Added `NotificationChannel::Email`, an `EmailNotificationChannel` using Laravel's built-in `Mail` facade (works correctly against the `log` driver in dev; a real provider is an `.env`/ops decision, not a code one), and Blade email templates for the winner and sponsor-merchant notifications.
 - **New: `PrizeWon` notification type** — the merchant-sponsor-facing counterpart to the existing `DrawWon` (customer-facing). Fired from `DrawService::notifyWinners()` for the sponsor's active owner account, with a masked winner label (never the real name/mobile number), in-app + email + WhatsApp.
 - **`DrawWon`** gained WhatsApp and email channels (previously in-app + SMS only).
-- **Documented, not implemented:** no `email` column exists anywhere in the schema (not on accounts, customer profiles, or merchants). The email channel is fully built and will activate correctly the moment such a column exists — this is a genuine schema/product decision left undecided, not worked around. See §22.
+- **Now genuinely wired (final closure pass):** `accounts.email` (nullable, unique, with `email_verified_at`) is the real recipient field the email channel resolves against — see §23. Email delivery for both the winner (`DrawWon`) and the sponsoring merchant owner (`PrizeWon`, falling back to `merchants.contact_email`) is exercised end-to-end by real HTTP/database tests, not a direct `deliver()` call.
 
 ## 10. Customer experience
 
@@ -104,6 +104,7 @@ Two additive migrations, no destructive changes, no historical data altered:
 
 - `draws.idempotency_key` (nullable, unique string) — backs §15.
 - `prizes.value` (nullable decimal(12,2)) — purely informational display data, never used in any eligibility/selection calculation.
+- **Final closure pass:** `accounts.email` (nullable, unique string) + `accounts.email_verified_at` (nullable timestamp) — see §23. `merchants.contact_email` (nullable string, no uniqueness constraint, mirrors `contact_mobile_number`) — see §23.
 
 ## 17. API changes
 
@@ -113,6 +114,7 @@ Two additive migrations, no destructive changes, no historical data altered:
 - `DrawResource` gained `merchant_scopes` (array of `{id, name}`) and `created_by` (initiating admin's mobile number), both manager-only, both newly eager-loaded by `index()`/`show()`.
 - `PrizeResource` gained `value` and a conditional `winners` array (`{voucher_id, winner_label, claim_status, claimed_at}`, masked), eager-loaded by `PrizeController::show()`.
 - **Fixed:** `GET /draws/{draw}/winners`, and the `confirmWinner`/`forfeitWinner` responses, were missing `prize.sponsorMerchant` in their eager-loads — every winner reveal was silently showing "Sponsored by —" instead of the real merchant name. Found during live browser verification of the new reveal screen, fixed, and covered by a new regression test.
+- **Final closure pass:** `POST /auth/email` (new, authenticated) — sets/normalizes the caller's own account email, no-ops on resubmitting the current value, resets `email_verified_at` on a genuine change. `AccountResource` gained `email`/`email_verified_at` (self-view only — confirmed no other resource ever returns another account's `AccountResource`). `MerchantPrivateResource` gained `contact_email`, settable only at merchant registration (`RegisterMerchantRequest`), mirroring the existing `contact_mobile_number` convention. See §23.
 
 ## 18. Tests
 
@@ -120,19 +122,22 @@ New/updated backend Pest tests, all passing:
 
 - `tests/Feature/LuckyDraw/RunDrawTest.php` (new, 13 tests): preview count correctness (both scope modes, including the association-boundary fix), the full run-a-draw happy path (Scenario-A-equivalent: all businesses, 2 prizes, 2 winners, cross-cadence isolation verified), a single-business-scoped run (Scenario-B-equivalent: excluded-business coupons never participate), rejecting an out-of-association business/prize, rejecting a prize whose sponsor is outside the selected scope, idempotency-key replay producing exactly one draw, missing-cadence/missing-prizes validation, missing-Idempotency-Key rejection, cross-association admin rejection, empty-pool-graceful-failure, and the sponsor-merchant-name regression (§17).
 - `tests/Feature/LuckyDraw/DrawPoolAndExecutionTest.php` (updated): two tests' fixtures corrected to tie their coupons' merchants to the draw's own association — they were silently relying on the pre-fix unbounded `scope=all` behavior and would have passed trivially (0 == 0) had the fix not been made and the fixtures not been corrected alongside it.
-- `tests/Feature/Notification/DrawWonNotificationTest.php` (new, 5 tests): email delivery for the winner, the new `PrizeWon` notification to the sponsor, and a graceful no-op when a recipient has no email on file.
+- `tests/Feature/Notification/DrawWonNotificationTest.php` (final closure pass: 7 tests, up from 5): email delivery for the winner, the new `PrizeWon` notification to the sponsor, a graceful no-op when a recipient has no email on file, plus two new end-to-end tests added this pass — real winner+sponsor email delivery via the actual HTTP `execute()` endpoint using real `accounts.email` column values (replacing an earlier in-memory-only `setAttribute()` workaround now that the real column exists), and the `merchants.contact_email` fallback when the sponsor's owner account has none.
+- `tests/Feature/Auth/UpdateEmailTest.php` (new, final closure pass, 7 tests): set-email-first-time, normalize-and-collide-on-uniqueness, reject-invalid-format, reset-`email_verified_at`-on-change, no-op-on-resubmitting-the-same-value, requires-authentication, and `GET /auth/me` exposing both new fields.
 
 ## 19. Build verification
 
 | Check | Result |
 |---|---|
-| Backend — `php artisan test --parallel` | **825 passed, 0 failures** (2631 assertions) |
+| Backend — `php artisan test --parallel` | **834 passed, 0 failures** (2659 assertions) — up from 825, includes the new email-architecture tests |
 | Flutter — `flutter analyze` | No issues found |
 | Flutter — `flutter test` | **196/196 passed** |
 | Flutter — `flutter build apk --release` | Succeeded (`app-release.apk`, 72.3MB) |
 | Admin — `npx tsc --noEmit` | Clean |
 | Admin — `npm run lint` | Clean |
 | Admin — `npm run build` | Succeeded — all routes compiled, including the new `/association-admin/draws/[id]/reveal` route |
+
+All seven checks above were re-run in full as part of the final closure pass (not just incrementally) and confirmed green together.
 
 ## 20. UI/UX changes
 
@@ -152,11 +157,24 @@ Live-verified end-to-end in a real browser against the running dev backend: logi
 
 None removed *this* pass — the `lucky_draw` feature-flag gate was already fully removed from the codebase in the immediately preceding pass (all `featureFlags->enabled('lucky_draw')` checks deleted from every controller, the seed default flipped to `enabled: true`, and the legal-risk register entry marked as an accepted, owner-directed risk rather than a blocking one). Lucky Draw 2.0 was built and verified against that already-unblocked state; nothing in this pass reintroduced any gate, flag check, or "not yet enabled" condition anywhere in backend, admin, or Flutter code.
 
-## 22. Remaining issues
+## 22. Final closure pass — email architecture, brand copy, and closing gaps
+
+A separate, later pass closed out every item this report had previously listed as a genuine remaining gap, plus performed a full production-readiness sweep. Summary (full detail in [final-production-readiness-report.md](./final-production-readiness-report.md)):
+
+- **Email architecture, built for real.** `accounts.email`/`accounts.email_verified_at` (nullable, unique) added — Account, not any role-profile table, per this codebase's own "Account is the one shared identity for every role" precedent (ADR-001), and per the same reasoning §9 already used to design the (until-now schema-less) email channel around. `merchants.contact_email` added as the secondary/fallback path for merchant-owner-targeted notifications (`PrizeWon`), mirroring the existing `contact_mobile_number` business-contact-field pattern. `EmailNotificationChannel::resolveRecipientEmail()` — previously reading a placeholder `$merchant->email` — now reads the real columns. `POST /auth/email` lets an authenticated account set/normalize its own email; `AccountResource`/`MerchantPrivateResource` expose the new fields where established view-scoping rules already allow it. No email-verification-send/confirm flow was built — deliberately out of scope (notifications don't require a verified address; see §23's Optional row).
+- **Brand copy.** Repo-wide search for "Town Shopee" found and fixed the one live occurrence: `config/notifications.php`'s `DrawWon` email subject line. (Two other matches were already-correct historical citations in test/doc text, not live bugs.)
+- **Merchant prize list value display.** `prizes-list-client.tsx` (the LOW item below) now shows a Value column, using the same shared `Money` component as every other prize interface — also applied to the merchant prize detail page and the association-admin prize approval queue, which had the identical gap, and replaced an ad hoc local `formatCurrency()` in `draw-management.tsx` with the same shared component for true consistency.
+- **Obsolete-blocker sweep.** Found and fixed two stale doc comments (a migration docblock and a Flutter repository docblock) that still described Lucky Draw as "gated behind the `lucky_draw` feature flag, disabled pending legal review" — false since the flag was already removed and the risk was already accepted (see `docs/decisions/risk-register.md#r-2`, correctly left untouched as it documents a real, still-open *business/legal* question, not a code blocker). No actual blocking logic was found anywhere — the sweep only corrected documentation that no longer matched reality.
+- **Full regression, re-run clean:** see the updated §19 table — 834 backend tests, 196 Flutter tests, `flutter analyze`/release build, and admin typecheck/lint/build all green together after every change above.
+- **Live UI verification:** logged into the association-admin console against the running dev backend; Dashboard, Prizes (all filters), and Draws pages render cleanly with the corrected brand copy and the new Value column. Along the way, a real (pre-existing, unrelated to this pass's code changes) dev-environment bug was found and fixed: the current day's `auth-*.log` file had been created with `root` ownership by an earlier out-of-band `docker exec` command, which made every login throw a permission-denied exception and fail with a 500. This is an artifact of how commands were run against the dev container in this session, not a defect in the application code — flagged as awareness for anyone else running ad hoc root commands against the same container.
+
+## 23. Remaining issues
 
 | Item | Severity | Detail |
 |---|---|---|
-| No `email` column on any recipient-facing table | MEDIUM | The email channel is fully built and will work the moment `accounts`/`customer_profiles`/`merchants` gain one — a genuine schema/product decision, not a code gap. |
-| Merchant prize list table doesn't show `value` | LOW | Shown on the card-based draw-management picker and the prize detail page; the plain list table wasn't extended with a 5th column for it. Cosmetic, not a functional gap. |
-| Email/WhatsApp copy says "Town Shopee" | LOW | Implemented literally per the exact subject-line copy given in the request ("🎉 Congratulations! You Won a Town Shopee Lucky Draw Prize"); the app's actual name is "Town Shoppy" everywhere else in the product. Worth a quick confirmation of which spelling is intended before this ships to real users. |
-| Local dev log-file permission issue | N/A — fixed, noted for awareness | See §14 — not a code defect, but worth being aware of if the same class of issue (a process writing app logs as a different user than normal) could occur in a real deployment. |
+| No email-verification send/confirm flow | OPTIONAL | `email_verified_at` exists and resets correctly on change, but nothing sends a verification code. Deliberately out of scope — notifications are fire-and-forget, not an auth context, so a verified address isn't required for the feature to work. Build only if/when a product requirement needs a *confirmed* address (e.g. password-reset-via-email). |
+| No customer/merchant-facing "add your email" UI screen | LOW | The backend (`POST /auth/email`) and API exposure are complete and tested; no Admin/Flutter settings screen was built to call it, since none was explicitly requested by name. Whoever owns email collection UX should scope a small settings-page addition when ready. |
+| ~~No `email` column on any recipient-facing table~~ | RESOLVED | See §22 — `accounts.email` (+ `merchants.contact_email` fallback) now backs the email channel for real. |
+| ~~Merchant prize list table doesn't show `value`~~ | RESOLVED | See §22 — fixed, and extended to every other prize interface with the same gap. |
+| ~~Email/WhatsApp copy said "Town Shopee"~~ | RESOLVED | Was implemented literally per the exact subject-line copy originally given; corrected to "Town Shoppy" in the brand-copy closure pass, matching the rest of the product. |
+| Local dev log-file permission issue | N/A — recurring dev-environment artifact, fixed again | See §14 and §22 — not a code defect. Recurs whenever a command is run against the dev container as `root` instead of `sail` on the day's first log write; worth a `chown` in the container's entrypoint or a documented convention if it keeps recurring across sessions. |
