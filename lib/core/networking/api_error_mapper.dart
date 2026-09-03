@@ -46,9 +46,20 @@ class ApiErrorMapper {
       case 409:
         return ConflictException(message ?? const ConflictException().message);
       case 422:
+        // The backend's top-level `message` for a validation failure is
+        // always the same generic "The given data was invalid." (see
+        // bootstrap/app.php's ValidationException renderer) -- the actual,
+        // specific reason (e.g. "An account already exists for this mobile
+        // number.", "Invalid credentials.") lives only in `errors`. No
+        // screen in this app does per-field server-error display -- every
+        // screen just shows `.message` directly -- so prefer the first
+        // field error here, once, for every caller, rather than the
+        // generic fallback.
+        final fieldErrors = _extractFieldErrors(body);
+        final firstFieldMessage = fieldErrors.values.firstOrNull?.firstOrNull;
         return ValidationAppException(
-          message ?? 'The given data was invalid.',
-          _extractFieldErrors(body),
+          firstFieldMessage ?? message ?? 'The given data was invalid.',
+          fieldErrors,
         );
       case 429:
         return RateLimitedException(_extractRetryAfter(response?.headers));
