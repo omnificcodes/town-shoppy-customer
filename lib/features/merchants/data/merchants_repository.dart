@@ -15,12 +15,14 @@ import 'models/nearby_merchant.dart';
 /// specifically), so this client always receives the same
 /// `MerchantPublicResource` shape a guest would.
 ///
-/// `category_id` and `accepts_town_coin` are the real filters this client
-/// uses on `index()` (`association_id` is also backend-supported but has
-/// no client use case yet) — there is no `town_id` filter and no
-/// text-search parameter on this endpoint today (confirmed by reading
-/// `MerchantController::index()` directly), so this repository does not
-/// expose either.
+/// `category_id`, `accepts_town_coin` and `search` are the real filters
+/// this client uses on `index()` (`association_id` is also
+/// backend-supported but has no client use case yet). `search` is a plain
+/// `name LIKE` match — unprivileged callers (every request this app makes)
+/// hit the same `->when($request->filled('search'), ...)` clause a Super
+/// Admin does, so it's fully public. There is still no `town_id` filter on
+/// this endpoint (confirmed by reading `MerchantController::index()`
+/// directly), so this repository does not expose one.
 class MerchantsRepository {
   MerchantsRepository(this._dio);
 
@@ -32,6 +34,7 @@ class MerchantsRepository {
     int? categoryId,
     bool? acceptsTownCoin,
     bool? featured,
+    String? search,
   }) async {
     try {
       final response = await _dio.get(
@@ -42,6 +45,7 @@ class MerchantsRepository {
           if (categoryId != null) 'category_id': categoryId,
           if (acceptsTownCoin == true) 'accepts_town_coin': 1,
           if (featured == true) 'featured': 1,
+          if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
         },
       );
       final items = (ApiEnvelope.data(response) as List<dynamic>)

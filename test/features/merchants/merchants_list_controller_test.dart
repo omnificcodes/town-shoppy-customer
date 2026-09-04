@@ -36,7 +36,14 @@ class FakeMerchantsRepository implements MerchantsRepository {
   void queueError(AppException error) => _responses.add(error);
 
   @override
-  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId, bool? acceptsTownCoin, bool? featured}) async {
+  Future<OffsetPage<Merchant>> list({
+    int page = 1,
+    int perPage = 20,
+    int? categoryId,
+    bool? acceptsTownCoin,
+    bool? featured,
+    String? search,
+  }) async {
     categoryIdsRequested.add(categoryId);
     final next = _responses.first;
     if (next is AppException) throw next;

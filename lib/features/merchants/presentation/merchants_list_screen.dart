@@ -13,18 +13,23 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/merchant_categories_provider.dart';
 import '../application/merchants_list_controller.dart';
 import '../application/nearby_merchants_controller.dart';
-import 'category_chip.dart';
+import 'category_filter_strip.dart';
+import 'discover_banner.dart';
 import 'merchant_card.dart';
+import 'merchant_search_bar.dart';
+import 'merchants_discovery_header.dart';
 import 'nearby_merchant_card.dart';
 
 enum _MerchantsTab { all, nearby }
 
-/// The merchant-discovery browsing screen. "All" has no server-side text
-/// search and no `town_id` filter (confirmed by reading
-/// `MerchantController::index()` directly) — only category. "Nearby" wraps
-/// `GET /merchants/nearby` (Phase 1 completion audit item #8: the backend
-/// endpoint existed but no client called it) and needs the device's GPS
-/// coordinate, requested on demand rather than on screen open.
+/// The merchant-discovery browsing screen. "All" supports server-side name
+/// search and an `accepts_town_coin` filter (both confirmed real on
+/// `MerchantController::index()`), plus category — there is still no
+/// `town_id` filter. "Nearby" wraps `GET /merchants/nearby` (Phase 1
+/// completion audit item #8: the backend endpoint existed but no client
+/// called it) and needs the device's GPS coordinate, requested on demand
+/// rather than on screen open; it has no search parameter on the backend,
+/// so the search bar only ever appears on the "All" tab.
 class MerchantsListScreen extends ConsumerStatefulWidget {
   const MerchantsListScreen({super.key, this.initialCategoryId});
 
@@ -88,15 +93,26 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Discover merchants')),
       body: SafeArea(
         child: Column(
           children: [
+            const MerchantsDiscoveryHeader(),
+            if (_tab == _MerchantsTab.all)
+              MerchantSearchBar(
+                onSearchChanged: (value) => ref.read(merchantsListControllerProvider.notifier).search(value),
+                acceptsTownCoinOnly: ref.watch(merchantsListControllerProvider).value?.acceptsTownCoinOnly ?? false,
+                onToggleAcceptsTownCoin: (value) =>
+                    ref.read(merchantsListControllerProvider.notifier).setAcceptsTownCoinOnly(value),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+            const DiscoverBanner(),
+            const SizedBox(height: AppSpacing.sm),
             _TabToggle(tab: _tab, onChanged: _switchTab),
             if (_tab == _MerchantsTab.all)
               _AllCategoryFilterRow()
             else
               _NearbyCategoryFilterRow(),
+            if (_tab == _MerchantsTab.all) const _ResultsCountRow(),
             Expanded(
               child: _tab == _MerchantsTab.all
                   ? _AllMerchantsBody(scrollController: _scrollController)
@@ -109,10 +125,28 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
   }
 }
 
+class _ResultsCountRow extends ConsumerWidget {
+  const _ResultsCountRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(merchantsListControllerProvider).value;
+    if (state == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.xs),
+      child: Text(
+        state.total == 1 ? '1 merchant found' : '${state.total} merchants found',
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
 /// A two-way segmented toggle, purpose-built for this fixed-width row
-/// (unlike [CategoryChip], which hugs its own content inside a horizontally
-/// *scrolling* list and has never needed to shrink its label to fit a tight
-/// [Expanded] slot).
+/// (unlike a scrolling filter chip, which hugs its own content inside a
+/// horizontally *scrolling* list and has never needed to shrink its label
+/// to fit a tight [Expanded] slot).
 class _TabToggle extends StatelessWidget {
   const _TabToggle({required this.tab, required this.onChanged});
 
@@ -138,6 +172,7 @@ class _TabToggle extends StatelessWidget {
             Expanded(
               child: _TabToggleSegment(
                 label: 'Near me',
+                icon: Icons.near_me_rounded,
                 selected: tab == _MerchantsTab.nearby,
                 onTap: () => onChanged(_MerchantsTab.nearby),
               ),
@@ -150,11 +185,12 @@ class _TabToggle extends StatelessWidget {
 }
 
 class _TabToggleSegment extends StatelessWidget {
-  const _TabToggleSegment({required this.label, required this.selected, required this.onTap});
+  const _TabToggleSegment({required this.label, required this.selected, required this.onTap, this.icon});
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -169,17 +205,29 @@ class _TabToggleSegment extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           onTap: onTap,
           child: Padding(
-            // Same touch-target fix as CategoryChip -- see its own comment.
+            // Same touch-target fix as the category tiles — see their own
+            // comment.
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? AppColors.onOrange : AppColors.textPrimary,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 16, color: selected ? AppColors.onOrange : AppColors.textPrimary),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          color: selected ? AppColors.onOrange : AppColors.textPrimary,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        ),
                   ),
+                ),
+              ],
             ),
           ),
         ),
@@ -210,17 +258,18 @@ class _AllMerchantsBody extends ConsumerWidget {
       ),
       data: (data) {
         if (data.items.isEmpty) {
+          final hasFilter = data.categoryId != null || data.search.isNotEmpty || data.acceptsTownCoinOnly;
           return EmptyState(
             icon: Icons.storefront_outlined,
-            title: data.categoryId != null ? 'No merchants match this category' : 'No participating merchants found',
-            message: data.categoryId != null
-                ? 'Try a different category or clear the filter.'
+            title: hasFilter ? 'No merchants match this search' : 'No participating merchants found',
+            message: hasFilter
+                ? 'Try a different category, search term, or clear the filters.'
                 : 'Check back soon as more businesses join Town Shoppy.',
-            action: data.categoryId != null
+            action: hasFilter
                 ? AppButton(
-                    label: 'Clear filter',
+                    label: 'Clear filters',
                     variant: AppButtonVariant.secondary,
-                    onPressed: () => ref.read(merchantsListControllerProvider.notifier).filterByCategory(null),
+                    onPressed: () => ref.read(merchantsListControllerProvider.notifier).clearFilters(),
                   )
                 : null,
           );
@@ -448,12 +497,12 @@ class _CategoryFilterRow extends ConsumerWidget {
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         child: SizedBox(
-          height: 40,
+          height: 70,
           child: Row(
             children: [
-              LoadingSkeleton(width: 80, height: 32, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusLg))),
+              LoadingSkeleton(width: 74, height: 66, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd))),
               SizedBox(width: AppSpacing.sm),
-              LoadingSkeleton(width: 80, height: 32, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusLg))),
+              LoadingSkeleton(width: 74, height: 66, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd))),
             ],
           ),
         ),
@@ -465,34 +514,10 @@ class _CategoryFilterRow extends ConsumerWidget {
       data: (categories) {
         if (categories.isEmpty) return const SizedBox.shrink();
 
-        return SizedBox(
-          height: 56,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            // Vertical padding reduced from AppSpacing.sm so each
-            // CategoryChip has room to reach the app's touchTarget minimum
-            // within this row's own fixed height -- see CategoryChip's
-            // padding comment for the full accessibility rationale.
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 2),
-            itemCount: categories.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return CategoryChip(
-                  label: 'All',
-                  selected: currentCategoryId == null,
-                  onTap: () => onSelect(null),
-                );
-              }
-
-              final category = categories[index - 1];
-              return CategoryChip(
-                label: category.name,
-                selected: currentCategoryId == category.id,
-                onTap: () => onSelect(category.id),
-              );
-            },
-          ),
+        return CategoryFilterStrip(
+          categoryNames: categories.map((c) => (c.id, c.name, c.slug)).toList(),
+          currentCategoryId: currentCategoryId,
+          onSelect: onSelect,
         );
       },
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/home/application/home_location_controller.dart';
 import 'package:customer/features/merchants/application/merchant_categories_provider.dart';
 import 'package:customer/features/merchants/data/merchants_repository.dart';
 import 'package:customer/features/merchants/data/models/association_ref.dart';
@@ -24,7 +25,14 @@ class _FakeMerchantsRepository implements MerchantsRepository {
   final OffsetPage<Merchant> _page;
 
   @override
-  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId, bool? acceptsTownCoin, bool? featured}) async => _page;
+  Future<OffsetPage<Merchant>> list({
+    int page = 1,
+    int perPage = 20,
+    int? categoryId,
+    bool? acceptsTownCoin,
+    bool? featured,
+    String? search,
+  }) async => _page;
 
   @override
   Future<Merchant> show(int id) async => throw UnimplementedError();
@@ -64,6 +72,11 @@ Merchant _longNameMerchant() {
   );
 }
 
+class _FakeHomeLocationController extends HomeLocationController {
+  @override
+  Future<HomeLocationState> build() async => const HomeLocationUnavailable();
+}
+
 Widget _wrap() {
   return ProviderScope(
     overrides: [
@@ -71,6 +84,7 @@ Widget _wrap() {
       merchantsRepositoryProvider.overrideWithValue(
         _FakeMerchantsRepository(OffsetPage(items: [_longNameMerchant()], currentPage: 1, lastPage: 1, total: 1)),
       ),
+      homeLocationControllerProvider.overrideWith(_FakeHomeLocationController.new),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const MerchantsListScreen()),
   );
@@ -83,6 +97,7 @@ Widget _wrapEmpty() {
       merchantsRepositoryProvider.overrideWithValue(
         _FakeMerchantsRepository(const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0)),
       ),
+      homeLocationControllerProvider.overrideWith(_FakeHomeLocationController.new),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const MerchantsListScreen()),
   );
@@ -96,7 +111,7 @@ void main() {
       tester,
       _wrap,
       verify: (tester, size) async {
-        expect(find.text('Discover merchants'), findsOneWidget);
+        expect(find.text('Discover Merchants'), findsOneWidget);
         expect(find.textContaining('The Grand Downtown'), findsOneWidget);
         expect(find.textContaining('% off with Town Coin'), findsOneWidget);
       },

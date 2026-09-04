@@ -29,49 +29,85 @@ class NearbyMerchantCard extends StatelessWidget {
       label: '${merchant.name}, $distanceLabel away',
       child: AppCard(
         onTap: onTap,
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 56),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    merchant.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (address.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      address,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 56),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.near_me_rounded, size: 14, color: AppColors.textSecondary),
-                      const SizedBox(width: 4),
                       Text(
-                        '$distanceLabel away',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                        merchant.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      if (address.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          address,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                _FavoriteButton(merchantName: merchant.name),
+              ],
             ),
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                const Icon(Icons.near_me_rounded, size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '$distanceLabel away',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Text(
+                  'View Store',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
+                ),
+                const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.orange),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FavoriteButton extends StatelessWidget {
+  const _FavoriteButton({required this.merchantName});
+
+  final String merchantName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Favorite $merchantName',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favorites is coming soon.'))),
+        child: const Padding(
+          padding: EdgeInsets.all(4),
+          child: Icon(Icons.favorite_border_rounded, size: 20, color: AppColors.textSecondary),
         ),
       ),
     );

@@ -11,7 +11,10 @@ import 'merchant_logo.dart';
 /// actually returns. `branch_count` is deliberately not shown: the public
 /// resource only ever exposes a merchant's single primary branch, never a
 /// count of all its branches (see the phase report's backend-limitations
-/// section).
+/// section). The heart icon is a UI-only stub — there is no favorites/
+/// wishlist concept anywhere in the backend yet, so it surfaces a "coming
+/// soon" message rather than pretending to persist anything, same pattern
+/// Wallet's Terms & Conditions/Help & Support use.
 class MerchantCard extends StatelessWidget {
   const MerchantCard({super.key, required this.merchant, this.onTap});
 
@@ -30,39 +33,92 @@ class MerchantCard extends StatelessWidget {
       label: '${merchant.name}${subtitleParts.isNotEmpty ? ', $subtitleParts' : ''}',
       child: AppCard(
         onTap: onTap,
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 56),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    merchant.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 56),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        merchant.name,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subtitleParts.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitleParts,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (merchant.discountRate != null && merchant.discountRate! > 0) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        _DiscountBadge(rate: merchant.discountRate!),
+                      ],
+                    ],
                   ),
-                  if (subtitleParts.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitleParts,
-                      style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                _FavoriteButton(merchantName: merchant.name),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                if (merchant.town != null) ...[
+                  const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      merchant.town!.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textSecondary),
                     ),
-                  ],
-                  if (merchant.discountRate != null && merchant.discountRate! > 0) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    _DiscountBadge(rate: merchant.discountRate!),
-                  ],
-                ],
-              ),
+                  ),
+                ] else
+                  const Spacer(),
+                Text(
+                  'View Store',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
+                ),
+                const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.orange),
+              ],
             ),
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FavoriteButton extends StatelessWidget {
+  const _FavoriteButton({required this.merchantName});
+
+  final String merchantName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Favorite $merchantName',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favorites is coming soon.'))),
+        child: const Padding(
+          padding: EdgeInsets.all(4),
+          child: Icon(Icons.favorite_border_rounded, size: 20, color: AppColors.textSecondary),
         ),
       ),
     );
