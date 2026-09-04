@@ -90,7 +90,7 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
               onChanged: _onChanged,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Search merchants, categories or offers...',
+                hintText: 'Search merchants or categories',
                 prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.surfaceMuted,

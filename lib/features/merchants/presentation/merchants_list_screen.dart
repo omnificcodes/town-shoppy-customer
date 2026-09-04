@@ -30,6 +30,11 @@ enum _MerchantsTab { all, nearby }
 /// called it) and needs the device's GPS coordinate, requested on demand
 /// rather than on screen open; it has no search parameter on the backend,
 /// so the search bar only ever appears on the "All" tab.
+///
+/// One [CustomScrollView] for the whole screen: the header, banner, and
+/// filter strip scroll away with the results instead of sitting in a fixed
+/// block above them, which overflowed on short viewports (landscape, a
+/// large system text scale, or the keyboard open).
 class MerchantsListScreen extends ConsumerStatefulWidget {
   const MerchantsListScreen({super.key, this.initialCategoryId});
 
@@ -90,35 +95,53 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
     }
   }
 
+  Future<void> _refresh() {
+    switch (_tab) {
+      case _MerchantsTab.all:
+        return ref.read(merchantsListControllerProvider.notifier).refresh();
+      case _MerchantsTab.nearby:
+        final nearby = ref.read(nearbyMerchantsControllerProvider).value;
+        if (nearby is NearbyReadyState) {
+          return ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
+        }
+        return Future.value();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final listState = ref.watch(merchantsListControllerProvider).value;
+
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            const MerchantsDiscoveryHeader(),
-            if (_tab == _MerchantsTab.all)
-              MerchantSearchBar(
-                onSearchChanged: (value) => ref.read(merchantsListControllerProvider.notifier).search(value),
-                acceptsTownCoinOnly: ref.watch(merchantsListControllerProvider).value?.acceptsTownCoinOnly ?? false,
-                onToggleAcceptsTownCoin: (value) =>
-                    ref.read(merchantsListControllerProvider.notifier).setAcceptsTownCoinOnly(value),
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    const MerchantsDiscoveryHeader(),
+                    if (_tab == _MerchantsTab.all)
+                      MerchantSearchBar(
+                        onSearchChanged: (value) => ref.read(merchantsListControllerProvider.notifier).search(value),
+                        acceptsTownCoinOnly: listState?.acceptsTownCoinOnly ?? false,
+                        onToggleAcceptsTownCoin: (value) =>
+                            ref.read(merchantsListControllerProvider.notifier).setAcceptsTownCoinOnly(value),
+                      ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const DiscoverBanner(),
+                    const SizedBox(height: AppSpacing.sm),
+                    _TabToggle(tab: _tab, onChanged: _switchTab),
+                    if (_tab == _MerchantsTab.all) _AllCategoryFilterRow() else _NearbyCategoryFilterRow(),
+                    if (_tab == _MerchantsTab.all) const _ResultsCountRow(),
+                  ],
+                ),
               ),
-            const SizedBox(height: AppSpacing.sm),
-            const DiscoverBanner(),
-            const SizedBox(height: AppSpacing.sm),
-            _TabToggle(tab: _tab, onChanged: _switchTab),
-            if (_tab == _MerchantsTab.all)
-              _AllCategoryFilterRow()
-            else
-              _NearbyCategoryFilterRow(),
-            if (_tab == _MerchantsTab.all) const _ResultsCountRow(),
-            Expanded(
-              child: _tab == _MerchantsTab.all
-                  ? _AllMerchantsBody(scrollController: _scrollController)
-                  : _NearbyMerchantsBody(scrollController: _scrollController),
-            ),
-          ],
+              if (_tab == _MerchantsTab.all) const _AllMerchantsBody() else const _NearbyMerchantsBody(),
+            ],
+          ),
         ),
       ),
     );
@@ -236,50 +259,78 @@ class _TabToggleSegment extends StatelessWidget {
   }
 }
 
-class _AllMerchantsBody extends ConsumerWidget {
-  const _AllMerchantsBody({required this.scrollController});
+const _listPadding = EdgeInsets.all(AppSpacing.md);
 
-  final ScrollController scrollController;
+/// Six placeholder cards while a list is loading — a sliver so it can sit
+/// inside the screen's single [CustomScrollView].
+class _SkeletonSliver extends StatelessWidget {
+  const _SkeletonSliver();
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: _listPadding,
+      sliver: SliverList.separated(
+        itemCount: 6,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        itemBuilder: (_, __) => const LoadingSkeletonCard(),
+      ),
+    );
+  }
+}
+
+/// Fills whatever is left below the header so a prompt/empty/error card
+/// reads as the screen's content, not a stub tucked under the filters.
+class _FillSliver extends StatelessWidget {
+  const _FillSliver({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverFillRemaining(hasScrollBody: false, child: child);
+  }
+}
+
+class _AllMerchantsBody extends ConsumerWidget {
+  const _AllMerchantsBody();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(merchantsListControllerProvider);
 
     return state.when(
-      loading: () => ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: 6,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (_, __) => const LoadingSkeletonCard(),
-      ),
-      error: (error, _) => ErrorState(
-        error: error is AppException ? error : const UnknownAppException(),
-        onRetry: () => ref.read(merchantsListControllerProvider.notifier).refresh(),
+      loading: () => const _SkeletonSliver(),
+      error: (error, _) => _FillSliver(
+        child: ErrorState(
+          error: error is AppException ? error : const UnknownAppException(),
+          onRetry: () => ref.read(merchantsListControllerProvider.notifier).refresh(),
+        ),
       ),
       data: (data) {
         if (data.items.isEmpty) {
           final hasFilter = data.categoryId != null || data.search.isNotEmpty || data.acceptsTownCoinOnly;
-          return EmptyState(
-            icon: Icons.storefront_outlined,
-            title: hasFilter ? 'No merchants match this search' : 'No participating merchants found',
-            message: hasFilter
-                ? 'Try a different category, search term, or clear the filters.'
-                : 'Check back soon as more businesses join Town Shoppy.',
-            action: hasFilter
-                ? AppButton(
-                    label: 'Clear filters',
-                    variant: AppButtonVariant.secondary,
-                    onPressed: () => ref.read(merchantsListControllerProvider.notifier).clearFilters(),
-                  )
-                : null,
+          return _FillSliver(
+            child: EmptyState(
+              icon: Icons.storefront_outlined,
+              title: hasFilter ? 'No merchants match this search' : 'No participating merchants found',
+              message: hasFilter
+                  ? 'Try a different category, search term, or clear the filters.'
+                  : 'Check back soon as more businesses join Town Shoppy.',
+              action: hasFilter
+                  ? AppButton(
+                      label: 'Clear filters',
+                      variant: AppButtonVariant.secondary,
+                      onPressed: () => ref.read(merchantsListControllerProvider.notifier).clearFilters(),
+                    )
+                  : null,
+            ),
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () => ref.read(merchantsListControllerProvider.notifier).refresh(),
-          child: ListView.separated(
-            controller: scrollController,
-            padding: const EdgeInsets.all(AppSpacing.md),
+        return SliverPadding(
+          padding: _listPadding,
+          sliver: SliverList.separated(
             itemCount: data.items.length + (data.hasMore ? 1 : 0),
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
@@ -313,112 +364,110 @@ class _AllCategoryFilterRow extends ConsumerWidget {
 }
 
 class _NearbyMerchantsBody extends ConsumerWidget {
-  const _NearbyMerchantsBody({required this.scrollController});
-
-  final ScrollController scrollController;
+  const _NearbyMerchantsBody();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(nearbyMerchantsControllerProvider);
 
     return state.when(
-      loading: () => ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: 6,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (_, __) => const LoadingSkeletonCard(),
-      ),
-      error: (error, _) => ErrorState(
-        error: error is AppException ? error : const UnknownAppException(),
-        onRetry: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+      loading: () => const _SkeletonSliver(),
+      error: (error, _) => _FillSliver(
+        child: ErrorState(
+          error: error is AppException ? error : const UnknownAppException(),
+          onRetry: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+        ),
       ),
       data: (uiState) => switch (uiState) {
-        NearbyPromptState() => _LocationPromptCard(
-            icon: Icons.my_location_rounded,
-            title: 'Find merchants near you',
-            message: 'Town Shoppy will ask for your location to show the closest participating businesses.',
-            actionLabel: 'Use my location',
-            onAction: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+        NearbyPromptState() => _FillSliver(
+            child: _LocationPromptCard(
+              icon: Icons.my_location_rounded,
+              title: 'Find merchants near you',
+              message: 'Town Shoppy will ask for your location to show the closest participating businesses.',
+              actionLabel: 'Use my location',
+              onAction: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+            ),
           ),
-        NearbyLocatingState() => ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            itemCount: 6,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-            itemBuilder: (_, __) => const LoadingSkeletonCard(),
+        NearbyLocatingState() => const _SkeletonSliver(),
+        NearbyServiceDisabledState() => _FillSliver(
+            child: _LocationPromptCard(
+              icon: Icons.location_disabled_rounded,
+              title: 'Location services are off',
+              message: 'Turn on location services for this device to find nearby merchants.',
+              actionLabel: 'Open location settings',
+              onAction: () async {
+                await ref.read(locationServiceProvider).openLocationSettings();
+              },
+              secondaryLabel: 'Try again',
+              onSecondaryAction: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+            ),
           ),
-        NearbyServiceDisabledState() => _LocationPromptCard(
-            icon: Icons.location_disabled_rounded,
-            title: 'Location services are off',
-            message: 'Turn on location services for this device to find nearby merchants.',
-            actionLabel: 'Open location settings',
-            onAction: () async {
-              await ref.read(locationServiceProvider).openLocationSettings();
-            },
-            secondaryLabel: 'Try again',
-            onSecondaryAction: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+        NearbyPermissionDeniedState(:final forever) => _FillSliver(
+            child: _LocationPromptCard(
+              icon: Icons.location_off_rounded,
+              title: 'Location permission needed',
+              message: forever
+                  ? "Town Shoppy can't ask for location permission again — enable it from this app's settings."
+                  : 'Allow location access to find merchants near you.',
+              actionLabel: forever ? 'Open app settings' : 'Allow location',
+              onAction: () async {
+                if (forever) {
+                  await ref.read(locationServiceProvider).openAppSettings();
+                } else {
+                  await ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
+                }
+              },
+            ),
           ),
-        NearbyPermissionDeniedState(:final forever) => _LocationPromptCard(
-            icon: Icons.location_off_rounded,
-            title: 'Location permission needed',
-            message: forever
-                ? "Town Shoppy can't ask for location permission again — enable it from this app's settings."
-                : 'Allow location access to find merchants near you.',
-            actionLabel: forever ? 'Open app settings' : 'Allow location',
-            onAction: () async {
-              if (forever) {
-                await ref.read(locationServiceProvider).openAppSettings();
-              } else {
-                await ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
-              }
-            },
-          ),
-        NearbyReadyState(:final data) => _NearbyResultsList(data: data, scrollController: scrollController),
+        NearbyReadyState(:final data) => _NearbyResultsSliver(data: data),
       },
     );
   }
 }
 
-class _NearbyResultsList extends ConsumerWidget {
-  const _NearbyResultsList({required this.data, required this.scrollController});
+class _NearbyResultsSliver extends ConsumerWidget {
+  const _NearbyResultsSliver({required this.data});
 
   final NearbyMerchantsData data;
-  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (data.items.isEmpty) {
-      return EmptyState(
-        icon: Icons.location_searching_rounded,
-        title: data.categoryId != null ? 'No merchants match this category nearby' : 'No merchants nearby yet',
-        message: data.categoryId != null
-            ? 'Try a different category or clear the filter.'
-            : 'Check back soon as more businesses join Town Shoppy in your area.',
-        action: data.categoryId != null
-            ? AppButton(
-                label: 'Clear filter',
-                variant: AppButtonVariant.secondary,
-                onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).filterByCategory(null),
-              )
-            : null,
+      return _FillSliver(
+        child: EmptyState(
+          icon: Icons.location_searching_rounded,
+          title: data.categoryId != null ? 'No merchants match this category nearby' : 'No merchants nearby yet',
+          message: data.categoryId != null
+              ? 'Try a different category or clear the filter.'
+              : 'Check back soon as more businesses join Town Shoppy in your area.',
+          action: data.categoryId != null
+              ? AppButton(
+                  label: 'Clear filter',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).filterByCategory(null),
+                )
+              : null,
+        ),
       );
     }
 
-    return ListView.separated(
-      controller: scrollController,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: data.items.length + (data.hasMore ? 1 : 0),
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        if (index >= data.items.length) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
+    return SliverPadding(
+      padding: _listPadding,
+      sliver: SliverList.separated(
+        itemCount: data.items.length + (data.hasMore ? 1 : 0),
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        itemBuilder: (context, index) {
+          if (index >= data.items.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
 
-        final result = data.items[index];
-        return NearbyMerchantCard(result: result, onTap: () => context.push('/merchants/${result.merchant.id}'));
-      },
+          final result = data.items[index];
+          return NearbyMerchantCard(result: result, onTap: () => context.push('/merchants/${result.merchant.id}'));
+        },
+      ),
     );
   }
 }
@@ -461,7 +510,7 @@ class _LocationPromptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.lg),
       child: Column(
         mainAxisSize: MainAxisSize.min,

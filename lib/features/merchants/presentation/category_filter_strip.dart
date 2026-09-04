@@ -24,7 +24,7 @@ class CategoryFilterStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 86,
+      height: 84,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
@@ -34,7 +34,7 @@ class CategoryFilterStrip extends StatelessWidget {
           if (index == 0) {
             return _CategoryFilterTile(
               icon: Icons.apps_rounded,
-              color: AppColors.textSecondary,
+              color: AppColors.orange,
               label: 'All',
               selected: currentCategoryId == null,
               onTap: () => onSelect(null),
@@ -56,6 +56,10 @@ class CategoryFilterStrip extends StatelessWidget {
   }
 }
 
+/// Sized to its own label (within a floor/cap) so short names like
+/// "Bakery" get a compact tile while long ones like "Agriculture & Farming
+/// Supplies" stay on one line and ellipsize instead of breaking mid-word
+/// across two lines.
 class _CategoryFilterTile extends StatelessWidget {
   const _CategoryFilterTile({
     required this.icon,
@@ -84,24 +88,30 @@ class _CategoryFilterTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           onTap: onTap,
           child: Container(
-            width: 74,
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs, horizontal: 4),
+            constraints: const BoxConstraints(minWidth: 72, maxWidth: 124),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(color: selected ? color : AppColors.border, width: selected ? 1.5 : 1),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: color, size: 24),
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: Icon(icon, color: color, size: 19),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   label,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                         color: selected ? AppColors.textPrimary : AppColors.textSecondary,
                       ),
                 ),
