@@ -51,8 +51,10 @@ class WalletLedgerTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  entry.createdAt != null ? relativeTime(entry.createdAt!) : '',
+                  entry.createdAt != null ? '${relativeTime(entry.createdAt!)} · ${_absoluteTime(entry.createdAt!)}' : '',
                   style: Theme.of(context).textTheme.labelSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -73,4 +75,17 @@ class WalletLedgerTile extends StatelessWidget {
       ),
     );
   }
+}
+
+const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/// "12 May, 05:30 PM" -- paired with [relativeTime] rather than replacing it
+/// (same "16h ago · 12 May, 05:30 PM" shape the reference design uses), so
+/// a glance gets the recency and a closer look gets the exact moment.
+String _absoluteTime(DateTime dateTime) {
+  final hour24 = dateTime.hour;
+  final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+  final minute = dateTime.minute.toString().padLeft(2, '0');
+  final period = hour24 < 12 ? 'AM' : 'PM';
+  return '${dateTime.day} ${_months[dateTime.month - 1]}, $hour12:$minute $period';
 }
