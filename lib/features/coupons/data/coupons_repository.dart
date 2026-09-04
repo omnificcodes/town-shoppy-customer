@@ -16,9 +16,12 @@ class CouponsRepository {
 
   final Dio _dio;
 
-  Future<OffsetPage<Coupon>> list({int page = 1, int perPage = 20}) async {
+  Future<OffsetPage<Coupon>> list({int page = 1, int perPage = 20, String? status}) async {
     try {
-      final response = await _dio.get('/coupons', queryParameters: {'page': page, 'per_page': perPage});
+      final response = await _dio.get(
+        '/coupons',
+        queryParameters: {'page': page, 'per_page': perPage, if (status != null) 'status': status},
+      );
       final items =
           (ApiEnvelope.data(response) as List<dynamic>).map((e) => Coupon.fromJson(e as Map<String, dynamic>)).toList();
       final meta = ApiEnvelope.meta(response) ?? const {};

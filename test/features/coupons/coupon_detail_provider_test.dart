@@ -19,7 +19,7 @@ class FakeCouponsRepository implements CouponsRepository {
   }
 
   @override
-  Future<OffsetPage<Coupon>> list({int page = 1, int perPage = 20}) async => throw UnimplementedError();
+  Future<OffsetPage<Coupon>> list({int page = 1, int perPage = 20, String? status}) async => throw UnimplementedError();
 }
 
 void main() {

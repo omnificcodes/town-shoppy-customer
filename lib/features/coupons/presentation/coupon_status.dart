@@ -14,7 +14,7 @@ StatusTone couponStatusTone(String status) => switch (status) {
 
 String couponStatusLabel(String status) => switch (status) {
       'active' => 'Active',
-      'won' => 'Won',
+      'won' => 'Won 🎉',
       'expired' => 'Expired',
       _ => status,
     };
