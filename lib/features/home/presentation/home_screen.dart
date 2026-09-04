@@ -13,16 +13,21 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
+import '../../merchants/application/featured_merchants_provider.dart';
+import '../../offers/application/trending_offers_provider.dart';
 import '../../purchases/application/recent_purchases_provider.dart';
 import '../../purchases/presentation/purchase_status.dart';
 import '../../wallet/application/wallet_controller.dart';
+import 'widgets/category_slider.dart';
+import 'widgets/featured_businesses_section.dart';
+import 'widgets/home_drawer.dart';
+import 'widgets/home_header.dart';
+import 'widgets/trending_offers_section.dart';
 
-/// The customer's landing screen — sections 20/21/30: personal greeting
-/// first, then whatever the backend actually supports for this account
-/// (wallet balance, recent purchases). No section here renders anything
-/// the backend didn't return; there is no lucky-draw/rewards section
-/// because that backend domain doesn't exist yet (see the final report's
-/// backend-limitations list).
+/// The customer's landing screen. Section order follows the reference
+/// layout this was redesigned from: header, greeting, wallet, discovery
+/// CTA, categories, featured businesses, trending offers, then the
+/// existing recent-purchases/coupons/redemptions sections unchanged.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -32,116 +37,148 @@ class HomeScreen extends ConsumerWidget {
     final account = authState is AuthAuthenticated ? authState.account : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Town Shoppy'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign out',
-            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-          ),
-        ],
-      ),
+      drawer: const HomeDrawer(),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await ref.read(walletControllerProvider.notifier).refresh();
-            ref.invalidate(recentPurchasesProvider);
-          },
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          children: [
+            const HomeHeader(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await ref.read(walletControllerProvider.notifier).refresh();
+                  ref.invalidate(recentPurchasesProvider);
+                  ref.invalidate(featuredMerchantsProvider);
+                  ref.invalidate(trendingOffersProvider);
+                },
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xxl),
+                  children: [
+                    _GreetingRow(name: account?.displayName),
+                    const SizedBox(height: AppSpacing.lg),
+                    const _WalletCard(),
+                    const SizedBox(height: AppSpacing.lg),
+                    const _DiscoverMerchantsCard(),
+                    const SizedBox(height: AppSpacing.lg),
+                    const _SectionHeader(title: 'Categories', onSeeAll: null),
+                    const SizedBox(height: AppSpacing.sm),
+                    const CategorySlider(),
+                    const SizedBox(height: AppSpacing.lg),
+                    _SectionHeader(title: 'Featured businesses', onSeeAll: () => context.push('/merchants')),
+                    const SizedBox(height: AppSpacing.sm),
+                    const FeaturedBusinessesSection(),
+                    const SizedBox(height: AppSpacing.lg),
+                    const _SectionHeader(title: 'Trending offers near you', onSeeAll: null),
+                    const SizedBox(height: AppSpacing.sm),
+                    const TrendingOffersSection(),
+                    const SizedBox(height: AppSpacing.lg),
+                    _SectionHeader(title: 'Recent purchases', onSeeAll: () => context.push('/purchases')),
+                    const SizedBox(height: AppSpacing.sm),
+                    const _RecentPurchases(),
+                    const SizedBox(height: AppSpacing.lg),
+                    _SectionHeader(title: 'Coupons', onSeeAll: () => context.push('/coupons')),
+                    const SizedBox(height: AppSpacing.sm),
+                    AppCard(
+                      onTap: () => context.push('/coupons'),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.confirmation_number_outlined, color: AppColors.orange),
+                          const SizedBox(width: AppSpacing.sm),
+                          const Expanded(child: Text('View your Lucky Draw coupons')),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _SectionHeader(title: 'Redemptions', onSeeAll: () => context.push('/redemptions')),
+                    const SizedBox(height: AppSpacing.sm),
+                    AppCard(
+                      onTap: () => context.push('/redemptions'),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.qr_code_2_rounded, color: AppColors.silverDark),
+                          const SizedBox(width: AppSpacing.sm),
+                          const Expanded(child: Text('View your Town Coin redemption history')),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    AppCard(
+                      onTap: () => context.push('/redeem'),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.storefront_rounded, color: AppColors.orange),
+                          const SizedBox(width: AppSpacing.sm),
+                          const Expanded(child: Text('See where you can redeem Town Coin')),
+                          const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GreetingRow extends StatelessWidget {
+  const _GreetingRow({required this.name});
+
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: AppColors.orange,
+          child: Text(
+            _initials(name),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Hi, ${account?.displayName ?? 'there'}',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: AppSpacing.xs),
+              Text('Hi, ${name ?? 'there'} 👋', style: Theme.of(context).textTheme.headlineMedium),
               Text('Welcome back to your Town Shoppy account.', style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: AppSpacing.lg),
-              const _WalletCard(),
-              const SizedBox(height: AppSpacing.lg),
-              const _DiscoverMerchantsCard(),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Recent purchases',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  TextButton(onPressed: () => context.push('/purchases'), child: const Text('See all')),
-                ],
-              ),
-              const _RecentPurchases(),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Coupons',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  TextButton(onPressed: () => context.push('/coupons'), child: const Text('See all')),
-                ],
-              ),
-              AppCard(
-                onTap: () => context.push('/coupons'),
-                child: Row(
-                  children: [
-                    const Icon(Icons.confirmation_number_outlined, color: AppColors.orange),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Expanded(child: Text('View your Lucky Draw coupons')),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Redemptions',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  TextButton(onPressed: () => context.push('/redemptions'), child: const Text('See all')),
-                ],
-              ),
-              AppCard(
-                onTap: () => context.push('/redemptions'),
-                child: Row(
-                  children: [
-                    const Icon(Icons.qr_code_2_rounded, color: AppColors.silverDark),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Expanded(child: Text('View your Town Coin redemption history')),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              AppCard(
-                onTap: () => context.push('/redeem'),
-                child: Row(
-                  children: [
-                    const Icon(Icons.storefront_rounded, color: AppColors.orange),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Expanded(child: Text('See where you can redeem Town Coin')),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  String _initials(String? name) {
+    if (name == null || name.trim().isEmpty) return '?';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    return parts.take(2).map((p) => p[0].toUpperCase()).join();
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.onSeeAll});
+
+  final String title;
+  final VoidCallback? onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium, overflow: TextOverflow.ellipsis),
+        ),
+        if (onSeeAll != null) TextButton(onPressed: onSeeAll, child: const Text('See all')),
+      ],
     );
   }
 }

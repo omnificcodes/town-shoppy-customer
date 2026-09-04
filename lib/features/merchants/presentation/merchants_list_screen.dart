@@ -26,7 +26,13 @@ enum _MerchantsTab { all, nearby }
 /// endpoint existed but no client called it) and needs the device's GPS
 /// coordinate, requested on demand rather than on screen open.
 class MerchantsListScreen extends ConsumerStatefulWidget {
-  const MerchantsListScreen({super.key});
+  const MerchantsListScreen({super.key, this.initialCategoryId});
+
+  /// Set when arriving from Home's category slider (passed as route
+  /// `extra`) — applied once the controller's own initial, unfiltered
+  /// `build()` resolves, same "resolve on the screen that displays it"
+  /// deferral `RequestPurchaseScreen.initState()` already uses.
+  final int? initialCategoryId;
 
   @override
   ConsumerState<MerchantsListScreen> createState() => _MerchantsListScreenState();
@@ -40,6 +46,16 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+
+    final initialCategoryId = widget.initialCategoryId;
+    if (initialCategoryId != null) {
+      Future.microtask(() async {
+        await ref.read(merchantsListControllerProvider.future);
+        if (mounted) {
+          ref.read(merchantsListControllerProvider.notifier).filterByCategory(initialCategoryId);
+        }
+      });
+    }
   }
 
   void _onScroll() {

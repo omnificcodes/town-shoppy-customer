@@ -105,7 +105,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => RedemptionVerificationScreen(redemptionId: int.parse(state.pathParameters['id']!)),
       ),
       GoRoute(path: _referralsPath, builder: (context, state) => const ReferralScreen()),
-      GoRoute(path: _merchantsPath, builder: (context, state) => const MerchantsListScreen()),
+      // Pushed from the Home header's bell icon now (see HomeHeader), not a
+      // bottom-nav tab -- top-level like /wallet's own sub-pages, not inside
+      // the ShellRoute below.
+      GoRoute(path: _notificationsPath, builder: (context, state) => const NotificationsScreen()),
+      GoRoute(path: _merchantsPath, builder: (context, state) => MerchantsListScreen(initialCategoryId: state.extra as int?)),
       GoRoute(
         path: '$_merchantsPath/:id',
         builder: (context, state) => MerchantDetailScreen(merchantId: int.parse(state.pathParameters['id']!)),
@@ -120,7 +124,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: _homePath, builder: (context, state) => const HomeScreen()),
           GoRoute(path: _walletPath, builder: (context, state) => const WalletScreen()),
           GoRoute(path: _couponsPath, builder: (context, state) => const CouponsListScreen()),
-          GoRoute(path: _notificationsPath, builder: (context, state) => const NotificationsScreen()),
           GoRoute(path: _profilePath, builder: (context, state) => const ProfileScreen()),
         ],
       ),

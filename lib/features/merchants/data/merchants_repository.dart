@@ -26,7 +26,13 @@ class MerchantsRepository {
 
   final Dio _dio;
 
-  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId, bool? acceptsTownCoin}) async {
+  Future<OffsetPage<Merchant>> list({
+    int page = 1,
+    int perPage = 20,
+    int? categoryId,
+    bool? acceptsTownCoin,
+    bool? featured,
+  }) async {
     try {
       final response = await _dio.get(
         '/merchants',
@@ -35,6 +41,7 @@ class MerchantsRepository {
           'per_page': perPage,
           if (categoryId != null) 'category_id': categoryId,
           if (acceptsTownCoin == true) 'accepts_town_coin': 1,
+          if (featured == true) 'featured': 1,
         },
       );
       final items = (ApiEnvelope.data(response) as List<dynamic>)

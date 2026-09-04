@@ -7,7 +7,12 @@ import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
 import 'package:customer/features/auth/data/models/account.dart';
 import 'package:customer/features/auth/data/models/customer_profile.dart';
+import 'package:customer/features/home/application/home_location_controller.dart';
 import 'package:customer/features/home/presentation/home_screen.dart';
+import 'package:customer/features/merchants/application/featured_merchants_provider.dart';
+import 'package:customer/features/merchants/application/merchant_categories_provider.dart';
+import 'package:customer/features/notifications/application/unread_count_provider.dart';
+import 'package:customer/features/offers/application/trending_offers_provider.dart';
 import 'package:customer/features/purchases/application/recent_purchases_provider.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
@@ -35,6 +40,11 @@ const _account = Account(
 class _AuthenticatedController extends AuthController {
   @override
   AuthState build() => const AuthAuthenticated(_account);
+}
+
+class _FakeHomeLocationController extends HomeLocationController {
+  @override
+  Future<HomeLocationState> build() async => const HomeLocationUnavailable();
 }
 
 class _FakeWalletRepository implements WalletRepository {
@@ -72,6 +82,11 @@ Widget _wrap() {
       recentPurchasesProvider.overrideWith(
         (ref) async => [_purchase(merchantName: 'The Grand Downtown Corner Cafe and Bakery Emporium')],
       ),
+      homeLocationControllerProvider.overrideWith(_FakeHomeLocationController.new),
+      merchantCategoriesProvider.overrideWith((ref) async => []),
+      featuredMerchantsProvider.overrideWith((ref) async => []),
+      trendingOffersProvider.overrideWith((ref) async => []),
+      unreadNotificationCountProvider.overrideWith((ref) async => 0),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const HomeScreen()),
   );
@@ -87,12 +102,16 @@ void main() {
       verify: (tester, size) async {
         expect(find.textContaining('Hi,'), findsOneWidget);
         expect(find.text('Discover merchants'), findsOneWidget);
-        expect(find.text('Recent purchases'), findsOneWidget);
+        expect(find.text('Categories'), findsOneWidget);
         expect(find.text('1234567 coins'), findsOneWidget);
 
-        // "Redemptions" is further down than a short viewport's initial
-        // render -- confirm it's actually reachable by scrolling, not just
-        // present somewhere off in the cache extent.
+        // Featured businesses/trending offers/recent purchases/Redemptions
+        // all sit further down than a short viewport's initial render --
+        // confirm each is actually reachable by scrolling, not just present
+        // somewhere off in the cache extent.
+        await tester.dragUntilVisible(find.text('Recent purchases'), find.byType(ListView), const Offset(0, -200));
+        expect(find.text('Recent purchases'), findsOneWidget);
+
         await tester.dragUntilVisible(find.text('Redemptions'), find.byType(ListView), const Offset(0, -200));
         expect(find.text('Redemptions'), findsOneWidget);
       },

@@ -24,7 +24,7 @@ class _FakeMerchantsRepository implements MerchantsRepository {
   final OffsetPage<Merchant> _page;
 
   @override
-  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId, bool? acceptsTownCoin}) async => _page;
+  Future<OffsetPage<Merchant>> list({int page = 1, int perPage = 20, int? categoryId, bool? acceptsTownCoin, bool? featured}) async => _page;
 
   @override
   Future<Merchant> show(int id) async => throw UnimplementedError();
