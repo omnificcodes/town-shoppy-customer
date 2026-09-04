@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/auth/data/auth_repository.dart';
 import 'package:customer/features/auth/data/models/account.dart';
+import 'package:customer/features/auth/data/models/otp_request_result.dart';
 import 'package:customer/features/auth/presentation/login_screen.dart';
 
 /// Never touches the network — every call resolves immediately with a
@@ -39,6 +40,18 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<OtpRequestResult> forgotPassword({required String mobileNumber, String? channel}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> resetPassword({
+    required String mobileNumber,
+    required int otpRequestId,
+    required String code,
+    required String password,
+  }) async => throw UnimplementedError();
 }
 
 void main() {
@@ -66,7 +79,7 @@ void main() {
   testWidgets('renders the Town Shoppy brand and the sign-in form', (tester) async {
     await tester.pumpWidget(buildApp());
 
-    expect(find.text('Welcome back to Town Shoppy'), findsOneWidget);
+    expect(find.text('Welcome back to\nTown Shoppy'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
   });
@@ -75,6 +88,7 @@ void main() {
     await tester.pumpWidget(buildApp());
 
     await tester.enterText(find.byType(TextField).first, '123');
+    await tester.ensureVisible(find.text('Sign in'));
     await tester.tap(find.text('Sign in'));
     await tester.pump();
 
@@ -86,6 +100,7 @@ void main() {
     await tester.pumpWidget(buildApp());
 
     await tester.enterText(find.byType(TextField).first, '9999900002');
+    await tester.ensureVisible(find.text('Sign in'));
     await tester.tap(find.text('Sign in'));
     await tester.pump();
 
@@ -98,6 +113,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, '9999900002');
     await tester.enterText(find.byType(TextField).last, 'a-real-password');
+    await tester.ensureVisible(find.text('Sign in'));
     await tester.tap(find.text('Sign in'));
     await tester.pump();
 

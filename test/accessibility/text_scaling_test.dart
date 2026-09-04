@@ -7,6 +7,7 @@ import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
 import 'package:customer/features/auth/data/auth_repository.dart';
 import 'package:customer/features/auth/data/models/account.dart';
+import 'package:customer/features/auth/data/models/otp_request_result.dart';
 import 'package:customer/features/auth/data/models/customer_profile.dart';
 import 'package:customer/features/auth/presentation/login_screen.dart';
 import 'package:customer/features/merchants/application/merchant_branches_provider.dart';
@@ -43,6 +44,16 @@ class _FakeAuthRepository implements AuthRepository {
     required String name,
     required String password,
     String? referralCode,
+  }) async => throw UnimplementedError();
+  @override
+  Future<OtpRequestResult> forgotPassword({required String mobileNumber, String? channel}) async =>
+      throw UnimplementedError();
+  @override
+  Future<void> resetPassword({
+    required String mobileNumber,
+    required int otpRequestId,
+    required String code,
+    required String password,
   }) async => throw UnimplementedError();
 }
 

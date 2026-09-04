@@ -8,6 +8,7 @@ import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
 import 'package:customer/features/auth/data/auth_repository.dart';
 import 'package:customer/features/auth/data/models/account.dart';
+import 'package:customer/features/auth/data/models/otp_request_result.dart';
 
 Account _newAccount() {
   return Account.fromJson({
@@ -73,6 +74,18 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<OtpRequestResult> forgotPassword({required String mobileNumber, String? channel}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> resetPassword({
+    required String mobileNumber,
+    required int otpRequestId,
+    required String code,
+    required String password,
+  }) async => throw UnimplementedError();
 }
 
 class FakeSecureStorageService implements SecureStorageService {

@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/app_text_field.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_state.dart';
+import 'widgets/auth_background.dart';
+import 'widgets/auth_hero_illustration.dart';
+import 'widgets/auth_widgets.dart';
 
 /// Password sign-in — the primary entry point to the app (mirrors the
 /// Association Admin/Merchant web app's own mobile-number + password login,
@@ -68,76 +69,154 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final wasSessionExpired = state is AuthSessionExpired;
 
     return Scaffold(
-      body: SafeArea(
-        // Center, not a bare Padding+Column: this content is meant to sit
-        // vertically centered on a normal screen, but a short viewport, a
-        // large system text scale, or the extra error/session-expired text
-        // below can make it taller than that -- Center lets
-        // SingleChildScrollView take over scrolling in exactly that case
-        // instead of overflowing.
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset('assets/images/townshoppy_logo.png', height: 64, semanticLabel: 'Town Shoppy'),
-                const SizedBox(height: AppSpacing.lg),
-                Text('Welcome back to Town Shoppy', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text('Enter your mobile number and password to sign in.', style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: AppSpacing.lg),
-                if (wasSessionExpired)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                    child: Text(
-                      'Your session expired. Please sign in again.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+      backgroundColor: AuthPalette.cream,
+      body: Stack(
+        children: [
+          const AuthBackdrop(),
+          SafeArea(
+            // ConstrainedBox(minHeight) + IntrinsicHeight + Spacer: the
+            // skyline footer sits at the very bottom on a tall screen, and
+            // simply follows the content (scrolling) on a short one or with
+            // the keyboard up -- never overlapping the form.
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: AppSpacing.lg, top: AppSpacing.sm),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 11,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 44),
+                                    const AuthBrandBlock(logoHeight: 78),
+                                    const SizedBox(height: 34),
+                                    Text(
+                                      'Welcome back to\nTown Shoppy',
+                                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                            color: AuthPalette.brown,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 21,
+                                            height: 1.15,
+                                          ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.sm),
+                                    Text(
+                                      'Enter your mobile number and password to sign in.',
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: const Color(0xFF6F5F57),
+                                            height: 1.4,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Expanded(
+                                flex: 10,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: AppSpacing.lg, top: 6),
+                                      child: AuthScriptText('Shop Local\nSupport Local\nGrow Together', angle: -0.09),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    // Bleeds to the screen's right edge on
+                                    // purpose -- the storefront is cropped by
+                                    // the edge in the reference art too.
+                                    const AuthHeroIllustration(variant: AuthHeroVariant.login),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const SizedBox(height: AppSpacing.lg),
+                              if (wasSessionExpired)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                                  child: Text(
+                                    'Your session expired. Please sign in again.',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+                                  ),
+                                ),
+                              AuthTextField(
+                                label: 'Mobile number',
+                                icon: Icons.smartphone_rounded,
+                                controller: _mobileController,
+                                prefixText: '+91 ',
+                                keyboardType: TextInputType.phone,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+                                autofocus: true,
+                                textInputAction: TextInputAction.next,
+                                errorText: _touched ? _mobileError : null,
+                              ),
+                              const SizedBox(height: 14),
+                              AuthTextField(
+                                label: 'Password',
+                                icon: Icons.lock_outline_rounded,
+                                hintText: 'Enter your password',
+                                controller: _passwordController,
+                                obscureText: _obscurePassword,
+                                textInputAction: TextInputAction.done,
+                                errorText: _touched ? _passwordError : null,
+                                onSubmitted: (_) => _submit(),
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: isSubmitting ? null : () => context.push('/forgot-password'),
+                                  style: TextButton.styleFrom(
+                                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                  ),
+                                  child: const Text('Forgot password?'),
+                                ),
+                              ),
+                              if (serverError != null) ...[
+                                Text(serverError.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
+                                const SizedBox(height: AppSpacing.sm),
+                              ],
+                              const SizedBox(height: AppSpacing.xs),
+                              AuthGradientButton(label: 'Sign in', onPressed: _submit, isLoading: isSubmitting),
+                              const SizedBox(height: AppSpacing.lg),
+                              const AuthOrDivider(label: 'New to Town Shoppy?'),
+                              const SizedBox(height: AppSpacing.lg),
+                              AuthOutlinedPillButton(
+                                label: 'Create an account',
+                                onPressed: isSubmitting ? null : () => context.push('/register'),
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        const AuthLoginFooter(),
+                      ],
                     ),
                   ),
-                AppTextField(
-                  label: 'Mobile number',
-                  controller: _mobileController,
-                  prefixText: '+91 ',
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
-                  errorText: _touched ? _mobileError : null,
                 ),
-                const SizedBox(height: AppSpacing.md),
-                AppTextField(
-                  label: 'Password',
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  errorText: _touched ? _passwordError : null,
-                  onSubmitted: (_) => _submit(),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-                if (serverError != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(serverError.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(label: 'Sign in', onPressed: _submit, isLoading: isSubmitting),
-                const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: AppButton(
-                    label: "New to Town Shoppy? Create an account",
-                    variant: AppButtonVariant.text,
-                    onPressed: isSubmitting ? null : () => context.push('/register'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

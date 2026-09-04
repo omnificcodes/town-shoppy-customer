@@ -7,9 +7,9 @@ import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
 import 'package:customer/features/auth/data/auth_repository.dart';
 import 'package:customer/features/auth/data/models/account.dart';
+import 'package:customer/features/auth/data/models/otp_request_result.dart';
 import 'package:customer/features/auth/presentation/login_screen.dart';
-import 'package:customer/shared/widgets/app_button.dart';
-import 'package:customer/shared/widgets/app_text_field.dart';
+import 'package:customer/features/auth/presentation/widgets/auth_widgets.dart';
 
 /// Minimal fake — this screen only ever calls `me()` once during
 /// `AuthController.build()`'s session restore, and there is no stored
@@ -27,6 +27,18 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout() async {}
+
+  @override
+  Future<OtpRequestResult> forgotPassword({required String mobileNumber, String? channel}) async =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> resetPassword({
+    required String mobileNumber,
+    required int otpRequestId,
+    required String code,
+    required String password,
+  }) async => throw UnimplementedError();
 }
 
 class _FakeEmptySecureStorage implements SecureStorageService {
@@ -81,8 +93,8 @@ void main() {
     );
     await tester.pump();
 
-    final buttonSize = tester.getSize(find.byType(AppButton).first);
-    final fieldSize = tester.getSize(find.byType(AppTextField).first);
+    final buttonSize = tester.getSize(find.byType(AuthGradientButton).first);
+    final fieldSize = tester.getSize(find.byType(AuthTextField).first);
 
     // 375 logical width minus AppSpacing.lg (24) padding on each side = 327.
     // Both should be within a few pixels of that, not a fraction of it.

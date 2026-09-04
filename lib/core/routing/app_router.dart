@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/coupons/presentation/coupon_detail_screen.dart';
 import '../../features/coupons/presentation/coupons_list_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -34,6 +36,8 @@ import '../widgets/app_shell.dart';
 const _splashPath = '/splash';
 const _loginPath = '/login';
 const _registerPath = '/register';
+const _forgotPasswordPath = '/forgot-password';
+const _resetPasswordPath = '/reset-password';
 const _homePath = '/home';
 const _walletPath = '/wallet';
 const _notificationsPath = '/notifications';
@@ -60,6 +64,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: _splashPath, builder: (context, state) => const _SplashScreen()),
       GoRoute(path: _loginPath, builder: (context, state) => const LoginScreen()),
       GoRoute(path: _registerPath, builder: (context, state) => const RegisterScreen()),
+      GoRoute(path: _forgotPasswordPath, builder: (context, state) => const ForgotPasswordScreen()),
+      GoRoute(
+        path: _resetPasswordPath,
+        builder: (context, state) => ResetPasswordScreen(args: state.extra as ResetPasswordArgs),
+      ),
       GoRoute(path: _purchasesPath, builder: (context, state) => const PurchasesListScreen()),
       // 3-way purchase architecture, Method 1/3 — registered before
       // /purchases/:id below so "scan"/"request"/"my-qr" are never parsed
@@ -135,11 +144,14 @@ String? _redirect(AuthState authState, String location) {
   final onSplash = location == _splashPath;
   final onLogin = location == _loginPath;
   final onRegister = location == _registerPath;
-  final onProtected = !onSplash && !onLogin && !onRegister;
+  final onForgotPassword = location == _forgotPasswordPath;
+  final onResetPassword = location == _resetPasswordPath;
+  final onPublicAuthRoute = onLogin || onRegister || onForgotPassword || onResetPassword;
+  final onProtected = !onSplash && !onPublicAuthRoute;
 
   return switch (authState) {
     AuthInitial() => onSplash ? null : _splashPath,
-    AuthUnauthenticated() || AuthSessionExpired() => (onLogin || onRegister) ? null : _loginPath,
+    AuthUnauthenticated() || AuthSessionExpired() => onPublicAuthRoute ? null : _loginPath,
     AuthAuthenticated() => onProtected ? null : _homePath,
   };
 }

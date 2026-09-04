@@ -5,10 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/app_text_field.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_state.dart';
+import 'widgets/auth_background.dart';
+import 'widgets/auth_hero_illustration.dart';
+import 'widgets/auth_widgets.dart';
 
 /// Password-first registration — no OTP, no proof of phone ownership
 /// (`AuthService::registerWithPassword()`'s own docblock). A referral code
@@ -86,6 +87,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
   }
 
+  void _goToLogin() => context.canPop() ? context.pop() : context.go('/login');
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(authControllerProvider);
@@ -93,86 +96,200 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final serverError = state is AuthUnauthenticated ? state.error : null;
 
     return Scaffold(
-      appBar: AppBar(),
-      body: SafeArea(
-        // A ListView, not a Column: a short viewport, a large system text
-        // scale, or the on-screen keyboard can make this form's five fields
-        // taller than the available height.
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          children: [
-            Text('Create your account', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Join Town Shoppy to start earning rewards at local businesses.', style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: AppSpacing.lg),
-            AppTextField(
-              label: 'Mobile number',
-              controller: _mobileController,
-              prefixText: '+91 ',
-              keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-              autofocus: true,
-              textInputAction: TextInputAction.next,
-              errorText: _touched ? _mobileError : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Your name',
-              controller: _nameController,
-              textInputAction: TextInputAction.next,
-              errorText: _touched ? _nameError : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Password',
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              textInputAction: TextInputAction.next,
-              errorText: _touched ? _passwordError : null,
-              suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+      backgroundColor: AuthPalette.cream,
+      body: Stack(
+        children: [
+          const AuthBackdrop(cornerBlobs: false),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: AppSpacing.md, top: AppSpacing.xs),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 10,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.arrow_back_rounded, color: AuthPalette.brown, size: 28),
+                                      tooltip: 'Back',
+                                      onPressed: _goToLogin,
+                                    ),
+                                    const Padding(
+                                      padding: EdgeInsets.only(left: AppSpacing.sm),
+                                      child: AuthBrandBlock(logoHeight: 66),
+                                    ),
+                                    const SizedBox(height: 30),
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: AppSpacing.sm),
+                                      child: Text(
+                                        'Create your\naccount',
+                                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                              color: AuthPalette.brown,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.15,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.sm),
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: AppSpacing.sm),
+                                      child: Text(
+                                        'Join Town Shoppy to start earning rewards at local businesses.',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              color: const Color(0xFF6F5F57),
+                                              fontSize: 15,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Expanded(
+                                flex: 11,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: const [
+                                    Padding(
+                                      padding: EdgeInsets.only(right: AppSpacing.lg, top: 14),
+                                      child: AuthScriptText(
+                                        'Shop Local\nEarn Rewards\nBe Part of a\nStronger Community',
+                                        size: 19,
+                                        angle: -0.09,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Padding(
+                                      padding: EdgeInsets.only(right: AppSpacing.md),
+                                      child: AuthHeroIllustration(variant: AuthHeroVariant.register),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                          // The form sits in a white card in the reference,
+                          // unlike Login where the fields sit on the cream.
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(color: AuthPalette.fieldBorder),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF8A5A2B).withValues(alpha: 0.08),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                AuthTextField(
+                                  label: 'Mobile number',
+                                  icon: Icons.smartphone_rounded,
+                                  controller: _mobileController,
+                                  prefixText: '+91 ',
+                                  keyboardType: TextInputType.phone,
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+                                  autofocus: true,
+                                  textInputAction: TextInputAction.next,
+                                  errorText: _touched ? _mobileError : null,
+                                ),
+                                const SizedBox(height: 12),
+                                AuthTextField(
+                                  label: 'Your name',
+                                  icon: Icons.person_outline_rounded,
+                                  controller: _nameController,
+                                  textInputAction: TextInputAction.next,
+                                  errorText: _touched ? _nameError : null,
+                                ),
+                                const SizedBox(height: 12),
+                                AuthTextField(
+                                  label: 'Password',
+                                  icon: Icons.lock_outline_rounded,
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  textInputAction: TextInputAction.next,
+                                  errorText: _touched ? _passwordError : null,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                AuthTextField(
+                                  label: 'Confirm password',
+                                  icon: Icons.lock_outline_rounded,
+                                  controller: _confirmPasswordController,
+                                  obscureText: _obscureConfirmPassword,
+                                  textInputAction: TextInputAction.next,
+                                  errorText: _touched ? _confirmPasswordError : null,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                    ),
+                                    tooltip: _obscureConfirmPassword ? 'Show password' : 'Hide password',
+                                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                AuthTextField(
+                                  label: 'Referral code (optional)',
+                                  icon: Icons.card_giftcard_rounded,
+                                  hintText: "Have a friend's code?",
+                                  controller: _referralController,
+                                  maxLength: 32,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _submit(),
+                                ),
+                                if (serverError != null) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    serverError.message,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
+                                  ),
+                                ],
+                                const SizedBox(height: AppSpacing.lg),
+                                AuthGradientButton(label: 'Create account', onPressed: _submit, isLoading: isSubmitting),
+                                const SizedBox(height: AppSpacing.md),
+                                const AuthOrDivider(label: 'OR'),
+                                const SizedBox(height: AppSpacing.md),
+                                AuthTintedPillButton(
+                                  leading: 'Already have an account?',
+                                  trailing: 'Sign in',
+                                  onPressed: isSubmitting ? null : _goToLogin,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        const Spacer(),
+                        const AuthRegisterFooter(),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Confirm password',
-              controller: _confirmPasswordController,
-              obscureText: _obscureConfirmPassword,
-              textInputAction: TextInputAction.next,
-              errorText: _touched ? _confirmPasswordError : null,
-              suffixIcon: IconButton(
-                icon: Icon(_obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                tooltip: _obscureConfirmPassword ? 'Show password' : 'Hide password',
-                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Referral code (optional)',
-              hintText: "Have a friend's code?",
-              controller: _referralController,
-              maxLength: 32,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _submit(),
-            ),
-            if (serverError != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Text(serverError.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            AppButton(label: 'Create account', onPressed: _submit, isLoading: isSubmitting),
-            const SizedBox(height: AppSpacing.md),
-            Center(
-              child: AppButton(
-                label: 'Already have an account? Sign in',
-                variant: AppButtonVariant.text,
-                onPressed: isSubmitting ? null : () => context.canPop() ? context.pop() : context.go('/login'),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -43,6 +43,7 @@ dependencies:
   qr_flutter: ^4.1.0
   geocoding: ^5.0.0
   url_launcher: ^6.3.2
+  flutter_svg: ^2.2.3
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,16 @@ flutter:
 
   assets:
     - assets/images/townshoppy_logo.png
+    - assets/illustrations/
+
+  # Caveat (SIL Open Font License, see assets/fonts/OFL-Caveat.txt) -- the
+  # handwritten script used only for the auth screens' decorative taglines.
+  # Bundled as a .ttf asset rather than pulling in google_fonts (see
+  # AppTypography's docblock for why this app avoids that package).
+  fonts:
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/Caveat-VariableFont_wght.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

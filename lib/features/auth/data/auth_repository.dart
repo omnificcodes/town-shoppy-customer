@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
 import 'models/account.dart';
+import 'models/otp_request_result.dart';
 
 class AuthResult {
   const AuthResult({required this.account, required this.token});
@@ -61,6 +62,48 @@ class AuthRepository {
     try {
       final response = await _dio.get('/auth/me');
       return Account.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// Step 1 of the forgot-password flow -- `POST /auth/password/forgot`.
+  /// Returns the same shape whether or not an account exists for this
+  /// number (enumeration protection, `AuthController::forgotPassword`'s own
+  /// docblock) -- there is deliberately no way to tell from this response
+  /// alone whether an OTP was actually sent to a real account.
+  Future<OtpRequestResult> forgotPassword({required String mobileNumber, String? channel}) async {
+    try {
+      final response = await _dio.post(
+        '/auth/password/forgot',
+        data: {'mobile_number': mobileNumber, if (channel != null) 'channel': channel},
+      );
+      return OtpRequestResult.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// Step 2 -- `POST /auth/password/reset`. Verifies the OTP and sets the
+  /// new password; does not log the caller in (no token in the response),
+  /// so a stolen reset link can't silently also hand out a session.
+  Future<void> resetPassword({
+    required String mobileNumber,
+    required int otpRequestId,
+    required String code,
+    required String password,
+  }) async {
+    try {
+      await _dio.post(
+        '/auth/password/reset',
+        data: {
+          'mobile_number': mobileNumber,
+          'otp_request_id': otpRequestId,
+          'code': code,
+          'password': password,
+          'password_confirmation': password,
+        },
+      );
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }
