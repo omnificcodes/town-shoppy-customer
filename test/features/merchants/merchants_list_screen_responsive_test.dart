@@ -49,6 +49,7 @@ Merchant _longNameMerchant() {
     description: null,
     logoUrl: null,
     websiteUrl: null,
+    contactMobileNumber: null,
     socialLinks: null,
     discountRate: 12.5,
     acceptsTownCoin: true,

@@ -75,6 +75,7 @@ const _merchant = Merchant(
   description: 'Locally roasted coffee and fresh-baked pastries every day of the week.',
   logoUrl: null,
   websiteUrl: null,
+  contactMobileNumber: null,
   socialLinks: null,
   discountRate: 12.5,
   acceptsTownCoin: true,

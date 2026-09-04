@@ -18,6 +18,7 @@ NearbyMerchant _result(int merchantId, {double distanceKm = 1.2}) {
       description: null,
       logoUrl: null,
       websiteUrl: null,
+      contactMobileNumber: null,
       socialLinks: null,
       discountRate: null,
       acceptsTownCoin: false,

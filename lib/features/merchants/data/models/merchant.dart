@@ -16,6 +16,11 @@ import 'town_ref.dart';
 /// `branch` is still only the merchant's single primary branch (unchanged in
 /// `MerchantPublicResource` itself) — for the full, active-only branch list,
 /// see `merchantBranchesProvider` / `GET /merchants/{id}/branches` (Phase 4).
+///
+/// `contactMobileNumber` is the merchant's own published contact number
+/// (deliberately public, unlike `owner_name`/`gst_number` — see
+/// `MerchantPublicResource`'s docblock), used for the detail screen's
+/// tap-to-call action.
 class Merchant {
   const Merchant({
     required this.id,
@@ -23,6 +28,7 @@ class Merchant {
     required this.description,
     required this.logoUrl,
     required this.websiteUrl,
+    required this.contactMobileNumber,
     required this.socialLinks,
     required this.discountRate,
     required this.acceptsTownCoin,
@@ -38,6 +44,7 @@ class Merchant {
       description: json['description'] as String?,
       logoUrl: json['logo_url'] as String?,
       websiteUrl: json['website_url'] as String?,
+      contactMobileNumber: json['contact_mobile_number'] as String?,
       socialLinks: json['social_links'] is Map ? Map<String, dynamic>.from(json['social_links'] as Map) : null,
       discountRate: json['discount_rate'] != null ? (json['discount_rate'] as num).toDouble() : null,
       acceptsTownCoin: json['accepts_town_coin'] as bool? ?? false,
@@ -52,6 +59,7 @@ class Merchant {
   final String? description;
   final String? logoUrl;
   final String? websiteUrl;
+  final String? contactMobileNumber;
   final Map<String, dynamic>? socialLinks;
   final double? discountRate;
   final bool acceptsTownCoin;

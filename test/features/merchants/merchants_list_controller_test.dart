@@ -15,6 +15,7 @@ Merchant _merchant(int id) {
     description: null,
     logoUrl: null,
     websiteUrl: null,
+    contactMobileNumber: null,
     socialLinks: null,
     discountRate: null,
     acceptsTownCoin: false,

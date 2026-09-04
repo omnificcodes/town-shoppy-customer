@@ -45,6 +45,7 @@ void main() {
       description: null,
       logoUrl: null,
       websiteUrl: null,
+      contactMobileNumber: null,
       socialLinks: null,
       discountRate: null,
       acceptsTownCoin: false,

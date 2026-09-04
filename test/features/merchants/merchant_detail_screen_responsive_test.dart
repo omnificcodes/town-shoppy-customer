@@ -22,6 +22,9 @@ const _merchant = Merchant(
       'ever existed as an idea.',
   logoUrl: null,
   websiteUrl: 'https://www.the-grand-downtown-corner-cafe-and-artisanal-coffee-roastery-emporium.example.com/menu',
+  // Multi-branch below, so the single-branch call/directions card never
+  // renders in this test -- null is fine, this field is inert here.
+  contactMobileNumber: null,
   socialLinks: null,
   discountRate: 12.5,
   acceptsTownCoin: true,
@@ -76,6 +79,48 @@ Widget _wrap() {
   );
 }
 
+const _singleBranchMerchant = Merchant(
+  id: 2,
+  name: 'The Grand Downtown Corner Cafe, Bakery, and Artisanal Coffee Roastery Emporium',
+  description: 'A long-standing neighbourhood institution.',
+  logoUrl: null,
+  websiteUrl: null,
+  contactMobileNumber: '+91 98765 43210 extension 00000',
+  socialLinks: null,
+  discountRate: 12.5,
+  acceptsTownCoin: true,
+  category: MerchantCategory(id: 1, name: 'Food & Beverage', slug: 'food-beverage'),
+  association: AssociationRef(id: 1, name: 'Downtown', slug: 'downtown', town: null),
+  branch: null,
+);
+
+const _singleBranch = [
+  MerchantBranchRef(
+    id: 1,
+    name: 'Main Street Flagship Location, Ground and Mezzanine Floor',
+    isPrimary: true,
+    addressLine: '1200 West Boulevard Avenue, Suite 450B, Uptown Financial District Complex',
+    locality: 'Uptown Financial District',
+    city: 'Springfield-on-the-Hudson',
+    state: 'New Amsterdam',
+    postalCode: '400001',
+    country: 'India',
+    latitude: 1.0,
+    longitude: 2.0,
+    distanceKm: null,
+  ),
+];
+
+Widget _wrapSingleBranch() {
+  return ProviderScope(
+    overrides: [
+      merchantDetailProvider(2).overrideWith((ref) async => _singleBranchMerchant),
+      merchantBranchesProvider(2).overrideWith((ref) async => _singleBranch),
+    ],
+    child: MaterialApp(theme: AppTheme.light, home: const MerchantDetailScreen(merchantId: 2)),
+  );
+}
+
 void main() {
   testWidgets(
     'MerchantDetailScreen renders a long name/description/website/branch-address without overflow at every viewport',
@@ -87,16 +132,42 @@ void main() {
           expect(find.textContaining('The Grand Downtown'), findsWidgets);
           expect(find.text('Redeem Town Coin'), findsOneWidget);
 
+          // Checked via its own short scroll, and before scrolling further
+          // down for "Website" -- the redesigned hero card/CTA pushed
+          // "About" far enough down that a short viewport's initial render
+          // may not have built it yet, and scrolling past it to reach
+          // "Website" first can carry it back outside the ListView's cache
+          // extent and unmount it.
+          await tester.dragUntilVisible(find.text('About'), find.byType(ListView), const Offset(0, -200));
+          expect(find.text('About'), findsOneWidget);
+
           // "Branches"/"Website" sit further down the ListView than a short
           // viewport's initial render -- confirm they're actually reachable
           // by scrolling, not just present somewhere off in the cache extent.
           await tester.dragUntilVisible(find.text('Website'), find.byType(ListView), const Offset(0, -300));
 
-          expect(find.text('About'), findsOneWidget);
           expect(find.text('Branches'), findsOneWidget);
           expect(find.text('Main Street Flagship Location'), findsOneWidget);
           expect(find.text('Primary'), findsOneWidget);
           expect(find.text('Website'), findsOneWidget);
+        },
+      );
+    },
+  );
+
+  testWidgets(
+    'MerchantDetailScreen renders the single-branch call/directions card with a long phone number and address without overflow',
+    (tester) async {
+      await forEachViewport(
+        tester,
+        _wrapSingleBranch,
+        verify: (tester, size) async {
+          await tester.dragUntilVisible(find.text('Get Directions'), find.byType(ListView), const Offset(0, -300));
+
+          expect(find.text('Branch'), findsOneWidget);
+          expect(find.textContaining('Main Street Flagship'), findsOneWidget);
+          expect(find.textContaining('+91 98765 43210'), findsOneWidget);
+          expect(find.text('Get Directions'), findsOneWidget);
         },
       );
     },
