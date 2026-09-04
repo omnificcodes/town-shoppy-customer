@@ -13,13 +13,20 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/customer_purchase_request_controller.dart';
 import '../data/models/merchant_purchase_qr_resolution.dart';
 
-/// Method 1, step 2 — shown immediately after ScanMerchantQrScreen resolves
-/// the scanned token. Same "one scrolling form, no paged wizard" shape as
+/// Method 1, step 2 — shown immediately after ScanMerchantQrScreen decodes a
+/// token; resolves it here (in [initState], before this widget's first
+/// [build] ever watches [customerPurchaseRequestControllerProvider]) so the
+/// autoDispose controller always has an active listener from the moment it
+/// starts resolving -- it is never left to be torn down mid-flight by a
+/// navigation the way "resolve on the previous screen, read the result on
+/// this one" would be. Same "one scrolling form, no paged wizard" shape as
 /// RedemptionInitiationScreen's `_RedemptionForm` (there is no real backend
 /// state machine for these client-side steps -- only "not yet submitted"
 /// and "submitting" exist before a genuine `Purchase` row is created).
 class RequestPurchaseScreen extends ConsumerStatefulWidget {
-  const RequestPurchaseScreen({super.key});
+  const RequestPurchaseScreen({required this.scannedToken, super.key});
+
+  final String scannedToken;
 
   @override
   ConsumerState<RequestPurchaseScreen> createState() => _RequestPurchaseScreenState();
@@ -28,6 +35,19 @@ class RequestPurchaseScreen extends ConsumerStatefulWidget {
 class _RequestPurchaseScreenState extends ConsumerState<RequestPurchaseScreen> {
   final _amountController = TextEditingController();
   bool _amountTouched = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Deferred a tick: Riverpod forbids mutating a provider's state from
+    // inside initState (it's still mid-build). By the time this microtask
+    // runs, this widget's own build() has already run and watched the
+    // controller below, so the mutation lands on a provider this widget is
+    // already listening to.
+    Future.microtask(
+      () => ref.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken(widget.scannedToken),
+    );
+  }
 
   @override
   void dispose() {

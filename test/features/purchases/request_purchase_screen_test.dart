@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
-import 'package:customer/features/purchases/application/customer_purchase_request_controller.dart';
 import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
@@ -51,26 +50,33 @@ const _resolution = MerchantPurchaseQrResolution(
   branchAddressLine: 'MG Road',
 );
 
-(Widget, ProviderContainer) _wrapWithContainer({PurchasesRepository? repository}) {
+(Widget, ProviderContainer) _wrapWithContainer({PurchasesRepository? repository, String scannedToken = 'tok_123'}) {
   final container = ProviderContainer(
     overrides: [if (repository != null) purchasesRepositoryProvider.overrideWithValue(repository)],
   );
   final widget = UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(theme: AppTheme.light, home: const RequestPurchaseScreen()),
+    child: MaterialApp(theme: AppTheme.light, home: RequestPurchaseScreen(scannedToken: scannedToken)),
   );
   return (widget, container);
 }
 
 void main() {
   group('RequestPurchaseScreen', () {
+    // Resolution is triggered by the screen itself (in initState, before its
+    // first build ever watches the controller) rather than by the caller
+    // reading the controller ahead of pumpWidget -- that older shape is
+    // exactly the read-then-abandon race that used to leave a real scan on
+    // a blank screen (the autoDispose controller had no listener between
+    // the scan screen's `ref.read` and this screen's first `ref.watch`, so
+    // it was disposed -- taking the in-flight resolution with it -- before
+    // this screen ever saw the result).
     testWidgets('shows a loading skeleton while the scanned token is still resolving', (tester) async {
       final delay = Completer<void>();
       final fake = _FakePurchasesRepository(resolution: _resolution, resolveDelay: delay);
       final (widget, container) = _wrapWithContainer(repository: fake);
       addTearDown(container.dispose);
 
-      unawaited(container.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken('tok_123'));
       await tester.pumpWidget(widget);
       await tester.pump();
 
@@ -83,10 +89,9 @@ void main() {
 
     testWidgets('an invalid/revoked QR shows the error state, not the form', (tester) async {
       final fake = _FakePurchasesRepository(resolveError: const NotFoundException());
-      final (widget, container) = _wrapWithContainer(repository: fake);
+      final (widget, container) = _wrapWithContainer(repository: fake, scannedToken: 'bad_token');
       addTearDown(container.dispose);
 
-      await container.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken('bad_token');
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 
@@ -100,7 +105,6 @@ void main() {
       final (widget, container) = _wrapWithContainer(repository: fake);
       addTearDown(container.dispose);
 
-      await container.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken('tok_123');
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 
@@ -123,7 +127,6 @@ void main() {
       final (widget, container) = _wrapWithContainer(repository: fake);
       addTearDown(container.dispose);
 
-      await container.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken('tok_123');
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 

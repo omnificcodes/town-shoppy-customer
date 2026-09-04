@@ -65,7 +65,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // /purchases/:id below so "scan"/"request"/"my-qr" are never parsed
       // as a purchase id (same precedent as /referrals/me elsewhere).
       GoRoute(path: '$_purchasesPath/scan', builder: (context, state) => const ScanMerchantQrScreen()),
-      GoRoute(path: '$_purchasesPath/request', builder: (context, state) => const RequestPurchaseScreen()),
+      GoRoute(
+        path: '$_purchasesPath/request',
+        builder: (context, state) => RequestPurchaseScreen(scannedToken: state.extra as String),
+      ),
       GoRoute(path: '$_purchasesPath/my-qr', builder: (context, state) => const MyQrScreen()),
       GoRoute(
         path: '$_purchasesPath/:id',

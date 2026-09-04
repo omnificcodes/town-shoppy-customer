@@ -5,12 +5,13 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../application/customer_purchase_request_controller.dart';
 
 /// Method 1, step 1 (3-way purchase architecture): full-screen camera scan
 /// of a merchant/branch's permanent Purchase QR. On a successful decode,
-/// resolves the token through [CustomerPurchaseRequestController] and
-/// pushes to [RequestPurchaseScreen] once resolution succeeds -- the
+/// hands the raw token to [RequestPurchaseScreen] (as route `extra`), which
+/// resolves it -- the resolve itself happens on the screen that will
+/// display its result, not here, so the autoDispose controller behind it
+/// is never read-then-abandoned mid-flight across a navigation. The
 /// customer never types or edits a merchant/branch, only what the camera
 /// actually saw. An invalid/revoked/wrong-type token surfaces on that next
 /// screen (it already renders [ErrorState] for a failed resolution); this
@@ -42,8 +43,7 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
     _handled = true;
     _controller.stop();
 
-    ref.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken(value);
-    context.pushReplacement('/purchases/request');
+    context.pushReplacement('/purchases/request', extra: value);
   }
 
   @override
