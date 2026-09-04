@@ -55,6 +55,19 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Launcher icon generation: `dart run flutter_launcher_icons`. The source
+# PNG already has rounded, transparent corners; on Android the adaptive
+# foreground is inset so the launcher's own mask never clips the bag.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/icon.png"
+  adaptive_icon_background: "#FF6F1E"
+  adaptive_icon_foreground: "assets/images/icon.png"
+  adaptive_icon_foreground_inset: 18
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

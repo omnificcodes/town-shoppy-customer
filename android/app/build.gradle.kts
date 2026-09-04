@@ -24,7 +24,9 @@ android {
         applicationId = "com.townshoppy.customer"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        // 24 (Android 7.0) is the floor the geocoding plugin (Home's
+        // location pill) supports; Flutter's own default is lower.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
