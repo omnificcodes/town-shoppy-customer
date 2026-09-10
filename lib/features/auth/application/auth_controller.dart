@@ -98,6 +98,24 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// Re-fetches `/auth/me` and swaps it into state in place -- used after a
+  /// successful profile edit so the greeting/profile screen reflect the new
+  /// name immediately, without the heavier session-epoch bump (which would
+  /// also force-refetch every unrelated customer-scoped provider).
+  Future<void> refreshAccount() async {
+    if (state is! AuthAuthenticated) return;
+
+    try {
+      final account = await _repository.me();
+      state = AuthAuthenticated(account);
+    } on AppException {
+      // Best-effort -- the edit itself already succeeded and its own
+      // caller already has the fresh data; a failed refresh here just
+      // means the greeting/profile screen keep showing the pre-edit
+      // values until the next natural session refresh.
+    }
+  }
+
   /// Clears any error/submitting flag left over from a previous attempt —
   /// called when a Login/Register screen first mounts, so navigating
   /// between them never shows the other screen's stale error message.

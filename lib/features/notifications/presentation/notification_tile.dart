@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/relative_time.dart';
 import '../data/models/app_notification.dart';
 import 'notification_type_display.dart';
@@ -40,18 +41,18 @@ class NotificationTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-          color: unread ? AppColors.infoBg.withValues(alpha: 0.5) : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page, vertical: AppSpacing.smd),
+          color: unread ? AppColors.orangeTint : Colors.transparent,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: AppSize.avatarMd,
+                height: AppSize.avatarMd,
                 decoration: BoxDecoration(color: display.color.withValues(alpha: 0.12), shape: BoxShape.circle),
-                child: Icon(display.icon, color: display.color, size: 20),
+                child: Icon(display.icon, color: display.color, size: AppIconSize.md),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.smd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,18 +64,27 @@ class NotificationTile extends StatelessWidget {
                           ),
                     ),
                     if (notification.body != null) ...[
-                      const SizedBox(height: 2),
-                      Text(notification.body!, style: Theme.of(context).textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        notification.body!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
-                    const SizedBox(height: 4),
-                    Text(timeLabel, style: Theme.of(context).textTheme.labelSmall),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(timeLabel, style: AppTypography.caption),
                   ],
                 ),
               ),
               if (unread)
                 Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.sm, top: 6),
-                  child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.orange, shape: BoxShape.circle)),
+                  padding: const EdgeInsets.only(left: AppSpacing.sm, top: AppSpacing.sm),
+                  child: Container(
+                    width: AppSpacing.sm,
+                    height: AppSpacing.sm,
+                    decoration: const BoxDecoration(color: AppColors.orange, shape: BoxShape.circle),
+                  ),
                 ),
             ],
           ),

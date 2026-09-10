@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -6,7 +8,9 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_button.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/info_box.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/my_qr_provider.dart';
 
@@ -18,58 +22,103 @@ import '../application/my_qr_provider.dart';
 class MyQrScreen extends ConsumerWidget {
   const MyQrScreen({super.key});
 
+  /// The QR is never wider than this, however wide the screen.
+  static const double _maxQrSize = 280;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokenAsync = ref.watch(myQrProvider);
+    final isRegenerating = ref.watch(myQrRegeneratingProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My QR code')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: tokenAsync.when(
-            loading: () => const LoadingSkeletonCard(),
-            error: (error, _) => ErrorState(
-              error: error is AppException ? error : const UnknownAppException(),
-              onRetry: () => ref.invalidate(myQrProvider),
-            ),
-            data: (token) => Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Show this to a merchant so they can record your purchase.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+    // Page margin on both sides, plus the white quiet-zone padding inside
+    // the QR card, is what the code itself can never exceed at 320px.
+    final qrSize = math.min(
+      MediaQuery.sizeOf(context).width - 2 * AppSpacing.page - 2 * AppSpacing.lg,
+      _maxQrSize,
+    );
+
+    return AppScaffold(
+      title: 'My QR code',
+      body: tokenAsync.when(
+        loading: () => Center(
+          child: LoadingSkeleton(
+            width: qrSize,
+            height: qrSize,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          ),
+        ),
+        error: (error, _) => ErrorState(
+          error: error is AppException ? error : const UnknownAppException(),
+          onRetry: () => ref.invalidate(myQrProvider),
+        ),
+        data: (token) => SingleChildScrollView(
+          child: Column(
+            children: [
+              Text(
+                'Show this to a merchant so they can record your purchase.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.section),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  border: Border.all(color: AppColors.border),
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: QrImageView(data: token, size: 220, backgroundColor: Colors.white),
+                child: Semantics(
+                  label: 'Your Town Shoppy QR code',
+                  image: true,
+                  excludeSemantics: true,
+                  child: QrImageView(data: token, size: qrSize, backgroundColor: AppColors.surface),
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                AppButton(
-                  label: 'Regenerate code',
-                  variant: AppButtonVariant.secondary,
-                  onPressed: () async {
-                    await ref.read(myQrProvider.notifier).regenerate();
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Regenerating invalidates this code immediately -- do this only if you think it was shared by mistake.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textDisabled),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.section),
+              AppButton(
+                label: 'Regenerate code',
+                variant: AppButtonVariant.secondary,
+                icon: Icons.refresh_rounded,
+                isLoading: isRegenerating,
+                onPressed: () => _confirmRegenerate(context, ref),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const InfoBox(
+                tone: AppTone.pending,
+                icon: Icons.lock_outline_rounded,
+                message: 'Regenerating invalidates this code immediately. Do this only if you think it was shared by mistake.',
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmRegenerate(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Regenerate your code?'),
+        content: const Text(
+          'Your current code stops working immediately. Anyone who saved it will no longer be able to use it to record a purchase for you.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+          AppButton(label: 'Regenerate', expand: false, onPressed: () => Navigator.of(dialogContext).pop(true)),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(myQrProvider.notifier).regenerate();
+      messenger.showSnackBar(const SnackBar(content: Text('Your QR code was regenerated.')));
+    } on AppException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(const UnknownAppException().message)));
+    }
   }
 }

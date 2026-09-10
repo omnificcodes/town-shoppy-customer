@@ -14,9 +14,11 @@ import '../../home/application/home_location_controller.dart';
 /// docblock), so sharing it here means this screen never re-prompts for a
 /// permission Home may have already asked for.
 ///
-/// The tagline sits on its own full-width line under the title row rather
-/// than beside the location pill, so it isn't squeezed into an ellipsis on
-/// narrow phones.
+/// The location pill sits on its own line under the title rather than
+/// beside it: on a 360dp phone the title row can't hold a 19sp heading and
+/// a resolved-locality pill without ellipsising one of them. The old
+/// promotional tagline is gone — [DiscoverBanner] directly below already
+/// carries that message, and saying it twice in the first 120dp is noise.
 class MerchantsDiscoveryHeader extends ConsumerWidget {
   const MerchantsDiscoveryHeader({super.key});
 
@@ -28,41 +30,44 @@ class MerchantsDiscoveryHeader extends ConsumerWidget {
     // as a plain MaterialApp(home: ...) with no router.
     final canPop = Navigator.canPop(context);
 
+    // The title starts at the page margin; with a back button it sits
+    // after the button's 48dp slot plus one gap, and the pill indents by
+    // the same amount so both lines share a left edge.
+    const backSlot = AppSpacing.touchTarget + AppSpacing.sm;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.md, AppSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.xs, AppSpacing.page, AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (canPop)
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-                  tooltip: 'Back',
-                  onPressed: () => context.pop(),
-                )
-              else
+              if (canPop) ...[
+                SizedBox(
+                  width: AppSpacing.touchTarget,
+                  height: AppSpacing.touchTarget,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                    tooltip: 'Back',
+                    onPressed: () => context.pop(),
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.sm),
+              ],
               Expanded(
                 child: Text(
                   'Discover Merchants',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              const _LocationPill(),
             ],
           ),
           Padding(
-            padding: EdgeInsets.only(left: canPop ? AppSpacing.xxl : AppSpacing.sm, top: 2),
-            child: Text(
-              'Shop Local  •  Save More  •  Support Community',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-            ),
+            padding: EdgeInsets.only(left: canPop ? backSlot : 0, top: AppSpacing.xs),
+            child: const Align(alignment: Alignment.centerLeft, child: _LocationPill()),
           ),
         ],
       ),
@@ -72,6 +77,10 @@ class MerchantsDiscoveryHeader extends ConsumerWidget {
 
 class _LocationPill extends ConsumerWidget {
   const _LocationPill();
+
+  /// Caps the pill so a long resolved locality still reads as a pill, not
+  /// a full-width bar.
+  static const double _maxWidth = 220;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -84,31 +93,38 @@ class _LocationPill extends ConsumerWidget {
       _ => 'Locating…',
     };
 
-    return Material(
-      color: AppColors.surfaceMuted,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () => ref.read(homeLocationControllerProvider.notifier).retry(),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 132),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: AppColors.border)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.location_on_rounded, color: AppColors.orange, size: 15),
-              const SizedBox(width: 3),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textPrimary),
+    return Semantics(
+      button: true,
+      label: 'Location: $label',
+      child: Material(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+          onTap: () => ref.read(homeLocationControllerProvider.notifier).retry(),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: _maxWidth, minHeight: AppSize.controlSm),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.smd, vertical: AppSpacing.sm),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.location_on_rounded, color: AppColors.orange, size: AppIconSize.sm),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                 ),
-              ),
-              const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 15),
-            ],
+                const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: AppIconSize.sm),
+              ],
+            ),
           ),
         ),
       ),

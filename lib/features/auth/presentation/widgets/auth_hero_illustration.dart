@@ -19,6 +19,9 @@ class AuthHeroIllustration extends StatelessWidget {
   static const _viewBoxWidth = 330.0;
   static const _viewBoxHeight = 260.0;
 
+  /// Only reached if the theme leaves `labelLarge.fontSize` unset.
+  static const _signFallbackSize = 15.0;
+
   static Alignment _at(double x, double y) => Alignment(x / _viewBoxWidth * 2 - 1, y / _viewBoxHeight * 2 - 1);
 
   @override
@@ -27,6 +30,8 @@ class AuthHeroIllustration extends StatelessWidget {
       AuthHeroVariant.login => 'assets/illustrations/auth_hero_login.svg',
       AuthHeroVariant.register => 'assets/illustrations/auth_hero_register.svg',
     };
+
+    final signStyle = Theme.of(context).textTheme.labelLarge;
 
     // Decorative art: pinned text scale + no semantics, same rationale as
     // AuthScriptText.
@@ -55,15 +60,18 @@ class AuthHeroIllustration extends StatelessWidget {
                     ),
                   ),
                   if (variant == AuthHeroVariant.login)
-                    // The storefront's sign board.
+                    // The storefront's sign board. Its size follows the
+                    // art (it is painted onto a fixed-size board), but the
+                    // base it scales from is the theme's label size rather
+                    // than a one-off literal.
                     Align(
                       alignment: _at(278, 137),
                       child: Text(
                         'SHOP\nLOCAL',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: signStyle?.copyWith(
                           color: AuthPalette.brown,
-                          fontSize: 15.5 * scale,
+                          fontSize: (signStyle.fontSize ?? _signFallbackSize) * scale,
                           fontWeight: FontWeight.w800,
                           height: 1.05,
                           letterSpacing: 0.5,

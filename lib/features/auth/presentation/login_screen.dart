@@ -11,6 +11,10 @@ import 'widgets/auth_background.dart';
 import 'widgets/auth_hero_illustration.dart';
 import 'widgets/auth_widgets.dart';
 
+/// Below this logical width the two-column hero (copy on the left, art on
+/// the right) can no longer fit the heading, so it collapses to one column.
+const double _heroTwoColumnMinWidth = 340;
+
 /// Password sign-in — the primary entry point to the app (mirrors the
 /// Association Admin/Merchant web app's own mobile-number + password login,
 /// rather than the OTP-only flow this screen used to be). Client-side
@@ -87,57 +91,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(left: AppSpacing.lg, top: AppSpacing.sm),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 11,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 44),
-                                    const AuthBrandBlock(logoHeight: 78),
-                                    const SizedBox(height: 34),
-                                    Text(
-                                      'Welcome back to\nTown Shoppy',
-                                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                            color: AuthPalette.brown,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 21,
-                                            height: 1.15,
-                                          ),
-                                    ),
-                                    const SizedBox(height: AppSpacing.sm),
-                                    Text(
-                                      'Enter your mobile number and password to sign in.',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            color: const Color(0xFF6F5F57),
-                                            height: 1.4,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Expanded(
-                                flex: 10,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Padding(
-                                      padding: EdgeInsets.only(right: AppSpacing.lg, top: 6),
-                                      child: AuthScriptText('Shop Local\nSupport Local\nGrow Together', angle: -0.09),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Bleeds to the screen's right edge on
-                                    // purpose -- the storefront is cropped by
-                                    // the edge in the reference art too.
-                                    const AuthHeroIllustration(variant: AuthHeroVariant.login),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          child: constraints.maxWidth < _heroTwoColumnMinWidth
+                              ? const _LoginHeroStacked()
+                              : const _LoginHeroSideBySide(),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -164,7 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 textInputAction: TextInputAction.next,
                                 errorText: _touched ? _mobileError : null,
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: AppSpacing.md),
                               AuthTextField(
                                 label: 'Password',
                                 icon: Icons.lock_outline_rounded,
@@ -180,12 +136,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                 ),
                               ),
+                              const SizedBox(height: AppSpacing.xs),
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
                                   onPressed: isSubmitting ? null : () => context.push('/forgot-password'),
                                   style: TextButton.styleFrom(
-                                    textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                    minimumSize: const Size(AppSpacing.touchTarget, AppSpacing.touchTarget),
+                                    textStyle: Theme.of(context).textTheme.labelLarge,
                                   ),
                                   child: const Text('Forgot password?'),
                                 ),
@@ -218,6 +176,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LoginHeading extends StatelessWidget {
+  const _LoginHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Welcome back to Town Shoppy', style: textTheme.headlineMedium?.copyWith(color: AuthPalette.brown)),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Enter your mobile number and password to sign in.',
+          style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoginTagline extends StatelessWidget {
+  const _LoginTagline();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(right: AppSpacing.lg, top: AppSpacing.sm),
+      child: AuthScriptText('Shop Local\nSupport Local\nGrow Together', angle: -0.09),
+    );
+  }
+}
+
+/// The reference layout: brand + heading on the left, tagline + storefront
+/// art on the right.
+class _LoginHeroSideBySide extends StatelessWidget {
+  const _LoginHeroSideBySide();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 11,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: AppSpacing.xxl),
+              AuthBrandBlock(logoHeight: 78),
+              SizedBox(height: AppSpacing.xl),
+              _LoginHeading(),
+            ],
+          ),
+        ),
+        SizedBox(width: AppSpacing.xs),
+        Expanded(
+          flex: 10,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _LoginTagline(),
+              SizedBox(height: AppSpacing.xs),
+              // Bleeds to the screen's right edge on purpose -- the
+              // storefront is cropped by the edge in the reference art too.
+              AuthHeroIllustration(variant: AuthHeroVariant.login),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Narrow-screen fallback (under [_heroTwoColumnMinWidth]): one column with
+/// the art full-width under the brand block and the tagline kept
+/// right-aligned above it.
+class _LoginHeroStacked extends StatelessWidget {
+  const _LoginHeroStacked();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(height: AppSpacing.xl),
+        AuthBrandBlock(logoHeight: 64),
+        SizedBox(height: AppSpacing.sm),
+        Align(alignment: Alignment.centerRight, child: _LoginTagline()),
+        SizedBox(height: AppSpacing.xs),
+        AuthHeroIllustration(variant: AuthHeroVariant.login),
+        SizedBox(height: AppSpacing.lg),
+        Padding(padding: EdgeInsets.only(right: AppSpacing.lg), child: _LoginHeading()),
+      ],
     );
   }
 }

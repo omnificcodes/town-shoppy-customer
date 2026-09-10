@@ -145,6 +145,11 @@ void main() {
           // viewport's initial render -- confirm they're actually reachable
           // by scrolling, not just present somewhere off in the cache extent.
           await tester.dragUntilVisible(find.text('Website'), find.byType(ListView), const Offset(0, -300));
+          // The branches section is built lazily as it scrolls into the
+          // cache extent, and its provider resolves a frame later -- until
+          // then the heading reads "Branch" over a skeleton, so settle
+          // before asserting on the loaded heading.
+          await tester.pumpAndSettle();
 
           expect(find.text('Branches'), findsOneWidget);
           expect(find.text('Main Street Flagship Location'), findsOneWidget);

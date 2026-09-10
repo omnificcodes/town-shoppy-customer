@@ -6,10 +6,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/detail_row.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../merchants/presentation/merchant_logo.dart';
 import '../application/coupon_detail_provider.dart';
 import '../data/models/coupon.dart';
 import 'coupon_status.dart';
@@ -20,8 +25,8 @@ import 'coupon_status.dart';
 /// screen iterating the raw list.
 const _cadenceOrder = <(String cadence, IconData icon, Color color)>[
   ('mega', Icons.emoji_events_rounded, AppColors.orange),
-  ('monthly', Icons.calendar_month_rounded, Color(0xFF1E88E5)),
-  ('weekly', Icons.card_giftcard_rounded, Color(0xFF6A1B9A)),
+  ('monthly', Icons.calendar_month_rounded, AppColors.info),
+  ('weekly', Icons.card_giftcard_rounded, AppColors.silverDark),
 ];
 
 const _cadenceSubtitle = <String, String>{
@@ -30,6 +35,10 @@ const _cadenceSubtitle = <String, String>{
   'weekly': 'Weekly prize draw',
 };
 
+/// Answers, top to bottom: what is my coupon number (and its status), which
+/// draws is it entered in, and where did it come from. One status signal —
+/// the hero badge — rather than a badge plus an italic flourish plus a
+/// third "you won" line all saying the same thing.
 class CouponDetailScreen extends ConsumerWidget {
   const CouponDetailScreen({super.key, required this.couponId});
 
@@ -39,88 +48,27 @@ class CouponDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(couponDetailProvider(couponId));
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
+    return AppScaffold(
+      title: 'Coupon details',
+      padded: false,
+      body: detail.when(
+        loading: () => const LoadingSkeletonList(count: 3),
+        error: (error, _) => ErrorState(
+          error: error is AppException ? error : const UnknownAppException(),
+          onRetry: () => ref.invalidate(couponDetailProvider(couponId)),
+        ),
+        data: (coupon) => ListView(
+          padding: const EdgeInsets.all(AppSpacing.page),
           children: [
-            const _Header(),
-            Expanded(
-              child: detail.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(AppSpacing.md),
-                  child: Column(children: [LoadingSkeletonCard(), SizedBox(height: AppSpacing.sm), LoadingSkeletonCard()]),
-                ),
-                error: (error, _) => ErrorState(
-                  error: error is AppException ? error : const UnknownAppException(),
-                  onRetry: () => ref.invalidate(couponDetailProvider(couponId)),
-                ),
-                data: (coupon) => ListView(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-                  children: [
-                    _CouponHeroCard(coupon: coupon),
-                    const SizedBox(height: AppSpacing.md),
-                    _EligibilityCard(coupon: coupon),
-                    const SizedBox(height: AppSpacing.md),
-                    _CouponInfoCard(coupon: coupon),
-                    const SizedBox(height: AppSpacing.md),
-                    const _KeepWinningBanner(),
-                  ],
-                ),
-              ),
-            ),
+            _CouponHeroCard(coupon: coupon),
+            const SizedBox(height: AppSpacing.md),
+            _EligibilityCard(coupon: coupon),
+            const SizedBox(height: AppSpacing.md),
+            _CouponInfoCard(coupon: coupon),
+            const SizedBox(height: AppSpacing.md),
+            const _KeepShoppingNote(),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.xs, AppSpacing.md, AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Navigator.canPop(), not go_router's own context.canPop() -- the
-          // latter throws (via GoRouter.of()) when no GoRouter is present in
-          // the widget tree, which a plain MaterialApp(home: ...) widget
-          // test builds (see MerchantsDiscoveryHeader's own comment).
-          if (Navigator.canPop(context))
-            IconButton(
-              icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-              tooltip: 'Back',
-              onPressed: () => context.pop(),
-            )
-          else
-            const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Coupon Details', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Your lucky draw coupon information',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
-            child: Transform.rotate(
-              angle: 0.35,
-              child: const Icon(Icons.confirmation_number_rounded, color: AppColors.orange, size: 28),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -133,21 +81,21 @@ class _CouponHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.orange.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(color: AppColors.orange.withValues(alpha: 0.18)),
-      ),
+    return AppCard(
+      tinted: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Your Unique Coupon Number', style: Theme.of(context).textTheme.labelMedium),
-              _HeroStatusPill(status: coupon.status),
+              Expanded(child: Text('Your coupon number', style: Theme.of(context).textTheme.labelMedium)),
+              const SizedBox(width: AppSpacing.sm),
+              StatusBadge(
+                label: couponStatusLabel(coupon.status),
+                tone: couponStatusTone(coupon.status),
+                icon: coupon.isWon ? Icons.emoji_events_rounded : (coupon.isActive ? Icons.check_circle_rounded : null),
+                large: true,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -155,130 +103,58 @@ class _CouponHeroCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Container(
+                  constraints: const BoxConstraints(minHeight: AppSize.controlMd),
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
                     coupon.code,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1.5),
+                    style: AppTypography.numericFinancialMedium.copyWith(letterSpacing: 1.5),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: AppSpacing.sm),
               Material(
                 color: AppColors.surface,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
                   side: const BorderSide(color: AppColors.border),
                 ),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: coupon.code));
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coupon number copied')));
                   },
-                  child: const Padding(
-                    padding: EdgeInsets.all(AppSpacing.sm),
-                    child: Icon(Icons.copy_rounded, size: 20, color: AppColors.textSecondary),
+                  child: const Tooltip(
+                    message: 'Copy coupon number',
+                    child: SizedBox(
+                      width: AppSize.controlMd,
+                      height: AppSize.controlMd,
+                      child: Icon(Icons.copy_rounded, size: AppIconSize.md, color: AppColors.textSecondary),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Text('Use this number for lucky draw reference', style: Theme.of(context).textTheme.bodySmall),
-              ),
-              if (coupon.isActive) const _GoodLuckFlourish() else if (coupon.isWon) const _WonFlourish(),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroStatusPill extends StatelessWidget {
-  const _HeroStatusPill({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final tone = couponStatusTone(status);
-    final (bg, fg) = switch (tone) {
-      StatusTone.success => (AppColors.successBg, AppColors.success),
-      StatusTone.pending => (AppColors.pendingBg, AppColors.pending),
-      StatusTone.error => (AppColors.errorBg, AppColors.error),
-      StatusTone.neutral => (AppColors.silverLight, AppColors.silverDark),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 6, height: 6, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            couponStatusLabel(status),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w700),
+            coupon.isWon
+                ? 'This coupon won a draw. See My wins for the prize.'
+                : coupon.isActive
+                    ? 'Quote this number if you are contacted about a draw.'
+                    : 'This coupon is no longer entered in any draw.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _GoodLuckFlourish extends StatelessWidget {
-  const _GoodLuckFlourish();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Good Luck!',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic, fontWeight: FontWeight.w700, color: AppColors.orange),
-        ),
-        const SizedBox(width: 4),
-        const Icon(Icons.card_giftcard_rounded, color: AppColors.orange, size: 20),
-      ],
-    );
-  }
-}
-
-class _WonFlourish extends StatelessWidget {
-  const _WonFlourish();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'You Won!',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(fontStyle: FontStyle.italic, fontWeight: FontWeight.w700, color: AppColors.success),
-        ),
-        const SizedBox(width: 4),
-        const Icon(Icons.emoji_events_rounded, color: AppColors.success, size: 20),
-      ],
     );
   }
 }
@@ -294,11 +170,10 @@ class _EligibilityCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardHeading(
+          const SectionHeader(
             icon: Icons.track_changes_rounded,
-            iconColor: AppColors.crimson,
-            title: 'Lucky Draw Eligibility',
-            subtitle: 'Your participation status for each draw',
+            title: 'Draw entries',
+            subtitle: 'Which draws this coupon is entered in',
           ),
           const SizedBox(height: AppSpacing.sm),
           for (final (cadence, icon, color) in _cadenceOrder)
@@ -333,20 +208,11 @@ class _EligibilityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = eligibility?.status;
-    final (bg, fg) = switch (status) {
-      'active' || 'won' => (AppColors.successBg, AppColors.success),
-      _ => (AppColors.silverLight, AppColors.silverDark),
-    };
-    final statusIcon = switch (status) {
-      'active' => Icons.check_circle_rounded,
-      'won' => Icons.emoji_events_rounded,
-      _ => Icons.cancel_rounded,
-    };
-    final statusLabel = switch (status) {
-      'active' => 'In the running',
-      'won' => 'Won',
-      'closed' => 'Draw closed',
-      _ => 'Not entered',
+    final (statusIcon, statusLabel) = switch (status) {
+      'active' => (Icons.check_circle_rounded, 'In the running'),
+      'won' => (Icons.emoji_events_rounded, 'Won'),
+      'closed' => (Icons.lock_clock_rounded, 'Draw closed'),
+      _ => (Icons.remove_circle_outline_rounded, 'Not entered'),
     };
 
     return Padding(
@@ -354,36 +220,24 @@ class _EligibilityRow extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: AppSize.avatarMd,
+            height: AppSize.avatarMd,
             decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: AppIconSize.md),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AppSpacing.smd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-                Text(subtitle, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textSecondary)),
+                Text(label, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(subtitle, style: AppTypography.caption),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(statusIcon, size: 13, color: fg),
-                const SizedBox(width: 4),
-                Text(
-                  statusLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(width: AppSpacing.sm),
+          StatusBadge(label: statusLabel, tone: eligibilityStatusTone(status ?? ''), icon: statusIcon),
         ],
       ),
     );
@@ -401,18 +255,15 @@ class _CouponInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _CardHeading(
-            icon: Icons.description_rounded,
-            iconColor: AppColors.orange,
-            title: 'Coupon Information',
-            subtitle: 'Details about how and when you received this coupon',
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _InfoRow(icon: Icons.shopping_cart_outlined, label: 'Earned from', value: _sourceLabel(coupon.sourceType)),
+          const SectionHeader(icon: Icons.description_rounded, title: 'About this coupon'),
+          const SizedBox(height: AppSpacing.xs),
+          coupon.merchant != null
+              ? _MerchantSourceRow(merchant: coupon.merchant!)
+              : DetailRow(icon: Icons.shopping_cart_outlined, label: 'Earned from', value: _sourceLabel(coupon.sourceType)),
           if (coupon.issuedAt != null)
-            _InfoRow(icon: Icons.calendar_today_rounded, label: 'Issued', value: _formatDateTime(coupon.issuedAt!)),
+            DetailRow(icon: Icons.calendar_today_rounded, label: 'Issued', value: _formatDateTime(coupon.issuedAt!)),
           if (coupon.annualCycleExpiresAt != null)
-            _InfoRow(
+            DetailRow(
               icon: Icons.access_time_rounded,
               label: 'Expires',
               value: _formatDateTime(coupon.annualCycleExpiresAt!),
@@ -439,104 +290,90 @@ class _CouponInfoCard extends StatelessWidget {
   }
 }
 
-class _CardHeading extends StatelessWidget {
-  const _CardHeading({required this.icon, required this.iconColor, required this.title, required this.subtitle});
+/// The "Earned from" row, but tappable through to the merchant's shop page
+/// -- same label/value column split as [DetailRow] (so it lines up with
+/// the Issued/Expires rows beneath it), with the value side replaced by a
+/// round logo + name instead of plain text.
+class _MerchantSourceRow extends StatelessWidget {
+  const _MerchantSourceRow({required this.merchant});
 
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleSmall),
-              Text(subtitle, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textSecondary)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
-
-  final IconData icon;
-  final String label;
-  final String value;
+  final CouponMerchantRef merchant;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(label, style: Theme.of(context).textTheme.bodyMedium, overflow: TextOverflow.ellipsis),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Flexible(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
+    return Semantics(
+      button: true,
+      label: 'Earned from ${merchant.name}, view shop',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          onTap: () => context.push('/merchants/${merchant.id}'),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                const Icon(Icons.shopping_cart_outlined, size: AppIconSize.md, color: AppColors.textSecondary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: Text('Earned from', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                ),
+                const SizedBox(width: AppSpacing.smd),
+                Expanded(
+                  flex: 3,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          merchant.name,
+                          textAlign: TextAlign.end,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: AppSize.avatarSm),
+                      const SizedBox(width: AppSpacing.xxs),
+                      const Icon(Icons.chevron_right_rounded, size: AppIconSize.sm, color: AppColors.textSecondary),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _KeepWinningBanner extends StatelessWidget {
-  const _KeepWinningBanner();
+class _KeepShoppingNote extends StatelessWidget {
+  const _KeepShoppingNote();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.orange.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        border: Border.all(color: AppColors.orange.withValues(alpha: 0.18)),
-      ),
+    return AppCard(
+      tinted: true,
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
-            child: const Icon(Icons.emoji_events_rounded, color: AppColors.onYellow, size: 26),
+            width: AppSize.avatarMd,
+            height: AppSize.avatarMd,
+            decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
+            child: const Icon(Icons.emoji_events_rounded, color: AppColors.onYellow, size: AppIconSize.md),
           ),
-          const SizedBox(width: AppSpacing.md),
+          const SizedBox(width: AppSpacing.smd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text('More purchases, more entries', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
-                  'Keep Shopping\nKeep Winning!',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'More purchases, more chances for bigger rewards.',
+                  'Every purchase at a participating merchant earns another coupon.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

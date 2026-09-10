@@ -72,7 +72,15 @@ const _account = Account(
   status: 'active',
   isSuperAdmin: false,
   roles: ['customer'],
-  customerProfile: CustomerProfile(id: 1, name: 'Priya Sharma', referralCode: 'ABC123', status: 'active'),
+  customerProfile: CustomerProfile(
+    id: 1,
+    name: 'Priya Sharma',
+    dateOfBirth: null,
+    anniversaryDate: null,
+    socialLinks: null,
+    referralCode: 'ABC123',
+    status: 'active',
+  ),
 );
 
 class _AuthenticatedController extends AuthController {

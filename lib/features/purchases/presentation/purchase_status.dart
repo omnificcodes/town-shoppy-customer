@@ -14,3 +14,16 @@ StatusTone purchaseStatusTone(String status) => switch (status) {
       'voided' => StatusTone.error,
       _ => StatusTone.neutral,
     };
+
+/// Customer-facing label for a raw `PurchaseStatus` string — the badge and
+/// the detail screen must never show the backend's lowercase enum value.
+/// `pending` reads as what the customer is actually waiting on (the
+/// merchant's approval), not as a generic "pending".
+String purchaseStatusLabel(String status) => switch (status) {
+      'pending' => 'Awaiting approval',
+      'recorded' => 'Recorded',
+      'rejected' => 'Rejected',
+      'disputed' => 'Disputed',
+      'voided' => 'Voided',
+      _ => status.isEmpty ? status : '${status[0].toUpperCase()}${status.substring(1)}',
+    };

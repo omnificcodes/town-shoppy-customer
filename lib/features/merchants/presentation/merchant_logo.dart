@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 
 /// A merchant's logo, or a branded fallback while it loads, fails to load,
 /// or is simply absent (`logo_url` is nullable on the backend — not every
 /// merchant has uploaded one). Never shows a broken-image icon.
 class MerchantLogo extends StatelessWidget {
-  const MerchantLogo({super.key, required this.url, required this.merchantName, this.size = 48});
+  const MerchantLogo({super.key, required this.url, required this.merchantName, this.size = AppSize.controlMd});
 
   final String? url;
   final String merchantName;
@@ -15,6 +16,9 @@ class MerchantLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
+      // Proportional, not a fixed token: the same logo renders at 40/48/56,
+      // and a fixed radius would read square on the small one and pill-ish
+      // on the large one.
       borderRadius: BorderRadius.circular(size / 4),
       child: SizedBox(
         width: size,
@@ -38,7 +42,7 @@ class MerchantLogo extends StatelessWidget {
 
   Widget _fallback(BuildContext context, {bool loading = false}) {
     return Container(
-      color: AppColors.orange.withValues(alpha: 0.12),
+      color: AppColors.orangeTint,
       alignment: Alignment.center,
       child: loading
           ? SizedBox(

@@ -2,51 +2,39 @@ import 'package:flutter/material.dart';
 
 import '../../core/errors/app_exception.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
 import 'app_button.dart';
+import 'state_panel.dart';
 
 /// Friendly, consumer-facing error surface (section 36) — always shows
 /// [AppException.message], which is already backend-safe, never a raw
-/// exception's `toString()`.
+/// exception's `toString()`. [compact] is the inline density for a section
+/// that failed inside an otherwise healthy screen (e.g. one Home carousel).
 class ErrorState extends StatelessWidget {
-  const ErrorState({super.key, required this.error, this.onRetry});
+  const ErrorState({super.key, required this.error, this.onRetry, this.title, this.compact = false});
 
   final AppException error;
   final VoidCallback? onRetry;
+  final String? title;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    // Callers place this directly in a Scaffold body with no scroll
-    // wrapper of their own (it's meant to be a drop-in replacement for
-    // whatever content would otherwise be there), so it needs to be able
-    // to scroll itself on a short viewport or large system text scale
-    // rather than overflow.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.xxl,
-        horizontal: AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.cloud_off_rounded, size: 40, color: AppColors.error),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            error.message,
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            AppButton(
+    return StatePanel(
+      icon: Icons.cloud_off_rounded,
+      iconColor: AppColors.error,
+      title: title,
+      message: error.message,
+      compact: compact,
+      action: onRetry == null
+          ? null
+          : AppButton(
               label: 'Try again',
               variant: AppButtonVariant.secondary,
+              size: compact ? AppButtonSize.sm : AppButtonSize.md,
+              expand: !compact,
               onPressed: onRetry,
               icon: Icons.refresh_rounded,
             ),
-          ],
-        ],
-      ),
     );
   }
 }

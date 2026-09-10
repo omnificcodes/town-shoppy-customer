@@ -15,7 +15,17 @@ import '../data/offers_repository.dart';
 /// "trending" carousel shouldn't block the rest of Home the way a failed
 /// wallet balance would.
 final trendingOffersProvider = FutureProvider<List<Offer>>((ref) async {
-  final location = await ref.watch(homeLocationControllerProvider.future);
+  final HomeLocationState location;
+  try {
+    location = await ref.watch(homeLocationControllerProvider.future);
+  } catch (_) {
+    // A location failure (permission denied, no GPS, web without
+    // geolocation) is the header pill's problem to explain, not this
+    // section's -- surfacing it here as "something went wrong" would blame
+    // the offers API for a device state. Only a real offers fetch failure
+    // reaches the UI as an error.
+    return const [];
+  }
 
   if (location is! HomeLocationReady) return const [];
 

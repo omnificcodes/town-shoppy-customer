@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/relative_time.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -15,12 +16,14 @@ class PurchaseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusLabel = purchaseStatusLabel(purchase.status);
+
     // Same "never color-only" reasoning as MerchantCard/NotificationTile --
     // without this, a screen reader gets no button role and no single
     // composed announcement for the row, just its disconnected Text children.
     return Semantics(
       button: onTap != null,
-      label: '${purchase.merchantName}, ₹${purchase.billAmount.toStringAsFixed(2)}, ${purchase.status}'
+      label: '${purchase.merchantName}, ₹${purchase.billAmount.toStringAsFixed(2)}, $statusLabel'
           '${purchase.coinsAwarded > 0 ? ', +${purchase.coinsAwarded} coins' : ''}',
       child: AppCard(
         onTap: onTap,
@@ -31,10 +34,10 @@ class PurchaseTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(purchase.merchantName, style: Theme.of(context).textTheme.titleSmall, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     '₹${purchase.billAmount.toStringAsFixed(2)} · ${purchase.createdAt != null ? relativeTime(purchase.createdAt!) : ''}',
-                    style: Theme.of(context).textTheme.labelSmall,
+                    style: AppTypography.caption,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -44,10 +47,10 @@ class PurchaseTile extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                StatusBadge(label: purchase.status, tone: purchaseStatusTone(purchase.status)),
+                StatusBadge(label: statusLabel, tone: purchaseStatusTone(purchase.status)),
                 if (purchase.coinsAwarded > 0) ...[
                   const SizedBox(height: AppSpacing.xs),
-                  Text('+${purchase.coinsAwarded} coins', style: Theme.of(context).textTheme.labelSmall),
+                  Text('+${purchase.coinsAwarded} coins', style: AppTypography.numericFinancialInline),
                 ],
               ],
             ),

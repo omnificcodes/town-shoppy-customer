@@ -46,6 +46,35 @@ class AppTypography {
         ),
       );
 
+  /// Secondary metadata under a title (timestamps, "Valid till …", helper
+  /// lines). Sits between `labelSmall` and `bodySmall` so those two stop
+  /// being pressed into caption duty.
+  static const caption = TextStyle(
+    color: AppColors.textSecondary,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.3,
+  );
+
+  /// Tiny tracked uppercase label above a group ("SHOP · SAVE · WIN",
+  /// eyebrow text). The only style allowed below 12sp, and only in caps
+  /// with tracking, which is what keeps it legible at that size.
+  static const overline = TextStyle(
+    color: AppColors.textSecondary,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    letterSpacing: 1.2,
+  );
+
+  /// Text inside a [StatusBadge]/chip — bold so it survives the tinted
+  /// background, never smaller than 12.
+  static const badgeLabel = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    height: 1.1,
+  );
+
   /// Numeric/financial display variant — Town Coin balances, purchase and
   /// redemption amounts. Tabular figures so digits don't jitter width as a
   /// balance updates, and a distinct letter-spacing from prose headings so a
@@ -71,6 +100,15 @@ class AppTypography {
   static const numericFinancialSmall = TextStyle(
     color: AppColors.textPrimary,
     fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
+
+  /// A coin/amount inside a sentence or tile trailing slot ("+120 coins").
+  static const numericFinancialInline = TextStyle(
+    color: AppColors.textPrimary,
+    fontSize: 13,
     fontWeight: FontWeight.w600,
     height: 1.2,
     fontFeatures: [FontFeature.tabularFigures()],

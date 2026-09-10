@@ -80,8 +80,10 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
 
   @override
   Widget build(BuildContext context) {
+    final filterActive = widget.acceptsTownCoinOnly;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
       child: Row(
         children: [
           Expanded(
@@ -91,27 +93,35 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'Search merchants or categories',
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                prefixIcon: const Icon(Icons.search_rounded, size: AppIconSize.md, color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.surfaceMuted,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                // Real vertical padding (the theme's own field height), not
+                // zero: a zero-height content box clipped the hint and the
+                // typed text at 1.3x system text scale.
+                contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
               ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Material(
-            color: widget.acceptsTownCoinOnly ? AppColors.orange : AppColors.surfaceMuted,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: _openFilters,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Icon(
-                  Icons.tune_rounded,
-                  color: widget.acceptsTownCoinOnly ? AppColors.onOrange : AppColors.textPrimary,
-                  size: 22,
+          Semantics(
+            button: true,
+            label: filterActive ? 'Filters, Accepts Town Coin on' : 'Filters',
+            child: Material(
+              color: filterActive ? AppColors.orange : AppColors.surfaceMuted,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _openFilters,
+                child: SizedBox(
+                  width: AppSize.controlMd,
+                  height: AppSize.controlMd,
+                  child: Icon(
+                    Icons.tune_rounded,
+                    color: filterActive ? AppColors.onOrange : AppColors.textPrimary,
+                    size: AppIconSize.lg,
+                  ),
                 ),
               ),
             ),

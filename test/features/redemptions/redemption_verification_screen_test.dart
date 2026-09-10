@@ -96,12 +96,83 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
+    testWidgets('an initiated redemption without a code on this device explains how to proceed', (tester) async {
+      await tester.pumpWidget(_wrap(8, _redemption(status: 'initiated')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Code not available'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byTooltip('Close'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('an initiated redemption with an expiry shows a live countdown and flips to expired at zero', (
+      tester,
+    ) async {
+      // The test binding fakes Timers but not DateTime.now(), so the screen
+      // takes an injectable clock that this test advances by hand.
+      var now = DateTime(2026, 1, 1, 12, 0, 0);
+      final redemption = Redemption(
+        id: 8,
+        merchant: const RedemptionMerchantRef(id: 42, name: 'Countdown Cafe'),
+        branch: null,
+        billAmount: 500,
+        discountAmount: null,
+        remainingBillAmount: null,
+        coinsRequested: 250,
+        coinsDebited: null,
+        status: 'initiated',
+        verificationMethod: null,
+        verifiedAt: null,
+        createdAt: now,
+        qrExpiresAt: now.add(const Duration(minutes: 2, seconds: 30)),
+      );
+
+      final container = ProviderContainer(
+        overrides: [redemptionDetailProvider(8).overrideWith((ref) async => redemption)],
+      );
+      addTearDown(container.dispose);
+      container.read(pendingOtpCodesProvider.notifier).stash(8, '585937');
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: RedemptionVerificationScreen(redemptionId: 8, clock: () => now),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('585937'), findsOneWidget);
+      expect(find.text('Expires in 02:30'), findsOneWidget);
+
+      now = now.add(const Duration(minutes: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Expires in 01:30'), findsOneWidget);
+
+      now = now.add(const Duration(minutes: 2));
+      await tester.pump(const Duration(seconds: 1));
+      // Let the AnimatedSwitcher's 200ms cross-fade finish so the old
+      // waiting view (and its code) is actually gone, not mid-fade.
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('This redemption expired'), findsOneWidget);
+      expect(find.text('585937'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets('a settled redemption shows the confirmation view with real discount/coins fields', (tester) async {
       await tester.pumpWidget(_wrap(8, _redemption(status: 'settled')));
       await tester.pump();
       await tester.pump();
 
-      expect(find.text('Redemption complete'), findsOneWidget);
+      expect(find.text('Redemption complete!'), findsOneWidget);
       expect(find.text('₹25.00'), findsOneWidget);
       expect(find.text('250'), findsOneWidget);
 
@@ -220,7 +291,7 @@ void main() {
         () => _wrap(8, redemption),
         settle: false,
         verify: (tester, size) async {
-          expect(find.text('Redemption complete'), findsOneWidget);
+          expect(find.text('Redemption complete!'), findsOneWidget);
           expect(find.textContaining('The Grand Downtown'), findsOneWidget);
           expect(find.text('₹124999.99'), findsOneWidget);
           expect(find.text('500000'), findsOneWidget);

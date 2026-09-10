@@ -32,6 +32,9 @@ const _account = Account(
   customerProfile: CustomerProfile(
     id: 1,
     name: 'Venkataramanujachandrasekaran Padmanabhaswamy Iyengar',
+    dateOfBirth: null,
+    anniversaryDate: null,
+    socialLinks: null,
     referralCode: 'ABC123',
     status: 'active',
   ),
@@ -50,7 +53,14 @@ class _FakeHomeLocationController extends HomeLocationController {
 class _FakeWalletRepository implements WalletRepository {
   @override
   Future<SilverWalletBalance> balance() async =>
-      const SilverWalletBalance(balance: 1234567, balanceInrEquivalent: 12345.67, updatedAt: null);
+      const SilverWalletBalance(
+        balance: 1234567,
+        universalBalance: 1234567,
+        shopExclusiveBalance: 0,
+        shopExclusiveBreakdown: [],
+        balanceInrEquivalent: 12345.67,
+        updatedAt: null,
+      );
 
   @override
   Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
@@ -102,7 +112,7 @@ void main() {
       verify: (tester, size) async {
         expect(find.textContaining('Hi,'), findsOneWidget);
         expect(find.text('Discover merchants'), findsOneWidget);
-        expect(find.text('Categories'), findsOneWidget);
+        expect(find.text('Browse by category'), findsOneWidget);
         expect(find.text('1234567 coins'), findsOneWidget);
 
         // Featured businesses/trending offers/recent purchases/Redemptions
@@ -112,8 +122,8 @@ void main() {
         await tester.dragUntilVisible(find.text('Recent purchases'), find.byType(ListView), const Offset(0, -200));
         expect(find.text('Recent purchases'), findsOneWidget);
 
-        await tester.dragUntilVisible(find.text('Redemptions'), find.byType(ListView), const Offset(0, -200));
-        expect(find.text('Redemptions'), findsOneWidget);
+        await tester.dragUntilVisible(find.text('Redemption history'), find.byType(ListView), const Offset(0, -200));
+        expect(find.text('Redemption history'), findsOneWidget);
       },
     );
   });

@@ -19,6 +19,9 @@ const _account = Account(
   customerProfile: CustomerProfile(
     id: 1,
     name: 'Venkataramanujachandrasekaran Padmanabhaswamy Iyengar',
+    dateOfBirth: null,
+    anniversaryDate: null,
+    socialLinks: null,
     referralCode: 'ABC123',
     status: 'active',
   ),

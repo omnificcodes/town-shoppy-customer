@@ -34,6 +34,7 @@ void main() {
         CouponEligibility(cadence: 'monthly', status: 'active'),
         CouponEligibility(cadence: 'mega', status: 'closed'),
       ],
+      merchant: null,
       issuedAt: DateTime(2026, 1, 1),
       annualCycleExpiresAt: DateTime(2027, 1, 1),
     );

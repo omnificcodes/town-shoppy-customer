@@ -13,11 +13,10 @@ class RedemptionMerchantRef {
 
 /// Mirrors `App\Domain\Redemption\Http\Resources\RedemptionResource` —
 /// never includes `qr_secret`/`otp_code`, which the backend only ever
-/// returns once, inline from the initiate call this app does not perform
-/// (redeeming — choosing a merchant and starting a new redemption — is out
-/// of scope for this phase; see the phase report's known-limitations
-/// section). This model only covers the customer's own redemption
-/// *history*, i.e. `GET /redemptions` and `GET /redemptions/{id}`.
+/// returns once, inline from the initiate call (see
+/// `RedemptionInitiationResult`). This model covers the customer's own
+/// redemption *history*, i.e. `GET /redemptions` and `GET /redemptions/{id}`,
+/// plus the resource fields the initiate response shares with them.
 class Redemption {
   const Redemption({
     required this.id,
@@ -32,6 +31,7 @@ class Redemption {
     required this.verificationMethod,
     required this.verifiedAt,
     required this.createdAt,
+    this.qrExpiresAt,
   });
 
   factory Redemption.fromJson(Map<String, dynamic> json) {
@@ -50,6 +50,7 @@ class Redemption {
       verificationMethod: json['verification_method'] as String?,
       verifiedAt: json['verified_at'] != null ? DateTime.tryParse(json['verified_at'] as String) : null,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      qrExpiresAt: json['qr_expires_at'] != null ? DateTime.tryParse(json['qr_expires_at'] as String) : null,
     );
   }
 
@@ -66,5 +67,16 @@ class Redemption {
   final DateTime? verifiedAt;
   final DateTime? createdAt;
 
+  /// When the verification window closes (`qr_expires_at`). The backend
+  /// stamps this and the (unexposed) OTP expiry from the same
+  /// `now() + config minutes` at initiation, so it is the only client-side
+  /// signal for "how long do I have to show this code". Null when the
+  /// resource omitted it.
+  final DateTime? qrExpiresAt;
+
   String get merchantName => merchant?.name ?? 'Merchant';
+
+  /// Terminal per `RedemptionStatus::allowedNextStates()` — nothing can
+  /// change after these, so pollers stop.
+  bool get isTerminal => status == 'settled' || status == 'expired' || status == 'cancelled';
 }

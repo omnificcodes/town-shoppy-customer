@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 
-/// Small unread-count dot, stacked on top of [child] — used on the bottom
-/// nav's Notifications icon.
+/// Small unread-count dot, stacked on top of [child] — used on the header's
+/// notification bell.
 class NotificationBadge extends StatelessWidget {
   const NotificationBadge({super.key, required this.child, required this.count});
 
@@ -19,16 +21,21 @@ class NotificationBadge extends StatelessWidget {
       children: [
         child,
         Positioned(
-          top: -4,
-          right: -8,
+          top: -AppSpacing.xs,
+          right: -AppSpacing.sm,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            constraints: const BoxConstraints(minWidth: 16),
-            decoration: const BoxDecoration(color: AppColors.crimson, shape: BoxShape.circle),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs + 1, vertical: 1),
+            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+            decoration: BoxDecoration(
+              color: AppColors.crimson,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+              border: Border.all(color: AppColors.surface, width: 1.5),
+            ),
+            alignment: Alignment.center,
             child: Text(
               count > 9 ? '9+' : '$count',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+              style: AppTypography.overline.copyWith(color: AppColors.onCrimson, letterSpacing: 0),
             ),
           ),
         ),

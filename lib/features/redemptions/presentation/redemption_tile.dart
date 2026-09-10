@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/relative_time.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -15,12 +16,14 @@ class RedemptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusLabel = redemptionStatusLabel(redemption.status);
+
     // Same "never color-only" reasoning as MerchantCard/NotificationTile --
     // without this, a screen reader gets no button role and no single
     // composed announcement for the row, just its disconnected Text children.
     return Semantics(
       button: onTap != null,
-      label: '${redemption.merchantName}, ${redemption.coinsRequested} coins, ${redemption.status}',
+      label: '${redemption.merchantName}, ${redemption.coinsRequested} coins, $statusLabel',
       child: AppCard(
         onTap: onTap,
         child: Row(
@@ -30,17 +33,17 @@ class RedemptionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(redemption.merchantName, style: Theme.of(context).textTheme.titleSmall, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(
                     '${redemption.coinsRequested} coins · ${redemption.createdAt != null ? relativeTime(redemption.createdAt!) : ''}',
-                    style: Theme.of(context).textTheme.labelSmall,
+                    style: AppTypography.caption,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            StatusBadge(label: redemption.status, tone: redemptionStatusTone(redemption.status)),
+            StatusBadge(label: statusLabel, tone: redemptionStatusTone(redemption.status)),
           ],
         ),
       ),

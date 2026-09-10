@@ -79,7 +79,9 @@ void main() {
   testWidgets('renders the Town Shoppy brand and the sign-in form', (tester) async {
     await tester.pumpWidget(buildApp());
 
-    expect(find.text('Welcome back to\nTown Shoppy'), findsOneWidget);
+    // The heading wraps naturally now (no hard line break), so match on its
+    // prefix rather than an exact string.
+    expect(find.textContaining('Welcome back to'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
   });

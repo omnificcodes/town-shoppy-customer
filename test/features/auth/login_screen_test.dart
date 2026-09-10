@@ -61,7 +61,9 @@ class _SessionExpiredAuthController extends AuthController {
   AuthState build() => const AuthSessionExpired();
 }
 
-const _viewportSizes = [Size(375, 812), Size(390, 844), Size(430, 932), Size(768, 1024)];
+// 320x568 is the narrowest phone still in circulation (iPhone SE 1st gen
+// / small Androids) and is where the two-column hero collapses to one.
+const _viewportSizes = [Size(320, 568), Size(375, 812), Size(390, 844), Size(430, 932), Size(768, 1024)];
 
 /// Regression coverage for two Phase 9 findings, both real overflow bugs
 /// found via a genuine authenticated browser session (see

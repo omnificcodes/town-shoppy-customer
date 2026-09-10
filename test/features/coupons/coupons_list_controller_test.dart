@@ -17,6 +17,7 @@ Coupon _coupon(int id, {String status = 'active'}) {
       CouponEligibility(cadence: 'monthly', status: 'active'),
       CouponEligibility(cadence: 'mega', status: 'active'),
     ],
+    merchant: null,
     issuedAt: DateTime(2026, 1, 1),
     annualCycleExpiresAt: DateTime(2027, 1, 1),
   );

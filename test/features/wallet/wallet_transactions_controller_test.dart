@@ -13,6 +13,8 @@ WalletLedgerEntry _entry(int id, {String direction = 'credit'}) {
     direction: direction,
     amount: 10,
     source: 'purchase_reward',
+    coinType: null,
+    merchantName: null,
     balanceAfter: 100,
     lotExpiresAt: null,
     createdAt: DateTime(2026, 1, 1),

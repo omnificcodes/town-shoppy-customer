@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../features/purchases/presentation/scan_and_pay_sheet.dart';
 import '../../shared/widgets/app_bottom_navigation.dart';
 
-const _tabPaths = ['/home', '/wallet', '/coupons', '/profile'];
+const _tabPaths = ['/home', '/offers', '/coupons', '/profile'];
 
 const _tabItems = [
   BottomNavItemData(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home'),
-  BottomNavItemData(icon: Icons.savings_outlined, activeIcon: Icons.savings_rounded, label: 'Wallet'),
+  BottomNavItemData(icon: Icons.local_offer_outlined, activeIcon: Icons.local_offer_rounded, label: 'Offers'),
   BottomNavItemData(
     icon: Icons.confirmation_number_outlined,
     activeIcon: Icons.confirmation_number_rounded,
@@ -24,7 +24,9 @@ const _tabItems = [
 /// instead, docked in the bottom bar's notch. Notifications moved off the
 /// tab bar entirely to the Home header's bell icon (see `HomeHeader`) once
 /// Scan & Pay took the visually-central slot; `/notifications` is still a
-/// real route, just a top-level push now rather than a shell tab.
+/// real route, just a top-level push now rather than a shell tab. Wallet
+/// went through the same demotion to make room for Offers as a tab -- it's
+/// still a real route, reachable from Home's wallet card.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.location, required this.child});
 

@@ -30,8 +30,8 @@ class HomeDrawer extends ConsumerWidget {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 26,
-                    backgroundColor: AppColors.orange.withValues(alpha: 0.12),
+                    radius: AppSize.avatarLg / 2,
+                    backgroundColor: AppColors.orangeTintStrong,
                     child: Text(
                       _initials(account?.customerProfile?.name, account?.mobileNumber ?? ''),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.orange),
@@ -44,7 +44,7 @@ class HomeDrawer extends ConsumerWidget {
                       children: [
                         Text(account?.displayName ?? 'Town Shoppy', style: Theme.of(context).textTheme.titleMedium),
                         if (account != null) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(account.mobileNumber, style: Theme.of(context).textTheme.bodySmall),
                         ],
                       ],
@@ -75,9 +75,18 @@ class HomeDrawer extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.sm),
               child: ListTile(
                 leading: isLoggingOut
-                    ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: AppIconSize.lg,
+                        height: AppIconSize.lg,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.logout_rounded, color: AppColors.error),
-                title: Text('Sign out', style: TextStyle(color: isLoggingOut ? AppColors.textDisabled : AppColors.error)),
+                title: Text(
+                  'Sign out',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: isLoggingOut ? AppColors.textDisabled : AppColors.error,
+                      ),
+                ),
                 onTap: isLoggingOut ? null : () => ref.read(authControllerProvider.notifier).logout(),
               ),
             ),

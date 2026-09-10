@@ -105,10 +105,10 @@ class AuthLoginFooter extends StatelessWidget {
               child: SvgPicture.asset('assets/illustrations/auth_skyline.svg', fit: BoxFit.fill),
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Local People   |   Local Shops   |   Stronger Communities',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF6F5F57), fontSize: 13, fontWeight: FontWeight.w500),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AuthPalette.mutedText),
             ),
             const SizedBox(height: AppSpacing.md),
           ],

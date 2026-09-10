@@ -4,12 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../application/auth_controller.dart';
 import '../application/auth_state.dart';
 import 'widgets/auth_background.dart';
 import 'widgets/auth_hero_illustration.dart';
 import 'widgets/auth_widgets.dart';
+
+/// Below this logical width the two-column hero (copy on the left, art on
+/// the right) can no longer fit the heading, so it collapses to one column.
+const double _heroTwoColumnMinWidth = 340;
 
 /// Password-first registration — no OTP, no proof of phone ownership
 /// (`AuthService::registerWithPassword()`'s own docblock). A referral code
@@ -108,93 +113,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: IntrinsicHeight(
                     child: Column(
                       children: [
+                        AuthHeader(onBack: _goToLogin),
                         Padding(
-                          padding: const EdgeInsets.only(left: AppSpacing.md, top: AppSpacing.xs),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 10,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.arrow_back_rounded, color: AuthPalette.brown, size: 28),
-                                      tooltip: 'Back',
-                                      onPressed: _goToLogin,
-                                    ),
-                                    const Padding(
-                                      padding: EdgeInsets.only(left: AppSpacing.sm),
-                                      child: AuthBrandBlock(logoHeight: 66),
-                                    ),
-                                    const SizedBox(height: 30),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: AppSpacing.sm),
-                                      child: Text(
-                                        'Create your\naccount',
-                                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                              color: AuthPalette.brown,
-                                              fontWeight: FontWeight.w800,
-                                              height: 1.15,
-                                            ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: AppSpacing.sm),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: AppSpacing.sm),
-                                      child: Text(
-                                        'Join Town Shoppy to start earning rewards at local businesses.',
-                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                              color: const Color(0xFF6F5F57),
-                                              fontSize: 15,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Expanded(
-                                flex: 11,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: const [
-                                    Padding(
-                                      padding: EdgeInsets.only(right: AppSpacing.lg, top: 14),
-                                      child: AuthScriptText(
-                                        'Shop Local\nEarn Rewards\nBe Part of a\nStronger Community',
-                                        size: 19,
-                                        angle: -0.09,
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Padding(
-                                      padding: EdgeInsets.only(right: AppSpacing.md),
-                                      child: AuthHeroIllustration(variant: AuthHeroVariant.register),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          padding: const EdgeInsets.only(left: AppSpacing.page),
+                          child: constraints.maxWidth < _heroTwoColumnMinWidth
+                              ? const _RegisterHeroStacked()
+                              : const _RegisterHeroSideBySide(),
                         ),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.md, AppSpacing.page, 0),
                           // The form sits in a white card in the reference,
                           // unlike Login where the fields sit on the cream.
                           child: Container(
                             padding: const EdgeInsets.all(AppSpacing.md),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(28),
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
                               border: Border.all(color: AuthPalette.fieldBorder),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF8A5A2B).withValues(alpha: 0.08),
-                                  blurRadius: 24,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ],
+                              boxShadow: AppElevation.subtle,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,7 +146,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   textInputAction: TextInputAction.next,
                                   errorText: _touched ? _mobileError : null,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.md),
                                 AuthTextField(
                                   label: 'Your name',
                                   icon: Icons.person_outline_rounded,
@@ -218,7 +154,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   textInputAction: TextInputAction.next,
                                   errorText: _touched ? _nameError : null,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.md),
                                 AuthTextField(
                                   label: 'Password',
                                   icon: Icons.lock_outline_rounded,
@@ -232,7 +168,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.md),
                                 AuthTextField(
                                   label: 'Confirm password',
                                   icon: Icons.lock_outline_rounded,
@@ -248,7 +184,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.md),
                                 AuthTextField(
                                   label: 'Referral code (optional)',
                                   icon: Icons.card_giftcard_rounded,
@@ -289,6 +225,105 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RegisterHeading extends StatelessWidget {
+  const _RegisterHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Create your account', style: textTheme.headlineMedium?.copyWith(color: AuthPalette.brown)),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'Join Town Shoppy to start earning rewards at local businesses.',
+          style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
+        ),
+      ],
+    );
+  }
+}
+
+class _RegisterTagline extends StatelessWidget {
+  const _RegisterTagline();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(right: AppSpacing.lg, top: AppSpacing.smd),
+      child: AuthScriptText('Shop Local\nEarn Rewards\nBe Part of a\nStronger Community', size: 19, angle: -0.09),
+    );
+  }
+}
+
+/// The reference layout: brand + heading on the left, tagline + bag art on
+/// the right.
+class _RegisterHeroSideBySide extends StatelessWidget {
+  const _RegisterHeroSideBySide();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 10,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AuthBrandBlock(logoHeight: 66),
+              SizedBox(height: AppSpacing.lg),
+              _RegisterHeading(),
+            ],
+          ),
+        ),
+        SizedBox(width: AppSpacing.xs),
+        Expanded(
+          flex: 11,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _RegisterTagline(),
+              SizedBox(height: AppSpacing.xs),
+              Padding(
+                padding: EdgeInsets.only(right: AppSpacing.md),
+                child: AuthHeroIllustration(variant: AuthHeroVariant.register),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Narrow-screen fallback (under [_heroTwoColumnMinWidth]): one column with
+/// the art full-width under the brand block and the tagline kept
+/// right-aligned above it.
+class _RegisterHeroStacked extends StatelessWidget {
+  const _RegisterHeroStacked();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(right: AppSpacing.page),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthBrandBlock(logoHeight: 56),
+          SizedBox(height: AppSpacing.sm),
+          Align(alignment: Alignment.centerRight, child: _RegisterTagline()),
+          SizedBox(height: AppSpacing.xs),
+          AuthHeroIllustration(variant: AuthHeroVariant.register),
+          SizedBox(height: AppSpacing.lg),
+          _RegisterHeading(),
         ],
       ),
     );

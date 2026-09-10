@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -14,7 +15,7 @@ import '../../../core/theme/app_spacing.dart';
 /// is never read-then-abandoned mid-flight across a navigation. The
 /// customer never types or edits a merchant/branch, only what the camera
 /// actually saw. An invalid/revoked/wrong-type token surfaces on that next
-/// screen (it already renders [ErrorState] for a failed resolution); this
+/// screen (it already renders an error panel for a failed resolution); this
 /// screen's own job is only the camera itself -- permission denial,
 /// unsupported hardware, and the brief moment before the camera is ready
 /// all get an explicit state here, never a blank screen.
@@ -41,6 +42,7 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
     if (value == null || value.isEmpty) return;
 
     _handled = true;
+    HapticFeedback.mediumImpact();
     _controller.stop();
 
     context.pushReplacement('/purchases/request', extra: value);
@@ -49,11 +51,26 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.scrim,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onScrim,
         title: const Text('Scan merchant QR'),
+        actions: [
+          // Dim counters are the common case for a printed QR -- the torch
+          // is the one control worth putting on the scanner itself.
+          ValueListenableBuilder<MobileScannerState>(
+            valueListenable: _controller,
+            builder: (context, state, _) {
+              final isOn = state.torchState == TorchState.on;
+              return IconButton(
+                icon: Icon(isOn ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded),
+                tooltip: isOn ? 'Turn flashlight off' : 'Turn flashlight on',
+                onPressed: state.torchState == TorchState.unavailable ? null : _controller.toggleTorch,
+              );
+            },
+          ),
+        ],
       ),
       body: Stack(
         fit: StackFit.expand,
@@ -64,17 +81,21 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
             placeholderBuilder: (context) => const _ScannerPlaceholder(),
             errorBuilder: (context, error) => _ScannerErrorView(error: error),
           ),
-          _ScannerOverlay(),
+          const _ScannerOverlay(key: ValueKey('scanner-overlay')),
           Positioned(
             left: 0,
             right: 0,
-            bottom: AppSpacing.xl,
-            child: Text(
-              'Point your camera at the Purchase QR displayed at the counter.',
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.white),
+            bottom: 0,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xl),
+                child: Text(
+                  'Point your camera at the Purchase QR displayed at the counter.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.onScrim),
+                ),
+              ),
             ),
           ),
         ],
@@ -83,16 +104,25 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
   }
 }
 
+/// The viewfinder frame. Purely decorative: the scanner reads the whole
+/// camera feed, the frame only tells the customer where to aim.
 class _ScannerOverlay extends StatelessWidget {
+  const _ScannerOverlay({super.key});
+
+  static const double _viewfinderSize = 260;
+  static const double _borderWidth = 3;
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 260,
-        height: 260,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.orange, width: 3),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+    return ExcludeSemantics(
+      child: Center(
+        child: Container(
+          width: _viewfinderSize,
+          height: _viewfinderSize,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.orange, width: _borderWidth),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          ),
         ),
       ),
     );
@@ -105,8 +135,8 @@ class _ScannerPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const ColoredBox(
-      color: Colors.black,
-      child: Center(child: CircularProgressIndicator(color: Colors.white)),
+      color: AppColors.scrim,
+      child: Center(child: CircularProgressIndicator(color: AppColors.onScrim, semanticsLabel: 'Starting camera')),
     );
   }
 }
@@ -125,17 +155,17 @@ class _ScannerErrorView extends StatelessWidget {
     final isPermissionDenied = error.errorCode == MobileScannerErrorCode.permissionDenied;
 
     return ColoredBox(
-      color: Colors.black,
+      color: AppColors.scrim,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.no_photography_rounded, color: Colors.white70, size: 48),
+            const Icon(Icons.no_photography_rounded, color: AppColors.onScrimMuted, size: AppIconSize.display),
             const SizedBox(height: AppSpacing.md),
             Text(
               isPermissionDenied ? 'Camera access is off' : 'Camera unavailable',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.onScrim),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -143,12 +173,16 @@ class _ScannerErrorView extends StatelessWidget {
               isPermissionDenied
                   ? 'Town Shoppy needs camera access to scan a Purchase QR. Enable it in your device Settings, then come back.'
                   : 'This device could not start the camera. You can try again, or go back and try a different way to pay.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.onScrimMuted),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.lg),
             OutlinedButton(
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white54)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.onScrim,
+                side: const BorderSide(color: AppColors.onScrimMuted),
+                minimumSize: const Size(0, AppSize.controlMd),
+              ),
               onPressed: () => context.pop(),
               child: const Text('Go back'),
             ),

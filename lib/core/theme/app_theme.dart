@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_elevation.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
@@ -57,7 +58,7 @@ class AppTheme {
           disabledForegroundColor: AppColors.onOrange.withValues(alpha: 0.6),
           minimumSize: const Size.fromHeight(AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusControl)),
           textStyle: AppTypography.textTheme.labelLarge,
         ),
       ),
@@ -67,7 +68,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border),
           minimumSize: const Size.fromHeight(AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusControl)),
           textStyle: AppTypography.textTheme.labelLarge,
         ),
       ),
@@ -83,23 +84,23 @@ class AppTheme {
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
           borderSide: const BorderSide(color: AppColors.orange, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
         labelStyle: const TextStyle(color: AppColors.textSecondary),
@@ -114,6 +115,33 @@ class AppTheme {
         elevation: 0,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.orange),
+      dividerColor: AppColors.border,
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surface,
+        elevation: AppElevation.level4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+        titleTextStyle: AppTypography.textTheme.headlineSmall,
+        contentTextStyle: AppTypography.textTheme.bodyMedium,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        elevation: AppElevation.level4,
+        showDragHandle: true,
+        dragHandleColor: AppColors.border,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusLg))),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.deepMaroon,
+        contentTextStyle: AppTypography.textTheme.bodyMedium?.copyWith(color: AppColors.surface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusControl)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surfaceMuted,
+        side: const BorderSide(color: AppColors.border),
+        labelStyle: AppTypography.textTheme.labelMedium,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
+      ),
       splashFactory: InkSparkle.splashFactory,
     );
   }

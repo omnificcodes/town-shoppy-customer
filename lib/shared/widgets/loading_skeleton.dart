@@ -51,6 +51,27 @@ class _LoadingSkeletonState extends State<LoadingSkeleton> with SingleTickerProv
   }
 }
 
+/// A padded column of [count] [LoadingSkeletonCard]s — what every list
+/// screen shows while its first page loads, so they stop hand-rolling the
+/// same ListView.
+class LoadingSkeletonList extends StatelessWidget {
+  const LoadingSkeletonList({super.key, this.count = 6, this.padding = const EdgeInsets.all(AppSpacing.page)});
+
+  final int count;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: padding,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: count,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (_, _) => const LoadingSkeletonCard(),
+    );
+  }
+}
+
 /// A skeleton shaped like [AppCard]'s common "icon + two lines" layout —
 /// the most frequent card content shape in this app (wallet summary,
 /// purchase/notification rows).

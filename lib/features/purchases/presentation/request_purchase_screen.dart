@@ -5,11 +5,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/info_box.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/state_panel.dart';
 import '../application/customer_purchase_request_controller.dart';
 import '../data/models/merchant_purchase_qr_resolution.dart';
 
@@ -67,26 +70,55 @@ class _RequestPurchaseScreenState extends ConsumerState<RequestPurchaseScreen> {
       }
     });
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Request purchase')),
-      body: SafeArea(
-        child: switch (state) {
-          CustomerPurchaseRequestState(isResolving: true) =>
-            const Padding(padding: EdgeInsets.all(AppSpacing.md), child: LoadingSkeletonCard()),
-          CustomerPurchaseRequestState(resolveError: final error?) => ErrorState(
-              error: error,
-              onRetry: () => context.pop(),
+    return AppScaffold(
+      title: 'Request purchase',
+      padded: false,
+      body: switch (state) {
+        // A scan that resolved to nothing usable is not something "Try
+        // again" can fix from here -- the only recovery is scanning again,
+        // so the single action is an honest "Go back".
+        CustomerPurchaseRequestState(resolveError: final error?) => StatePanel(
+            icon: Icons.qr_code_scanner_rounded,
+            iconColor: AppColors.error,
+            title: "We couldn't use that QR code",
+            message: error.message,
+            action: AppButton(
+              label: 'Go back',
+              variant: AppButtonVariant.secondary,
+              icon: Icons.arrow_back_rounded,
+              onPressed: () => context.pop(),
             ),
-          CustomerPurchaseRequestState(resolution: final resolution?) => _RequestForm(
-              resolution: resolution,
-              state: state,
-              controller: controller,
-              amountController: _amountController,
-              amountTouched: _amountTouched,
-              onAmountTouched: () => setState(() => _amountTouched = true),
-            ),
-          _ => const SizedBox.shrink(),
-        },
+          ),
+        CustomerPurchaseRequestState(resolution: final resolution?) => _RequestForm(
+            resolution: resolution,
+            state: state,
+            controller: controller,
+            amountController: _amountController,
+            amountTouched: _amountTouched,
+            onAmountTouched: () => setState(() => _amountTouched = true),
+          ),
+        // Both "still resolving" and the one frame before initState's
+        // microtask kicks off the resolve: the same skeleton, shaped like
+        // the form that replaces it (merchant card, then the amount field).
+        _ => const _FormSkeleton(),
+      },
+    );
+  }
+}
+
+class _FormSkeleton extends StatelessWidget {
+  const _FormSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(AppSpacing.page),
+      child: Column(
+        children: [
+          LoadingSkeletonCard(),
+          SizedBox(height: AppSpacing.section),
+          LoadingSkeleton(height: AppSize.field, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusControl))),
+        ],
       ),
     );
   }
@@ -114,76 +146,68 @@ class _RequestForm extends StatelessWidget {
     final amountError = amountTouched && amountController.text.isNotEmpty && state.billAmount == null
         ? 'Enter an amount between ₹0.01 and ₹10,00,000'
         : null;
+    final branchLine = [resolution.branchName, resolution.branchAddressLine].whereType<String>().join(' · ');
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.page),
       children: [
         AppCard(
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.storefront_rounded, color: AppColors.orange),
-              const SizedBox(width: AppSpacing.sm),
+              const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.lg),
+              const SizedBox(width: AppSpacing.smd),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(resolution.merchantName, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 2),
-                    Text(
-                      [resolution.branchName, resolution.branchAddressLine].whereType<String>().join(' · '),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    if (branchLine.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(branchLine, style: Theme.of(context).textTheme.bodySmall),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Text('Enter bill amount', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.section),
         AppTextField(
           label: 'Bill amount',
           controller: amountController,
+          autofocus: true,
           prefixText: '₹ ',
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          textInputAction: TextInputAction.done,
           inputFormatters: [_DecimalAmountFormatter()],
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: AppTypography.numericFinancialMedium,
+          helperText: 'The total on your bill, before any discount',
           errorText: amountError,
           onChanged: (value) {
             onAmountTouched();
             controller.setBillAmount(value);
           },
+          onSubmitted: (_) {
+            if (state.canSubmit) controller.submit();
+          },
         ),
         const SizedBox(height: AppSpacing.md),
-        AppCard(
-          child: Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 18, color: AppColors.textSecondary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  "The merchant will review and approve this before you receive Town Coins and Lucky Draw coupons.",
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
-                ),
-              ),
-            ],
-          ),
+        const InfoBox(
+          icon: Icons.info_outline_rounded,
+          message: 'The merchant will review and approve this before you receive Town Coins and Lucky Draw coupons.',
         ),
+        const SizedBox(height: AppSpacing.section),
         if (state.submitError != null) ...[
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            state.submitError!.message,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error),
-          ),
+          InfoBox(tone: AppTone.error, icon: Icons.error_outline_rounded, message: state.submitError!.message),
+          const SizedBox(height: AppSpacing.md),
         ],
-        const SizedBox(height: AppSpacing.lg),
         AppButton(
           label: 'Submit request',
           isLoading: state.isSubmitting,
           onPressed: state.canSubmit ? () => controller.submit() : null,
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.section),
       ],
     );
   }

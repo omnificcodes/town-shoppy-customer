@@ -20,6 +20,9 @@ class Offer {
     required this.startsAt,
     required this.endsAt,
     required this.distanceKm,
+    required this.coinDiscountRate,
+    required this.applicableItem,
+    required this.isCoinRedeemable,
   });
 
   factory Offer.fromJson(Map<String, dynamic> json) {
@@ -38,6 +41,9 @@ class Offer {
       startsAt: json['starts_at'] != null ? DateTime.parse(json['starts_at'] as String) : null,
       endsAt: json['ends_at'] != null ? DateTime.parse(json['ends_at'] as String) : null,
       distanceKm: json['distance_km'] != null ? (json['distance_km'] as num).toDouble() : null,
+      coinDiscountRate: json['coin_discount_rate'] != null ? (json['coin_discount_rate'] as num).toDouble() : null,
+      applicableItem: json['applicable_item'] as String?,
+      isCoinRedeemable: json['is_coin_redeemable'] as bool? ?? false,
     );
   }
 
@@ -54,4 +60,13 @@ class Offer {
   final DateTime? startsAt;
   final DateTime? endsAt;
   final double? distanceKm;
+
+  // Coin Economy V2 (coin-economy-v2.md §6.1) -- a merchant-set coin
+  // discount, separate from `discountValue`/`offerType` above (which is
+  // the offer's own regular percentage/fixed discount, unrelated to Town
+  // Coin). [isCoinRedeemable] mirrors `Offer::isCoinRedeemable()` exactly
+  // rather than this app re-deriving it from `coinDiscountRate != null`.
+  final double? coinDiscountRate;
+  final String? applicableItem;
+  final bool isCoinRedeemable;
 }

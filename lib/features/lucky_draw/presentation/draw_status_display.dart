@@ -7,8 +7,11 @@ String drawCadenceTitle(String cadence) => switch (cadence) {
       _ => cadence,
     };
 
+/// `active` is the good state here — the prize is won and waiting — so it
+/// reads as success, not as the amber "pending" that elsewhere means
+/// "something is still being decided".
 StatusTone voucherStatusTone(String status) => switch (status) {
-      'active' => StatusTone.pending,
+      'active' => StatusTone.success,
       'claimed' => StatusTone.success,
       'expired' => StatusTone.neutral,
       'void' => StatusTone.error,

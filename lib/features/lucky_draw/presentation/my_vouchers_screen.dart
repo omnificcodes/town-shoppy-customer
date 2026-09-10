@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -44,51 +45,45 @@ class _MyVouchersScreenState extends ConsumerState<MyVouchersScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(myVouchersControllerProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My winnings')),
-      body: SafeArea(
-        child: state.when(
-          loading: () => ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            itemCount: 4,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-            itemBuilder: (_, __) => const LoadingSkeletonCard(),
-          ),
-          error: (error, _) => ErrorState(
-            error: error is AppException ? error : const UnknownAppException(),
-            onRetry: () => ref.read(myVouchersControllerProvider.notifier).refresh(),
-          ),
-          data: (data) {
-            if (data.items.isEmpty) {
-              return const EmptyState(
-                icon: Icons.emoji_events_outlined,
-                title: 'No wins yet',
-                message: "Keep your eligible coupons active -- your wins will show up here the moment a draw picks you.",
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh: () => ref.read(myVouchersControllerProvider.notifier).refresh(),
-              child: ListView.separated(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                itemCount: data.items.length + (data.hasMore ? 1 : 0),
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                itemBuilder: (context, index) {
-                  if (index >= data.items.length) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  final voucher = data.items[index];
-                  return VoucherTile(voucher: voucher, onTap: () => context.push('/lucky-draw/vouchers/${voucher.id}'));
-                },
-              ),
-            );
-          },
+    return AppScaffold(
+      title: 'My winnings',
+      padded: false,
+      body: state.when(
+        loading: () => const LoadingSkeletonList(count: 4),
+        error: (error, _) => ErrorState(
+          error: error is AppException ? error : const UnknownAppException(),
+          onRetry: () => ref.read(myVouchersControllerProvider.notifier).refresh(),
         ),
+        data: (data) {
+          if (data.items.isEmpty) {
+            return const EmptyState(
+              icon: Icons.emoji_events_outlined,
+              title: 'No wins yet',
+              message: 'Prizes you win in a draw will appear here, with a claim code for the sponsoring merchant.',
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => ref.read(myVouchersControllerProvider.notifier).refresh(),
+            child: ListView.separated(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(AppSpacing.page),
+              itemCount: data.items.length + (data.hasMore ? 1 : 0),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (context, index) {
+                if (index >= data.items.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final voucher = data.items[index];
+                return VoucherTile(voucher: voucher, onTap: () => context.push('/lucky-draw/vouchers/${voucher.id}'));
+              },
+            ),
+          );
+        },
       ),
     );
   }

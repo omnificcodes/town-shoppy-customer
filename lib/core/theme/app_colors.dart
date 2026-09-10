@@ -29,12 +29,22 @@ class AppColors {
   static const textSecondary = Color(0xFF7A6B66);
   static const textDisabled = Color(0xFFBBAEA9);
 
-  // Silver wallet — deliberately outside the warm brand palette so a coin
-  // balance never visually competes with a promotional badge (per the
-  // design doc's "Silver vs. Gold" section). Cool, calm, metallic-gray.
+  // `silver`/`silverLight`/`silverDark` remain the app's general neutral/
+  // muted tone (AppTone.neutral below, plus several unrelated inactive-icon
+  // call sites) — kept as-is for that role.
   static const silver = Color(0xFF8A94A6);
   static const silverLight = Color(0xFFEEF0F4);
   static const silverDark = Color(0xFF4B5468);
+
+  // Town Coin gold — the coin's own visual identity (balance hero, coin
+  // glyph, ledger amounts, TU tag). Note: design-principles.md's "Silver
+  // vs. Gold" section reserves gold specifically for a future *merchant*
+  // wallet and asks that it stay visually distinct from the customer
+  // wallet; using gold here for the customer-facing Town Coin is a
+  // deliberate, explicit deviation from that reservation, not an oversight.
+  static const gold = Color(0xFFB8860B);
+  static const goldLight = Color(0xFFFBF3D9);
+  static const goldDark = Color(0xFF7D5F0C);
 
   // Semantic status colors — distinct from the three reserved brand accents
   // per the design doc ("neither wallet's UI should borrow the literal
@@ -73,4 +83,62 @@ class AppColors {
   static const onOrange = deepMaroon;
   static const onYellow = deepMaroon;
   static const onCrimson = Color(0xFFFFFFFF);
+
+  // Tinted accent surfaces — the ONLY way the brand accent appears behind
+  // body content (design doc: saturated accent is for CTAs/badges, never a
+  // background). Banners, tinted CTAs and icon badges all use these.
+  static const orangeTint = Color(0xFFFFF0E3); // orange at ~8% on white
+  static const orangeTintStrong = Color(0xFFFFE3CC); // orange at ~18%
+  static const orangeBorder = Color(0xFFFFD2AE);
+
+  // Full-bleed dark surfaces (the QR scanner) and text on them.
+  static const scrim = Color(0xFF000000);
+  static const onScrim = Color(0xFFFFFFFF);
+  static const onScrimMuted = Color(0xB3FFFFFF); // white at 70%
+
+  // Coupon tile's ticket-stub accent -- a deliberately bespoke navy.
+  // Nothing else in the palette is navy-toned (silverDark is blue-gray, the
+  // wrong hue, and used elsewhere as a neutral); scoped here rather than
+  // repurposed so this one accent stays easy to find.
+  static const luckyDrawNavy = Color(0xFF0B1E3F);
+
+  /// Decorative accents for category tiles, offer tiles and coupon icons —
+  /// one shared list so those screens stop each inventing their own hex.
+  /// Purely visual variety (which tile is which), never a status meaning;
+  /// every value clears 3:1 against white for icon use, and text is never
+  /// set in these.
+  static const decorativeAccents = <Color>[
+    Color(0xFF2E7D32), // green
+    Color(0xFFE64A19), // deep orange
+    Color(0xFFD81B60), // pink
+    Color(0xFF00897B), // teal
+    Color(0xFF1E88E5), // blue
+    Color(0xFF6A1B9A), // purple
+    Color(0xFFAD1457), // magenta
+    Color(0xFF6D4C41), // brown
+    Color(0xFFC9A227), // gold
+    Color(0xFF3949AB), // indigo
+    Color(0xFFF4511E), // red-orange
+    Color(0xFF8E24AA), // violet
+    Color(0xFF558B2F), // olive
+  ];
+}
+
+/// One semantic tone enum shared by every tinted surface (badges, info
+/// boxes, inline notes) so "success" is the same pair of colors everywhere.
+enum AppTone {
+  info,
+  success,
+  pending,
+  error,
+  neutral;
+
+  /// (background, foreground) for this tone.
+  (Color, Color) get colors => switch (this) {
+        AppTone.info => (AppColors.infoBg, AppColors.info),
+        AppTone.success => (AppColors.successBg, AppColors.success),
+        AppTone.pending => (AppColors.pendingBg, AppColors.pending),
+        AppTone.error => (AppColors.errorBg, AppColors.error),
+        AppTone.neutral => (AppColors.silverLight, AppColors.silverDark),
+      };
 }

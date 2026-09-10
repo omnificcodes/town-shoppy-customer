@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
+
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
@@ -18,6 +21,11 @@ import '../../features/lucky_draw/presentation/voucher_detail_screen.dart';
 import '../../features/merchants/presentation/merchant_detail_screen.dart';
 import '../../features/merchants/presentation/merchants_list_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/offer_redemptions/presentation/offer_redeem_screen.dart';
+import '../../features/offer_redemptions/presentation/offer_redemption_detail_screen.dart';
+import '../../features/offer_redemptions/presentation/offer_redemptions_list_screen.dart';
+import '../../features/offers/presentation/offers_list_screen.dart';
+import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/wallet/presentation/wallet_screen.dart';
 import '../../features/purchases/presentation/my_qr_screen.dart';
@@ -40,12 +48,14 @@ const _forgotPasswordPath = '/forgot-password';
 const _resetPasswordPath = '/reset-password';
 const _homePath = '/home';
 const _walletPath = '/wallet';
+const _offersPath = '/offers';
 const _notificationsPath = '/notifications';
 const _profilePath = '/profile';
 const _purchasesPath = '/purchases';
 const _couponsPath = '/coupons';
 const _luckyDrawPath = '/lucky-draw';
 const _redemptionsPath = '/redemptions';
+const _offerRedemptionsPath = '/offer-redemptions';
 const _referralsPath = '/referrals';
 const _merchantsPath = '/merchants';
 
@@ -81,7 +91,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '$_purchasesPath/my-qr', builder: (context, state) => const MyQrScreen()),
       GoRoute(
         path: '$_purchasesPath/:id',
-        builder: (context, state) => PurchaseDetailScreen(purchaseId: int.parse(state.pathParameters['id']!)),
+        // Keyed by id so navigating from one purchase's detail page straight
+        // to another's (e.g. via a notification) discards the old State --
+        // otherwise Flutter reuses it and the celebration/polling flags from
+        // the previous purchase leak into the new one.
+        builder: (context, state) => PurchaseDetailScreen(
+          key: ValueKey('purchase-${state.pathParameters['id']}'),
+          purchaseId: int.parse(state.pathParameters['id']!),
+        ),
       ),
       // The /coupons LIST is a bottom-nav tab (inside the ShellRoute below);
       // its detail page stays top-level/full-screen, same "tab root inside
@@ -113,11 +130,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '$_redemptionsPath/:id/verify',
         builder: (context, state) => RedemptionVerificationScreen(redemptionId: int.parse(state.pathParameters['id']!)),
       ),
+      // Coin Economy V2 (coin-economy-v2.md §6.2) -- `/offers/:id/redeem`
+      // registered near the merchant `/redeem` sub-route above it, not
+      // inside the ShellRoute (a full-screen form, same as
+      // RedemptionInitiationScreen).
+      GoRoute(
+        path: '/offers/:id/redeem',
+        builder: (context, state) => OfferRedeemScreen(offerId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(path: _offerRedemptionsPath, builder: (context, state) => const OfferRedemptionsListScreen()),
+      GoRoute(
+        path: '$_offerRedemptionsPath/:id',
+        builder: (context, state) =>
+            OfferRedemptionDetailScreen(offerRedemptionId: int.parse(state.pathParameters['id']!)),
+      ),
       GoRoute(path: _referralsPath, builder: (context, state) => const ReferralScreen()),
       // Pushed from the Home header's bell icon now (see HomeHeader), not a
-      // bottom-nav tab -- top-level like /wallet's own sub-pages, not inside
-      // the ShellRoute below.
+      // bottom-nav tab -- top-level, not inside the ShellRoute below.
       GoRoute(path: _notificationsPath, builder: (context, state) => const NotificationsScreen()),
+      // Wallet went through the same tab -> top-level-push demotion once
+      // Offers took its bottom-nav slot (see AppShell's docblock) -- still
+      // pushed from Home's wallet card, just no longer inside the
+      // ShellRoute below.
+      GoRoute(path: _walletPath, builder: (context, state) => const WalletScreen()),
       GoRoute(path: _merchantsPath, builder: (context, state) => MerchantsListScreen(initialCategoryId: state.extra as int?)),
       GoRoute(
         path: '$_merchantsPath/:id',
@@ -127,11 +162,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '$_merchantsPath/:id/redeem',
         builder: (context, state) => RedemptionInitiationScreen(merchantId: int.parse(state.pathParameters['id']!)),
       ),
+      GoRoute(path: '$_profilePath/edit', builder: (context, state) => const EditProfileScreen()),
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.matchedLocation, child: child),
         routes: [
           GoRoute(path: _homePath, builder: (context, state) => const HomeScreen()),
-          GoRoute(path: _walletPath, builder: (context, state) => const WalletScreen()),
+          GoRoute(path: _offersPath, builder: (context, state) => const OffersListScreen()),
           GoRoute(path: _couponsPath, builder: (context, state) => const CouponsListScreen()),
           GoRoute(path: _profilePath, builder: (context, state) => const ProfileScreen()),
         ],
@@ -156,12 +192,62 @@ String? _redirect(AuthState authState, String location) {
   };
 }
 
+/// Shown while [AuthController] restores a stored session on cold start.
+/// Branded (cream ground + logo) so the first frame is Town Shoppy, not a
+/// bare spinner; the indicator only appears after a short delay so a fast
+/// restore never flashes one at all.
 class _SplashScreen extends StatelessWidget {
   const _SplashScreen();
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return Scaffold(
+      backgroundColor: AppColors.surfaceMuted,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/townshoppy_logo.png',
+              height: 96,
+              semanticLabel: 'Town Shoppy',
+              color: AppColors.surfaceMuted,
+              colorBlendMode: BlendMode.multiply,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            const _DelayedIndicator(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DelayedIndicator extends StatefulWidget {
+  const _DelayedIndicator();
+
+  @override
+  State<_DelayedIndicator> createState() => _DelayedIndicatorState();
+}
+
+class _DelayedIndicatorState extends State<_DelayedIndicator> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: _visible ? 1 : 0,
+      duration: const Duration(milliseconds: 200),
+      child: const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5)),
+    );
   }
 }
 

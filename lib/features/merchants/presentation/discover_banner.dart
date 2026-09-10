@@ -16,13 +16,13 @@ class DiscoverBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: AppColors.orange.withValues(alpha: 0.08),
+          color: AppColors.orangeTint,
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          border: Border.all(color: AppColors.orange.withValues(alpha: 0.18)),
+          border: Border.all(color: AppColors.orangeBorder),
         ),
         child: Row(
           children: [
@@ -30,16 +30,11 @@ class DiscoverBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Local Shops, Stronger Together',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                  ),
-                  const SizedBox(height: 4),
+                  Text('Local Shops, Stronger Together', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Every purchase here keeps a neighbourhood business thriving.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
@@ -59,26 +54,26 @@ class _BannerIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 60,
-      height: 60,
+      width: AppIconSize.hero,
+      height: AppIconSize.hero,
       child: Stack(
         alignment: Alignment.center,
         children: [
           Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(color: AppColors.orange.withValues(alpha: 0.16), shape: BoxShape.circle),
+            width: AppSize.avatarLg,
+            height: AppSize.avatarLg,
+            decoration: const BoxDecoration(color: AppColors.orangeTintStrong, shape: BoxShape.circle),
           ),
-          const Icon(Icons.storefront_rounded, color: AppColors.orange, size: 30),
+          const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.xl),
           Positioned(
             right: 0,
-            bottom: 2,
+            bottom: AppSpacing.xxs,
             child: Container(
-              width: 22,
-              height: 22,
+              width: AppSpacing.lg,
+              height: AppSpacing.lg,
               alignment: Alignment.center,
               decoration: const BoxDecoration(color: AppColors.yellow, shape: BoxShape.circle),
-              child: const Icon(Icons.favorite_rounded, color: AppColors.onYellow, size: 12),
+              child: const Icon(Icons.favorite_rounded, color: AppColors.onYellow, size: AppIconSize.xs),
             ),
           ),
         ],

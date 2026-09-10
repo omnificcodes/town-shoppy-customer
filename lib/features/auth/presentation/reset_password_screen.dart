@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../application/password_reset_controller.dart';
 import '../application/password_reset_state.dart';
+import 'widgets/auth_background.dart';
 import 'widgets/auth_widgets.dart';
 
 /// Passed from [ForgotPasswordScreen] as `extra` — [otpRequestId] is
@@ -26,6 +27,9 @@ class ResetPasswordArgs {
 /// from the backend (see the reset controller's docblock); this screen
 /// doesn't try to distinguish them beyond showing whatever message comes
 /// back.
+///
+/// Same cream backdrop, brand block and gradient CTA as the rest of the
+/// auth flow; no hero art so the three fields stay above the fold.
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, required this.args});
 
@@ -106,87 +110,108 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final state = ref.watch(passwordResetControllerProvider);
     final isSubmitting = state is PasswordResetSubmitting;
     final serverError = state is PasswordResetIdle ? state.error : null;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: AuthPalette.cream,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-                  tooltip: 'Back',
-                  onPressed: () => context.pop(),
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.centerLeft,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text('Reset Password', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Enter the 6-digit code sent to +91 ${widget.args.mobileNumber} and choose a new password.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AuthTextField(
-                  label: '6-digit code',
-                  icon: Icons.password_rounded,
-                  controller: _codeController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
-                  errorText: _touched ? _codeError : null,
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: isSubmitting ? null : _resend,
-                    child: const Text('Resend code'),
+      body: Stack(
+        children: [
+          const AuthBackdrop(cornerBlobs: false),
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AuthHeader(onBack: () => context.pop()),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.xl),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const AuthBrandBlock(logoHeight: 56),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text('Reset password', style: textTheme.headlineMedium?.copyWith(color: AuthPalette.brown)),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Enter the 6-digit code sent to +91 ${widget.args.mobileNumber} and choose a new password.',
+                          style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        AuthTextField(
+                          label: '6-digit code',
+                          icon: Icons.password_rounded,
+                          controller: _codeController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+                          autofocus: true,
+                          textInputAction: TextInputAction.next,
+                          errorText: _touched ? _codeError : null,
+                        ),
+                        // "Resend code" is its own row under the code field
+                        // rather than the sole spacer between two fields, so
+                        // the field-to-field rhythm stays at AppSpacing.md.
+                        const SizedBox(height: AppSpacing.xs),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            // Flexible bounds the button to the row's width
+                            // so its label wraps at a large text scale
+                            // instead of overflowing the row.
+                            Flexible(
+                              child: TextButton(
+                                onPressed: isSubmitting ? null : _resend,
+                                style: TextButton.styleFrom(
+                                  minimumSize: const Size(AppSpacing.touchTarget, AppSpacing.touchTarget),
+                                  textStyle: textTheme.labelLarge,
+                                ),
+                                child: const Text('Resend code'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AuthTextField(
+                          label: 'New password',
+                          icon: Icons.lock_outline_rounded,
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.next,
+                          errorText: _touched ? _passwordError : null,
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                            tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AuthTextField(
+                          label: 'Confirm new password',
+                          icon: Icons.lock_outline_rounded,
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          textInputAction: TextInputAction.done,
+                          errorText: _touched ? _confirmPasswordError : null,
+                          onSubmitted: (_) => _submit(),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                            tooltip: _obscureConfirmPassword ? 'Show password' : 'Hide password',
+                            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                          ),
+                        ),
+                        if (serverError != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(serverError.message, style: textTheme.bodySmall?.copyWith(color: AppColors.error)),
+                        ],
+                        const SizedBox(height: AppSpacing.lg),
+                        AuthGradientButton(label: 'Reset password', onPressed: _submit, isLoading: isSubmitting),
+                      ],
+                    ),
                   ),
-                ),
-                AuthTextField(
-                  label: 'New password',
-                  icon: Icons.lock_outline_rounded,
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.next,
-                  errorText: _touched ? _passwordError : null,
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AuthTextField(
-                  label: 'Confirm new password',
-                  icon: Icons.lock_outline_rounded,
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureConfirmPassword,
-                  textInputAction: TextInputAction.done,
-                  errorText: _touched ? _confirmPasswordError : null,
-                  onSubmitted: (_) => _submit(),
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    tooltip: _obscureConfirmPassword ? 'Show password' : 'Hide password',
-                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                  ),
-                ),
-                if (serverError != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(serverError.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
                 ],
-                const SizedBox(height: AppSpacing.lg),
-                AuthGradientButton(label: 'Reset password', onPressed: _submit, isLoading: isSubmitting),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -59,10 +59,21 @@ void main() {
       verify: (tester, size) async {
         expect(find.text('Your referral code'), findsOneWidget);
         expect(find.text('TOWNSHOPPYVERYLONGCODE2026'), findsOneWidget);
-        expect(find.text('Qualified'), findsOneWidget);
-        expect(find.text('Pending'), findsOneWidget);
+        // The stat labels AND the history badges both say these -- status
+        // is always spelled out, never colour-only.
+        expect(find.text('Qualified'), findsWidgets);
+        expect(find.text('Pending'), findsWidgets);
         expect(find.text('Referred by'), findsOneWidget);
+        // The history sits below the fold on phone viewports and the list
+        // is lazy -- scroll it into view before asserting it rendered.
+        await tester.scrollUntilVisible(
+          find.textContaining('Venkataramanujachandrasekaran'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
         expect(find.textContaining('Venkataramanujachandrasekaran'), findsOneWidget);
+        expect(tester.takeException(), isNull);
       },
     );
   });

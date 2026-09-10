@@ -12,9 +12,11 @@ StatusTone couponStatusTone(String status) => switch (status) {
       _ => StatusTone.neutral,
     };
 
+/// Plain words, no emoji: the label is read aloud by screen readers and
+/// must render identically on every device font.
 String couponStatusLabel(String status) => switch (status) {
       'active' => 'Active',
-      'won' => 'Won 🎉',
+      'won' => 'Won',
       'expired' => 'Expired',
       _ => status,
     };

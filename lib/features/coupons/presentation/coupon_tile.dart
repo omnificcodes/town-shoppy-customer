@@ -2,26 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../shared/widgets/app_card.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/models/coupon.dart';
 import 'coupon_status.dart';
 
-/// A purely decorative color rotation for the ticket icon tile -- the
-/// backend has no per-coupon color/theme field (same "no such column"
-/// situation as `MerchantCategory`'s missing icon), so this cycles a fixed
-/// local palette by id rather than reading anything from the API. Kept
-/// local to this file rather than added to `AppColors` -- these tints only
-/// ever mean "which row is this visually", never a status or brand meaning
-/// `AppColors`' other tokens carry.
-const _ticketColors = [
-  AppColors.orange,
-  AppColors.crimson,
-  Color(0xFF6A1B9A),
-  Color(0xFF1E88E5),
-  Color(0xFF00897B),
-];
-
+/// One coupon, as a compact "ticket stub" row -- a navy/gold accent strip
+/// (the coupon's brand identity) plus the code, status, which draws it's
+/// currently entered in, and when it was issued. Capped well under 150dp
+/// tall so a list of many coupons stays scannable; no illustration,
+/// sponsor logos or marketing copy -- those belong to the Lucky Draw
+/// screens, not repeated on every row of a list.
 class CouponTile extends StatelessWidget {
   const CouponTile({super.key, required this.coupon, this.onTap});
 
@@ -30,86 +21,135 @@ class CouponTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeCadences = coupon.eligibilities.where((e) => e.isActive).map((e) => cadenceLabel(e.cadence)).join(' · ');
-    final cadenceLine = activeCadences.isNotEmpty ? activeCadences : 'No active draws';
-    final validTill = coupon.annualCycleExpiresAt;
-    final color = _ticketColors[coupon.id % _ticketColors.length];
+    final activeCadences = coupon.eligibilities.where((e) => e.isActive).map((e) => e.cadence).toSet();
+    final issuedAt = coupon.issuedAt;
 
     final semanticsParts = [
-      coupon.code,
+      'Lucky Draw coupon ${coupon.code}',
       couponStatusLabel(coupon.status),
-      cadenceLine,
-      if (validTill != null) 'Valid till ${_formatDate(validTill)}',
+      if (activeCadences.isNotEmpty) 'Entered in ${activeCadences.map(cadenceLabel).join(', ')}',
+      if (issuedAt != null) 'Issued ${_formatDate(issuedAt)}',
     ];
 
     return Semantics(
       button: onTap != null,
       label: semanticsParts.join(', '),
-      child: AppCard(
-        onTap: onTap,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              ),
-              child: Icon(Icons.confirmation_number_rounded, color: color, size: 22),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 150),
+        child: Material(
+          color: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    coupon.code,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(letterSpacing: 0.5),
-                    overflow: TextOverflow.ellipsis,
+                  const _StubAccent(),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.smd),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  coupon.code,
+                                  style: AppTypography.textTheme.titleMedium?.copyWith(letterSpacing: 0.5),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              StatusBadge(
+                                label: couponStatusLabel(coupon.status),
+                                tone: couponStatusTone(coupon.status),
+                                icon: coupon.isWon ? Icons.emoji_events_rounded : null,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Wrap(
+                            spacing: AppSpacing.xs,
+                            runSpacing: AppSpacing.xs,
+                            children: [
+                              for (final cadence in const ['weekly', 'monthly', 'mega'])
+                                _CadenceChip(cadence: cadence, active: activeCadences.contains(cadence)),
+                            ],
+                          ),
+                          if (issuedAt != null) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today_rounded, size: AppIconSize.xs, color: AppColors.textSecondary),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text('Issued ${_formatDate(issuedAt)}', style: AppTypography.caption),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(cadenceLine, style: Theme.of(context).textTheme.labelSmall, overflow: TextOverflow.ellipsis),
-                  if (validTill != null) ...[
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text('Valid till ${_formatDate(validTill)}', style: Theme.of(context).textTheme.labelSmall),
-                      ],
-                    ),
-                  ],
-                  if (coupon.isWon) ...[
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(Icons.emoji_events_rounded, size: 13, color: AppColors.orange),
-                        const SizedBox(width: 4),
-                        Text(
-                          'You won a reward!',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ],
+                  const Padding(
+                    padding: EdgeInsets.only(right: AppSpacing.sm),
+                    child: Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: AppIconSize.md),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                StatusBadge(label: couponStatusLabel(coupon.status), tone: couponStatusTone(coupon.status)),
-                const SizedBox(height: AppSpacing.xs),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 18),
-              ],
-            ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The card's brand identity -- a slim navy strip with a gold ticket icon,
+/// evoking a coupon stub without the height cost of an illustrated one.
+class _StubAccent extends StatelessWidget {
+  const _StubAccent();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      alignment: Alignment.center,
+      color: AppColors.luckyDrawNavy,
+      child: const Icon(Icons.confirmation_number_rounded, color: AppColors.gold, size: AppIconSize.md),
+    );
+  }
+}
+
+class _CadenceChip extends StatelessWidget {
+  const _CadenceChip({required this.cadence, required this.active});
+
+  final String cadence;
+  final bool active;
+
+  static const _shortLabel = {'weekly': 'Weekly', 'monthly': 'Monthly', 'mega': 'Mega'};
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
+      decoration: BoxDecoration(
+        color: active ? AppColors.goldLight : AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        border: Border.all(color: active ? AppColors.gold : AppColors.border),
+      ),
+      child: Text(
+        _shortLabel[cadence] ?? cadence,
+        style: AppTypography.textTheme.labelSmall?.copyWith(
+          color: active ? AppColors.goldDark : AppColors.textDisabled,
         ),
       ),
     );

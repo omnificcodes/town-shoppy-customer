@@ -18,7 +18,14 @@ import '../../helpers/responsive_test_helper.dart';
 class _FakeWalletRepository implements WalletRepository {
   @override
   Future<SilverWalletBalance> balance() async =>
-      const SilverWalletBalance(balance: 800, balanceInrEquivalent: 8, updatedAt: null);
+      const SilverWalletBalance(
+        balance: 800,
+        universalBalance: 800,
+        shopExclusiveBalance: 0,
+        shopExclusiveBreakdown: [],
+        balanceInrEquivalent: 8,
+        updatedAt: null,
+      );
 
   @override
   Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
@@ -107,7 +114,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Redemption not available'), findsOneWidget);
-      expect(find.text('Submit'), findsNothing);
+      expect(find.text('Redeem coins'), findsNothing);
     });
 
     testWidgets('a merchant with exactly one branch auto-selects it and enables submit once an amount is entered', (
@@ -119,15 +126,24 @@ void main() {
       expect(find.text('Branch'), findsOneWidget);
       expect(find.text('Main Branch'), findsOneWidget);
 
-      final submitButtonFinder = find.widgetWithText(ElevatedButton, 'Submit');
+      final submitButtonFinder = find.widgetWithText(ElevatedButton, 'Redeem coins');
       expect(tester.widget<ElevatedButton>(submitButtonFinder).onPressed, isNull);
 
       await tester.enterText(find.widgetWithText(TextField, 'Bill amount'), '500');
       await tester.pumpAndSettle();
 
-      expect(tester.widget<ElevatedButton>(submitButtonFinder).onPressed, isNotNull);
       expect(find.text('Review'), findsOneWidget);
       expect(find.text('₹500.00'), findsOneWidget);
+      // The discount is derivable client-side: 5% of ₹500 is ₹25, capped by
+      // the fake wallet's ₹8.00 equivalent. Coins never are -- the card
+      // says so instead of guessing.
+      expect(find.text('₹8.00'), findsOneWidget);
+      expect(find.text('Confirmed at verification'), findsOneWidget);
+
+      // The Review card pushes the CTA below the fold; the list is lazy.
+      await tester.scrollUntilVisible(find.text('Redeem coins'), 200, scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+      expect(tester.widget<ElevatedButton>(submitButtonFinder).onPressed, isNotNull);
     });
 
     testWidgets('a merchant with multiple branches requires an explicit tap before Review appears', (tester) async {

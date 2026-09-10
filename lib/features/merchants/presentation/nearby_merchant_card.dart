@@ -4,7 +4,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../data/models/nearby_merchant.dart';
+import 'favorite_button.dart';
 import 'merchant_logo.dart';
+import 'view_store_link.dart';
 
 /// Same visual language as [MerchantCard], but for a `GET /merchants/nearby`
 /// result: shows the specific branch's address and its distance instead of
@@ -35,7 +37,7 @@ class NearbyMerchantCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 56),
+                MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: AppSize.avatarLg),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -48,7 +50,7 @@ class NearbyMerchantCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (address.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           address,
                           style: Theme.of(context).textTheme.bodySmall,
@@ -60,54 +62,27 @@ class NearbyMerchantCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                _FavoriteButton(merchantName: merchant.name),
+                FavoriteButton(merchantName: merchant.name),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
-                const Icon(Icons.near_me_rounded, size: 14, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
+                const Icon(Icons.near_me_rounded, size: AppIconSize.xs, color: AppColors.textSecondary),
+                const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     '$distanceLabel away',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
                   ),
                 ),
-                Text(
-                  'View Store',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelMedium?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
-                ),
-                const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.orange),
+                const SizedBox(width: AppSpacing.sm),
+                const ViewStoreLink(),
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FavoriteButton extends StatelessWidget {
-  const _FavoriteButton({required this.merchantName});
-
-  final String merchantName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Favorite $merchantName',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favorites is coming soon.'))),
-        child: const Padding(
-          padding: EdgeInsets.all(4),
-          child: Icon(Icons.favorite_border_rounded, size: 20, color: AppColors.textSecondary),
         ),
       ),
     );

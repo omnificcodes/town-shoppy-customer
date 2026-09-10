@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../data/models/merchant.dart';
+import 'favorite_button.dart';
 import 'merchant_logo.dart';
+import 'view_store_link.dart';
 
 /// A premium merchant summary card — logo, name, category, town, and an
 /// optional discount badge, using only fields `MerchantPublicResource`
 /// actually returns. `branch_count` is deliberately not shown: the public
 /// resource only ever exposes a merchant's single primary branch, never a
 /// count of all its branches (see the phase report's backend-limitations
-/// section). The heart icon is a UI-only stub — there is no favorites/
-/// wishlist concept anywhere in the backend yet, so it surfaces a "coming
-/// soon" message rather than pretending to persist anything, same pattern
-/// Wallet's Terms & Conditions/Help & Support use.
+/// section). The heart icon is [FavoriteButton]'s "coming soon" stub.
 class MerchantCard extends StatelessWidget {
   const MerchantCard({super.key, required this.merchant, this.onTap});
 
@@ -39,7 +39,7 @@ class MerchantCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 56),
+                MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: AppSize.avatarLg),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
@@ -52,7 +52,7 @@ class MerchantCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (subtitleParts.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(
                           subtitleParts,
                           style: Theme.of(context).textTheme.bodySmall,
@@ -68,15 +68,15 @@ class MerchantCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                _FavoriteButton(merchantName: merchant.name),
+                FavoriteButton(merchantName: merchant.name),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 if (merchant.town != null) ...[
-                  const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textSecondary),
-                  const SizedBox(width: 4),
+                  const Icon(Icons.location_on_outlined, size: AppIconSize.xs, color: AppColors.textSecondary),
+                  const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
                       merchant.town!.name,
@@ -87,38 +87,11 @@ class MerchantCard extends StatelessWidget {
                   ),
                 ] else
                   const Spacer(),
-                Text(
-                  'View Store',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelMedium?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
-                ),
-                const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.orange),
+                const SizedBox(width: AppSpacing.sm),
+                const ViewStoreLink(),
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FavoriteButton extends StatelessWidget {
-  const _FavoriteButton({required this.merchantName});
-
-  final String merchantName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Favorite $merchantName',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Favorites is coming soon.'))),
-        child: const Padding(
-          padding: EdgeInsets.all(4),
-          child: Icon(Icons.favorite_border_rounded, size: 20, color: AppColors.textSecondary),
         ),
       ),
     );
@@ -133,11 +106,11 @@ class _DiscountBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
       decoration: BoxDecoration(color: AppColors.yellow, borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
       child: Text(
         '${rate.toStringAsFixed(rate.truncateToDouble() == rate ? 0 : 1)}% off with Town Coin',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.onYellow, fontWeight: FontWeight.w700),
+        style: AppTypography.badgeLabel.copyWith(color: AppColors.onYellow),
       ),
     );
   }

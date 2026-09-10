@@ -6,9 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/section_header.dart';
+import '../../../shared/widgets/status_badge.dart';
 import '../application/merchant_branches_provider.dart';
 import '../application/merchant_detail_provider.dart';
 import '../data/models/merchant.dart';
@@ -26,20 +30,16 @@ class MerchantDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(merchantDetailProvider(merchantId));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Merchant Details')),
-      body: SafeArea(
-        child: detail.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(AppSpacing.md),
-            child: Column(children: [LoadingSkeletonCard(), SizedBox(height: AppSpacing.sm), LoadingSkeletonCard()]),
-          ),
-          error: (error, _) => ErrorState(
-            error: error is AppException ? error : const UnknownAppException(),
-            onRetry: () => ref.invalidate(merchantDetailProvider(merchantId)),
-          ),
-          data: (merchant) => _MerchantDetailBody(merchant: merchant),
+    return AppScaffold(
+      title: 'Merchant Details',
+      padded: false,
+      body: detail.when(
+        loading: () => const LoadingSkeletonList(count: 2),
+        error: (error, _) => ErrorState(
+          error: error is AppException ? error : const UnknownAppException(),
+          onRetry: () => ref.invalidate(merchantDetailProvider(merchantId)),
         ),
+        data: (merchant) => _MerchantDetailBody(merchant: merchant),
       ),
     );
   }
@@ -55,7 +55,7 @@ class _MerchantDetailBody extends ConsumerWidget {
     final locationLine = [merchant.town?.name, merchant.town?.stateRegion].whereType<String>().where((p) => p.isNotEmpty).join(', ');
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.page),
       children: [
         _HeroCard(merchant: merchant, locationLine: locationLine),
 
@@ -65,27 +65,30 @@ class _MerchantDetailBody extends ConsumerWidget {
         // that would just 422.
         if (merchant.acceptsTownCoin && (merchant.discountRate ?? 0) > 0) ...[
           const SizedBox(height: AppSpacing.md),
-          _RedeemCoinCta(onTap: () => context.push('/merchants/${merchant.id}/redeem')),
+          _RedeemCoinCta(
+            discountRate: merchant.discountRate!,
+            onTap: () => context.push('/merchants/${merchant.id}/redeem'),
+          ),
         ],
 
         if (merchant.description != null && merchant.description!.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
-          Text('About', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.section),
+          const SectionHeader(title: 'About'),
           const SizedBox(height: AppSpacing.sm),
           _AboutCard(merchant: merchant),
         ],
 
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.section),
         _BranchesSection(merchant: merchant),
 
         if (merchant.websiteUrl != null && merchant.websiteUrl!.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
-          Text('Website', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.section),
+          const SectionHeader(title: 'Website'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
             child: Row(
               children: [
-                const Icon(Icons.public_rounded, color: AppColors.info),
+                const Icon(Icons.public_rounded, size: AppIconSize.lg, color: AppColors.info),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(merchant.websiteUrl!, style: Theme.of(context).textTheme.bodyMedium, overflow: TextOverflow.ellipsis),
@@ -95,7 +98,7 @@ class _MerchantDetailBody extends ConsumerWidget {
           ),
         ],
 
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: AppSpacing.section),
         const _WhyTownCoinStrip(),
       ],
     );
@@ -113,38 +116,34 @@ class _HeroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.orange.withValues(alpha: 0.12), AppColors.yellow.withValues(alpha: 0.08)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.orangeTint,
         borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.orangeBorder),
       ),
       child: Stack(
         children: [
           // Purely decorative -- no illustration asset exists for this (same
           // stance as Home/Wallet's own icon-built motifs), so a single
-          // large low-opacity icon stands in for the reference's leaf
-          // flourish rather than adding an image asset.
+          // large low-opacity storefront stands in for an illustration
+          // rather than adding an image asset.
           Positioned(
-            right: -16,
-            top: -8,
-            child: Icon(Icons.eco_rounded, size: 110, color: AppColors.orange.withValues(alpha: 0.08)),
+            right: 0,
+            top: 0,
+            child: ExcludeSemantics(
+              child: Icon(Icons.storefront_rounded, size: AppIconSize.hero, color: AppColors.orange.withValues(alpha: 0.08)),
+            ),
           ),
-          const Positioned(right: 36, top: 12, child: Icon(Icons.auto_awesome_rounded, size: 14, color: AppColors.orange)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 76,
-                height: 76,
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(AppSpacing.xs),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  boxShadow: [BoxShadow(color: AppColors.deepMaroon.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
+                  border: Border.all(color: AppColors.orangeBorder),
                 ),
-                child: MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: 68),
+                child: MerchantLogo(url: merchant.logoUrl, merchantName: merchant.name, size: AppSize.avatarLg),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -153,15 +152,15 @@ class _HeroCard extends StatelessWidget {
                   children: [
                     Text(merchant.name, style: Theme.of(context).textTheme.headlineSmall),
                     if (merchant.category != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(merchant.category!.name, style: Theme.of(context).textTheme.bodyMedium),
                     ],
                     if (locationLine.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xs),
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, size: 15, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.location_on_outlined, size: AppIconSize.sm, color: AppColors.textSecondary),
+                          const SizedBox(width: AppSpacing.xs),
                           Expanded(
                             child: Text(locationLine, style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis),
                           ),
@@ -170,23 +169,11 @@ class _HeroCard extends StatelessWidget {
                     ],
                     if (merchant.acceptsTownCoin) ...[
                       const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
-                        decoration: BoxDecoration(color: AppColors.successBg, borderRadius: BorderRadius.circular(999)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.savings_rounded, size: 14, color: AppColors.success),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                'Accepts Town Coin',
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.success, fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ],
-                        ),
+                      const StatusBadge(
+                        label: 'Accepts Town Coin',
+                        tone: AppTone.success,
+                        icon: Icons.savings_rounded,
+                        large: true,
                       ),
                     ],
                   ],
@@ -200,36 +187,39 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
+/// The page's one primary action, on a tinted card so it reads as the
+/// reward moment without painting saturated orange behind body text.
 class _RedeemCoinCta extends StatelessWidget {
-  const _RedeemCoinCta({required this.onTap});
+  const _RedeemCoinCta({required this.discountRate, required this.onTap});
 
+  final double discountRate;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.orange,
-      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
-          child: Row(
-            children: [
-              const Icon(Icons.savings_rounded, color: Colors.white),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text('Redeem Town Coin', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white)),
-              ),
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
-                child: const Icon(Icons.chevron_right_rounded, color: AppColors.orange, size: 18),
-              ),
-            ],
+    final rate = discountRate.toStringAsFixed(discountRate.truncateToDouble() == discountRate ? 0 : 1);
+
+    return AppCard(
+      tinted: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            // The rate is the merchant's own configured discount_rate, the
+            // same figure RedemptionCalculator applies — not a marketing
+            // estimate.
+            'Save $rate% when you pay with Town Coin here.',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-        ),
+          const SizedBox(height: AppSpacing.smd),
+          AppButton(
+            label: 'Redeem Town Coin',
+            size: AppButtonSize.lg,
+            icon: Icons.savings_rounded,
+            trailingIcon: Icons.arrow_forward_rounded,
+            onPressed: onTap,
+          ),
+        ],
       ),
     );
   }
@@ -250,10 +240,10 @@ class _AboutCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: AppSize.avatarMd,
+            height: AppSize.avatarMd,
             decoration: BoxDecoration(color: visual.color.withValues(alpha: 0.12), shape: BoxShape.circle),
-            child: Icon(visual.icon, color: visual.color, size: 20),
+            child: Icon(visual.icon, color: visual.color, size: AppIconSize.md),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -262,7 +252,7 @@ class _AboutCard extends StatelessWidget {
               children: [
                 if (category != null) ...[
                   Text(category.name, style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                 ],
                 Text(merchant.description!, style: Theme.of(context).textTheme.bodyMedium),
               ],
@@ -297,15 +287,13 @@ class _BranchesSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          branches.value != null && branches.value!.length > 1 ? 'Branches' : 'Branch',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        SectionHeader(title: branches.value != null && branches.value!.length > 1 ? 'Branches' : 'Branch'),
         const SizedBox(height: AppSpacing.sm),
         branches.when(
           loading: () => const LoadingSkeletonCard(),
           error: (error, _) => ErrorState(
             error: error is AppException ? error : const UnknownAppException(),
+            compact: true,
             onRetry: () => ref.invalidate(merchantBranchesProvider(merchant.id)),
           ),
           data: (data) => data.length == 1
@@ -340,10 +328,10 @@ class _SingleBranchCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: AppColors.orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
-                  child: const Icon(Icons.storefront_rounded, color: AppColors.orange, size: 20),
+                  width: AppSize.avatarMd,
+                  height: AppSize.avatarMd,
+                  decoration: BoxDecoration(color: AppColors.orangeTint, borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
+                  child: const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.md),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -352,7 +340,7 @@ class _SingleBranchCard extends StatelessWidget {
                     children: [
                       Text(branch.name ?? 'Branch', style: Theme.of(context).textTheme.titleSmall),
                       if (address.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: AppSpacing.xxs),
                         Text(address, style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ],
@@ -374,7 +362,7 @@ class _SingleBranchCard extends StatelessWidget {
                     ),
                   ),
                 if (hasContact && hasCoordinates)
-                  const SizedBox(height: 32, child: VerticalDivider(width: 1)),
+                  const SizedBox(height: AppSpacing.xl, child: VerticalDivider(width: 1)),
                 if (hasCoordinates)
                   Expanded(
                     child: _BranchActionButton(
@@ -411,23 +399,31 @@ class _BranchActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: AppColors.orange),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textPrimary),
-              ),
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: AppSpacing.touchTarget,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: AppIconSize.sm, color: AppColors.orange),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textPrimary),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -437,31 +433,52 @@ class _BranchActionButton extends StatelessWidget {
 /// Generic, non-merchant-specific product education -- same honest-content
 /// rule as everywhere else in this session's redesigns (Wallet's "How it
 /// works" sheet): no fabricated per-merchant claims, just how Town Coin
-/// itself works, same for every merchant page.
+/// itself works, same for every merchant page. Three stacked rows rather
+/// than three squeezed columns, so each label wraps naturally at any width
+/// or text scale instead of relying on a hard line break.
 class _WhyTownCoinStrip extends StatelessWidget {
   const _WhyTownCoinStrip();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.orange.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _WhyTownCoinItem(icon: Icons.savings_rounded, color: AppColors.orange, title: 'Pay with\nTown Coins', subtitle: 'Use your coins to get exciting offers'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Why pay with Town Coin'),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            border: Border.all(color: AppColors.border),
           ),
-          Expanded(
-            child: _WhyTownCoinItem(icon: Icons.card_giftcard_rounded, color: AppColors.crimson, title: 'Enjoy More\nRewards', subtitle: 'Unlock special discounts & deals'),
+          child: Column(
+            children: [
+              const _WhyTownCoinItem(
+                icon: Icons.savings_rounded,
+                color: AppColors.orange,
+                title: 'Pay with Town Coins',
+                subtitle: 'Use your coins towards purchases at participating merchants.',
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              const _WhyTownCoinItem(
+                icon: Icons.card_giftcard_rounded,
+                color: AppColors.crimson,
+                title: 'Enjoy more rewards',
+                subtitle: 'Unlock merchant discounts and lucky draw entries.',
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              _WhyTownCoinItem(
+                icon: Icons.percent_rounded,
+                color: AppColors.decorativeAccents[5],
+                title: 'Save more every day',
+                subtitle: 'The more you shop locally, the more you save.',
+              ),
+            ],
           ),
-          Expanded(
-            child: _WhyTownCoinItem(icon: Icons.percent_rounded, color: Color(0xFF6A1B9A), title: 'Save More\nEveryday', subtitle: 'The more you shop, the more you save'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -476,18 +493,26 @@ class _WhyTownCoinItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: AppSize.avatarMd,
+          height: AppSize.avatarMd,
           decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: color, size: AppIconSize.md),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelMedium),
-        const SizedBox(height: 2),
-        Text(subtitle, textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelSmall, maxLines: 3),
+        const SizedBox(width: AppSpacing.smd),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
       ],
     );
   }

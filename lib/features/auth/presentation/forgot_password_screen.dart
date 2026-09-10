@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../application/password_reset_controller.dart';
 import '../application/password_reset_state.dart';
 import 'reset_password_screen.dart';
+import 'widgets/auth_background.dart';
 import 'widgets/auth_widgets.dart';
 
 /// Step 1 of the forgot-password flow -- `POST /auth/password/forgot`.
@@ -15,6 +16,9 @@ import 'widgets/auth_widgets.dart';
 /// account exists for the entered number (the backend's own enumeration
 /// protection, `AuthRepository.forgotPassword`'s docblock) -- this screen
 /// never learns or reveals that either.
+///
+/// Shares Login/Register's cream backdrop, brand block and gradient CTA so
+/// it reads as the same flow, but stays short: no hero art, one field.
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -63,54 +67,59 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final state = ref.watch(passwordResetControllerProvider);
     final isSubmitting = state is PasswordResetSubmitting;
     final serverError = state is PasswordResetIdle ? state.error : null;
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: AuthPalette.cream,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-                  tooltip: 'Back',
-                  onPressed: () => context.pop(),
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.centerLeft,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text('Forgot Password?', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  "Enter your mobile number and we'll send you a code to reset it.",
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AuthTextField(
-                  label: 'Mobile number',
-                  icon: Icons.smartphone_rounded,
-                  controller: _mobileController,
-                  prefixText: '+91 ',
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
-                  autofocus: true,
-                  textInputAction: TextInputAction.done,
-                  errorText: _touched ? _mobileError : null,
-                  onSubmitted: (_) => _submit(),
-                ),
-                if (serverError != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(serverError.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
+      body: Stack(
+        children: [
+          const AuthBackdrop(cornerBlobs: false),
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AuthHeader(onBack: () => context.pop()),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.xl),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const AuthBrandBlock(logoHeight: 56),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text('Forgot password?', style: textTheme.headlineMedium?.copyWith(color: AuthPalette.brown)),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          "Enter your mobile number and we'll send you a code to reset it.",
+                          style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        AuthTextField(
+                          label: 'Mobile number',
+                          icon: Icons.smartphone_rounded,
+                          controller: _mobileController,
+                          prefixText: '+91 ',
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+                          autofocus: true,
+                          textInputAction: TextInputAction.done,
+                          errorText: _touched ? _mobileError : null,
+                          onSubmitted: (_) => _submit(),
+                        ),
+                        if (serverError != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(serverError.message, style: textTheme.bodySmall?.copyWith(color: AppColors.error)),
+                        ],
+                        const SizedBox(height: AppSpacing.lg),
+                        AuthGradientButton(label: 'Send code', onPressed: _submit, isLoading: isSubmitting),
+                      ],
+                    ),
+                  ),
                 ],
-                const SizedBox(height: AppSpacing.lg),
-                AuthGradientButton(label: 'Send code', onPressed: _submit, isLoading: isSubmitting),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

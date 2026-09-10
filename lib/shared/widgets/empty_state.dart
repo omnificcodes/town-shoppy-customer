@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
+import 'state_panel.dart';
 
 /// Friendly, contextual empty state (section 35) — every list screen in the
-/// app uses this instead of a bare "No data" label.
+/// app uses this instead of a bare "No data" label. [secondaryAction] is
+/// for the states that need a real recovery step *and* a retry (e.g. "Open
+/// location settings" + "Try again").
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -12,44 +14,27 @@ class EmptyState extends StatelessWidget {
     required this.title,
     required this.message,
     this.action,
+    this.secondaryAction,
+    this.compact = false,
   });
 
   final IconData icon;
   final String title;
   final String message;
   final Widget? action;
+  final Widget? secondaryAction;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    // Same reasoning as ErrorState's identical wrapper: callers place this
-    // directly in a Scaffold body with no scroll wrapper of their own.
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.xxl,
-        horizontal: AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 40, color: AppColors.textDisabled),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-          if (action != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            action!,
-          ],
-        ],
-      ),
+    return StatePanel(
+      icon: icon,
+      iconColor: AppColors.textDisabled,
+      title: title,
+      message: message,
+      action: action,
+      secondaryAction: secondaryAction,
+      compact: compact,
     );
   }
 }

@@ -157,7 +157,7 @@ class _ResultsCountRow extends ConsumerWidget {
     if (state == null) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.xs),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.xs, AppSpacing.page, AppSpacing.xs),
       child: Text(
         state.total == 1 ? '1 merchant found' : '${state.total} merchants found',
         style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
@@ -179,10 +179,10 @@ class _TabToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, 0),
       child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
         child: Row(
           children: [
             Expanded(
@@ -223,34 +223,37 @@ class _TabToggleSegment extends StatelessWidget {
       label: selected ? '$label, selected' : label,
       child: Material(
         color: selected ? AppColors.orange : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
           onTap: onTap,
-          child: Padding(
-            // Same touch-target fix as the category tiles — see their own
-            // comment.
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 16, color: selected ? AppColors.onOrange : AppColors.textPrimary),
-                  const SizedBox(width: 4),
-                ],
-                Flexible(
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: selected ? AppColors.onOrange : AppColors.textPrimary,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        ),
+          child: ConstrainedBox(
+            // 40dp segment inside the track's 4dp padding = a 48dp row,
+            // regardless of label size.
+            constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: AppIconSize.sm, color: selected ? AppColors.onOrange : AppColors.textPrimary),
+                    const SizedBox(width: AppSpacing.xs),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: selected ? AppColors.onOrange : AppColors.textPrimary,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -259,7 +262,7 @@ class _TabToggleSegment extends StatelessWidget {
   }
 }
 
-const _listPadding = EdgeInsets.all(AppSpacing.md);
+const _listPadding = EdgeInsets.all(AppSpacing.page);
 
 /// Six placeholder cards while a list is loading — a sliver so it can sit
 /// inside the screen's single [CustomScrollView].
@@ -272,8 +275,8 @@ class _SkeletonSliver extends StatelessWidget {
       padding: _listPadding,
       sliver: SliverList.separated(
         itemCount: 6,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (_, __) => const LoadingSkeletonCard(),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+        itemBuilder: (_, _) => const LoadingSkeletonCard(),
       ),
     );
   }
@@ -332,7 +335,7 @@ class _AllMerchantsBody extends ConsumerWidget {
           padding: _listPadding,
           sliver: SliverList.separated(
             itemCount: data.items.length + (data.hasMore ? 1 : 0),
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               if (index >= data.items.length) {
                 return const Padding(
@@ -378,45 +381,57 @@ class _NearbyMerchantsBody extends ConsumerWidget {
           onRetry: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
         ),
       ),
+      // Every non-results sub-state is an EmptyState with a real recovery
+      // step as its primary action (and, for a service/permission failure,
+      // a retry as the secondary one) — not just a "try again".
       data: (uiState) => switch (uiState) {
         NearbyPromptState() => _FillSliver(
-            child: _LocationPromptCard(
+            child: EmptyState(
               icon: Icons.my_location_rounded,
               title: 'Find merchants near you',
               message: 'Town Shoppy will ask for your location to show the closest participating businesses.',
-              actionLabel: 'Use my location',
-              onAction: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+              action: AppButton(
+                label: 'Use my location',
+                onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+              ),
             ),
           ),
         NearbyLocatingState() => const _SkeletonSliver(),
         NearbyServiceDisabledState() => _FillSliver(
-            child: _LocationPromptCard(
+            child: EmptyState(
               icon: Icons.location_disabled_rounded,
               title: 'Location services are off',
               message: 'Turn on location services for this device to find nearby merchants.',
-              actionLabel: 'Open location settings',
-              onAction: () async {
-                await ref.read(locationServiceProvider).openLocationSettings();
-              },
-              secondaryLabel: 'Try again',
-              onSecondaryAction: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+              action: AppButton(
+                label: 'Open location settings',
+                onPressed: () async {
+                  await ref.read(locationServiceProvider).openLocationSettings();
+                },
+              ),
+              secondaryAction: AppButton(
+                label: 'Try again',
+                variant: AppButtonVariant.text,
+                onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
+              ),
             ),
           ),
         NearbyPermissionDeniedState(:final forever) => _FillSliver(
-            child: _LocationPromptCard(
+            child: EmptyState(
               icon: Icons.location_off_rounded,
               title: 'Location permission needed',
               message: forever
                   ? "Town Shoppy can't ask for location permission again — enable it from this app's settings."
                   : 'Allow location access to find merchants near you.',
-              actionLabel: forever ? 'Open app settings' : 'Allow location',
-              onAction: () async {
-                if (forever) {
-                  await ref.read(locationServiceProvider).openAppSettings();
-                } else {
-                  await ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
-                }
-              },
+              action: AppButton(
+                label: forever ? 'Open app settings' : 'Allow location',
+                onPressed: () async {
+                  if (forever) {
+                    await ref.read(locationServiceProvider).openAppSettings();
+                  } else {
+                    await ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
+                  }
+                },
+              ),
             ),
           ),
         NearbyReadyState(:final data) => _NearbyResultsSliver(data: data),
@@ -455,7 +470,7 @@ class _NearbyResultsSliver extends ConsumerWidget {
       padding: _listPadding,
       sliver: SliverList.separated(
         itemCount: data.items.length + (data.hasMore ? 1 : 0),
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
           if (index >= data.items.length) {
             return const Padding(
@@ -485,53 +500,6 @@ class _NearbyCategoryFilterRow extends ConsumerWidget {
   }
 }
 
-/// A prompt/error card shared by every "Nearby" sub-state that isn't a
-/// results list — same visual shape as [EmptyState] but with up to two
-/// actions, since a permission/service failure needs a real recovery step,
-/// not just a retry.
-class _LocationPromptCard extends StatelessWidget {
-  const _LocationPromptCard({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.actionLabel,
-    required this.onAction,
-    this.secondaryLabel,
-    this.onSecondaryAction,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
-  final String? secondaryLabel;
-  final VoidCallback? onSecondaryAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 40, color: AppColors.textDisabled),
-          const SizedBox(height: AppSpacing.md),
-          Text(title, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
-          const SizedBox(height: AppSpacing.xs),
-          Text(message, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
-          const SizedBox(height: AppSpacing.md),
-          AppButton(label: actionLabel, onPressed: onAction),
-          if (secondaryLabel != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            AppButton(label: secondaryLabel!, variant: AppButtonVariant.text, onPressed: onSecondaryAction),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _CategoryFilterRow extends ConsumerWidget {
   const _CategoryFilterRow({required this.currentCategoryId, required this.onSelect});
 
@@ -543,23 +511,13 @@ class _CategoryFilterRow extends ConsumerWidget {
     final categories = ref.watch(merchantCategoriesProvider);
 
     return categories.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-        child: SizedBox(
-          height: 70,
-          child: Row(
-            children: [
-              LoadingSkeleton(width: 74, height: 66, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd))),
-              SizedBox(width: AppSpacing.sm),
-              LoadingSkeleton(width: 74, height: 66, borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd))),
-            ],
-          ),
-        ),
-      ),
+      // Same height as the real strip so the list below doesn't jump once
+      // the categories arrive.
+      loading: () => const CategoryFilterStripSkeleton(),
       // Categories failing to load is not fatal to the merchant list itself
       // — the list still works without the filter row, so this collapses
       // to nothing rather than blocking the screen with an ErrorState.
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (categories) {
         if (categories.isEmpty) return const SizedBox.shrink();
 

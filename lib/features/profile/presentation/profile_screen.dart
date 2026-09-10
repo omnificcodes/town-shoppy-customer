@@ -6,14 +6,18 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/info_box.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
+import '../../../shared/widgets/nav_link_card.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
 
-/// Read-only by design — section 22: "support editing only where backend
-/// permits it." `CustomerProfile` has no update endpoint today (see the
-/// backend contract doc), so this screen shows exactly what `/auth/me`
-/// returns and nothing more.
+/// Name, date of birth, anniversary, and social links are all editable via
+/// `/profile/edit` (section 22's "support editing only where backend
+/// permits it" now applies to that screen's field set, not this one --
+/// `PATCH /customer-profile` is the backend contract behind it).
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -23,68 +27,111 @@ class ProfileScreen extends ConsumerWidget {
     final account = authState is AuthAuthenticated ? authState.account : null;
     final isLoggingOut = authState is AuthAuthenticated && authState.isLoggingOut;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
-      body: SafeArea(
-        child: account == null
-            ? const SizedBox.shrink()
-            : ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                children: [
-                  AppCard(
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: AppColors.orange.withValues(alpha: 0.12),
-                          child: Text(
-                            _initials(account.customerProfile?.name, account.mobileNumber),
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.orange),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(account.displayName, style: Theme.of(context).textTheme.titleLarge),
-                              const SizedBox(height: 2),
-                              Text(account.mobileNumber, style: Theme.of(context).textTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+    if (account == null) {
+      // Only reachable for the frame(s) while the session is still resolving
+      // (the router redirects away otherwise) -- a skeleton, never a blank
+      // screen.
+      return const AppScaffold(title: 'Profile', padded: false, body: LoadingSkeletonList(count: 4));
+    }
+
+    final status = account.customerProfile?.status ?? account.status;
+
+    return AppScaffold(
+      title: 'Profile',
+      padded: false,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Edit profile',
+          onPressed: () => context.push('/profile/edit'),
+        ),
+      ],
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.page),
+        children: [
+          AppCard(
+            child: Row(
+              children: [
+                Container(
+                  width: AppSize.avatarLg,
+                  height: AppSize.avatarLg,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(color: AppColors.orangeTintStrong, shape: BoxShape.circle),
+                  child: Text(
+                    _initials(account.customerProfile?.name, account.mobileNumber),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.orange),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text('Activity', style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: AppSpacing.sm),
-                  _NavRow(icon: Icons.receipt_long_rounded, label: 'Purchases', onTap: () => context.push('/purchases')),
-                  const SizedBox(height: AppSpacing.sm),
-                  _NavRow(icon: Icons.qr_code_2_rounded, label: 'Redemptions', onTap: () => context.push('/redemptions')),
-                  if (account.customerProfile?.referralCode != null) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    _NavRow(icon: Icons.card_giftcard_rounded, label: 'Referrals', onTap: () => context.push('/referrals')),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  InfoBox(
-                    icon: Icons.verified_user_rounded,
-                    title: 'Account status',
-                    message: account.customerProfile?.status ?? account.status,
-                    tone: (account.customerProfile?.status ?? account.status) == 'active' ? InfoBoxTone.success : InfoBoxTone.pending,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(account.displayName, style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(account.mobileNumber, style: Theme.of(context).textTheme.bodySmall),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppButton(
-                    label: 'Sign out',
-                    variant: AppButtonVariant.secondary,
-                    isLoading: isLoggingOut,
-                    onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-                    icon: Icons.logout_rounded,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.section),
+          const SectionHeader(title: 'Activity'),
+          const SizedBox(height: AppSpacing.smd),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                NavLinkRow(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'Purchases',
+                  subtitle: 'Bills recorded at participating merchants',
+                  onTap: () => context.push('/purchases'),
+                ),
+                const Divider(height: 1, indent: AppSpacing.md, endIndent: AppSpacing.md),
+                NavLinkRow(
+                  icon: Icons.qr_code_2_rounded,
+                  iconColor: AppColors.goldDark,
+                  title: 'Redemptions',
+                  subtitle: 'Town Coin you have spent',
+                  onTap: () => context.push('/redemptions'),
+                ),
+                if (account.customerProfile?.referralCode != null) ...[
+                  const Divider(height: 1, indent: AppSpacing.md, endIndent: AppSpacing.md),
+                  NavLinkRow(
+                    icon: Icons.card_giftcard_rounded,
+                    title: 'Referrals',
+                    subtitle: 'Invite friends with your code',
+                    onTap: () => context.push('/referrals'),
                   ),
                 ],
-              ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.section),
+          InfoBox(
+            icon: status == 'active' ? Icons.verified_user_rounded : Icons.hourglass_top_rounded,
+            title: 'Account status',
+            message: status == 'active' ? 'Active — you can earn and redeem Town Coin.' : _humanize(status),
+            tone: status == 'active' ? AppTone.success : AppTone.pending,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          AppButton(
+            label: 'Sign out',
+            variant: AppButtonVariant.secondary,
+            isLoading: isLoggingOut,
+            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+            icon: Icons.logout_rounded,
+          ),
+        ],
       ),
     );
+  }
+
+  String _humanize(String status) {
+    final words = status.replaceAll('_', ' ');
+    return words.isEmpty ? words : words[0].toUpperCase() + words.substring(1);
   }
 
   String _initials(String? name, String mobile) {
@@ -93,35 +140,5 @@ class ProfileScreen extends ConsumerWidget {
       return parts.take(2).map((p) => p[0].toUpperCase()).join();
     }
     return mobile.isNotEmpty ? mobile.substring(mobile.length - 2) : '?';
-  }
-}
-
-class _NavRow extends StatelessWidget {
-  const _NavRow({required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // Same "never color-only" reasoning as MerchantCard/NotificationTile --
-    // without this, a screen reader gets no button role and no composed
-    // announcement for the row.
-    return Semantics(
-      button: true,
-      label: label,
-      child: AppCard(
-        onTap: onTap,
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.orange),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text(label, style: Theme.of(context).textTheme.titleSmall)),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
-          ],
-        ),
-      ),
-    );
   }
 }

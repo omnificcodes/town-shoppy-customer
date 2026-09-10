@@ -81,11 +81,12 @@ class _BranchTile extends StatelessWidget {
             if (isSelectable) ...[
               Icon(
                 selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
+                size: AppIconSize.lg,
                 color: selected ? AppColors.orange : AppColors.textDisabled,
               ),
               const SizedBox(width: AppSpacing.sm),
             ] else ...[
-              const Icon(Icons.storefront_rounded, color: AppColors.silverDark),
+              const Icon(Icons.storefront_rounded, size: AppIconSize.lg, color: AppColors.silverDark),
               const SizedBox(width: AppSpacing.sm),
             ],
             Expanded(
@@ -99,11 +100,11 @@ class _BranchTile extends StatelessWidget {
                         context,
                       ).textTheme.labelSmall?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                   ],
                   Text(branch.name ?? 'Branch', style: Theme.of(context).textTheme.titleSmall),
                   if (address.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(address, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ],

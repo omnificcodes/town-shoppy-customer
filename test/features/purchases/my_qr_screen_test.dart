@@ -43,7 +43,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('tapping regenerate re-fetches a fresh QR without error', (tester) async {
+    testWidgets('tapping regenerate asks for confirmation before re-fetching a fresh QR', (tester) async {
       final fake = _FakeCustomerQrRepository();
       await tester.pumpWidget(_wrap(repository: fake));
       await tester.pumpAndSettle();
@@ -51,8 +51,31 @@ void main() {
       await tester.tap(find.text('Regenerate code'));
       await tester.pumpAndSettle();
 
+      // Destructive for the current code -- never fires on a single tap.
+      expect(find.text('Regenerate your code?'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Regenerate'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Regenerate your code?'), findsNothing);
       expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.text('Your QR code was regenerated.'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('cancelling the confirmation keeps the current QR', (tester) async {
+      final fake = _FakeCustomerQrRepository();
+      await tester.pumpWidget(_wrap(repository: fake));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Regenerate code'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Regenerate your code?'), findsNothing);
+      expect(find.byType(QrImageView), findsOneWidget);
+      expect(find.text('Your QR code was regenerated.'), findsNothing);
     });
 
     testWidgets('a failed initial load shows the error state with a retry action', (tester) async {

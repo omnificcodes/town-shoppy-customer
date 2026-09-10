@@ -4,20 +4,35 @@ import 'app_colors.dart';
 
 /// Elevation scale for the customer app.
 ///
-/// This app's flat content surfaces (cards, app bar, bottom nav) deliberately
-/// use `elevation: 0` plus a hairline border instead of a shadow — see
+/// This app's flat content surfaces (cards, app bar) deliberately use
+/// `elevation: 0` plus a hairline border instead of a shadow — see
 /// [AppTheme]'s `cardTheme` and design-principles.md's "premium means
 /// restrained" — borders read calmer than shadows at this density, and that
 /// choice stays in place here.
 ///
 /// Elevation still has a real job on this app's *floating* surfaces — the
 /// ones that sit above other content and need a visual cue separating them
-/// from what's behind (dialogs, bottom sheets, toasts/snackbars, popover
-/// menus). [subtle] and [floating] give those surfaces one consistent,
-/// restrained shadow instead of each call site inventing its own or relying
-/// on Material's default per-widget elevation values.
+/// from what's behind (nav bar, FAB, dialogs, bottom sheets, toasts). The
+/// numeric levels feed Material `elevation:` parameters; [subtle] and
+/// [floating] are the equivalent `BoxShadow`s for hand-built containers,
+/// so both kinds of surface share one restrained scale.
 class AppElevation {
   AppElevation._();
+
+  /// Flat: border only. Cards, tiles, the app bar at rest.
+  static const double level0 = 0;
+
+  /// The app bar once content has scrolled under it.
+  static const double level1 = 1;
+
+  /// The bottom nav bar and sticky headers.
+  static const double level2 = 3;
+
+  /// The docked Scan & Pay action.
+  static const double level3 = 8;
+
+  /// Dialogs and bottom sheets.
+  static const double level4 = 16;
 
   /// For content that sits just above the page — e.g. a popover menu.
   static List<BoxShadow> get subtle => [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/loading_skeleton.dart';
 import 'category_visual.dart';
 
 /// A horizontally-scrolling, *selectable* row of category tiles — the
@@ -21,15 +22,34 @@ class CategoryFilterStrip extends StatelessWidget {
   final int? currentCategoryId;
   final ValueChanged<int?> onSelect;
 
+  /// The strip's height at the default text scale: a tile (icon badge +
+  /// one label line + padding + border) plus the strip's own vertical
+  /// padding. [CategoryFilterStripSkeleton] uses the same figure so the
+  /// loading → loaded transition never shifts the list below.
+  static const double _baseHeight = 84;
+
+  /// How much one label line grows per unit of text scale — `labelSmall`
+  /// is 12sp at 1.35 line height.
+  static const double _labelLineHeight = 17;
+
+  /// Grows with the system text scale (capped) so the tile's label line
+  /// still fits inside the fixed-height strip at 2x instead of overflowing.
+  static double heightFor(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+    return _baseHeight + (scale - 1) * _labelLineHeight;
+  }
+
+  static const _padding = EdgeInsets.symmetric(horizontal: AppSpacing.page, vertical: AppSpacing.xs);
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 84,
+      height: heightFor(context),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        padding: _padding,
         itemCount: categoryNames.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           if (index == 0) {
             return _CategoryFilterTile(
@@ -56,6 +76,36 @@ class CategoryFilterStrip extends StatelessWidget {
   }
 }
 
+/// Placeholder tiles occupying exactly [CategoryFilterStrip]'s height and
+/// padding, so the results list doesn't jump when the real strip arrives.
+class CategoryFilterStripSkeleton extends StatelessWidget {
+  const CategoryFilterStripSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tileHeight = CategoryFilterStrip.heightFor(context) - CategoryFilterStrip._padding.vertical;
+
+    return SizedBox(
+      height: CategoryFilterStrip.heightFor(context),
+      child: Padding(
+        padding: CategoryFilterStrip._padding,
+        child: Row(
+          children: [
+            for (var i = 0; i < 3; i++) ...[
+              if (i > 0) const SizedBox(width: AppSpacing.sm),
+              LoadingSkeleton(
+                width: _CategoryFilterTile.minWidth,
+                height: tileHeight,
+                borderRadius: const BorderRadius.all(Radius.circular(AppSpacing.radiusMd)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Sized to its own label (within a floor/cap) so short names like
 /// "Bakery" get a compact tile while long ones like "Agriculture & Farming
 /// Supplies" stay on one line and ellipsize instead of breaking mid-word
@@ -75,6 +125,9 @@ class _CategoryFilterTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  static const double minWidth = 72;
+  static const double maxWidth = 124;
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
@@ -88,8 +141,8 @@ class _CategoryFilterTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minWidth: 72, maxWidth: 124),
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 12),
+            constraints: const BoxConstraints(minWidth: minWidth, maxWidth: maxWidth),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.smd),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               border: Border.all(color: selected ? color : AppColors.border, width: selected ? 1.5 : 1),
@@ -99,12 +152,12 @@ class _CategoryFilterTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: AppSize.avatarSm,
+                  height: AppSize.avatarSm,
                   decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: Icon(icon, color: color, size: 19),
+                  child: Icon(icon, color: color, size: AppIconSize.md),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   label,
                   maxLines: 1,

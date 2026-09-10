@@ -15,6 +15,26 @@ class CouponEligibility {
   bool get isActive => status == 'active';
 }
 
+/// The merchant a coupon's purchase was made at -- null for a coupon with
+/// no purchase behind it (e.g. a referral-milestone bonus, which
+/// `CouponIssuanceService::issueReferralBonus()` never attaches a merchant
+/// to). Same `{id, name, logo_url}` shape `Offer`'s embedded merchant uses.
+class CouponMerchantRef {
+  const CouponMerchantRef({required this.id, required this.name, required this.logoUrl});
+
+  factory CouponMerchantRef.fromJson(Map<String, dynamic> json) {
+    return CouponMerchantRef(
+      id: json['id'] as int,
+      name: json['name'] as String,
+      logoUrl: json['logo_url'] as String?,
+    );
+  }
+
+  final int id;
+  final String name;
+  final String? logoUrl;
+}
+
 /// Mirrors `CouponResource`'s exact customer-facing shape (`GET /coupons`,
 /// `GET /coupons/{coupon}`) -- deliberately never the wider
 /// `CouponAdminResource` fields (customer/purchase refs), which only a
@@ -26,11 +46,14 @@ class Coupon {
     required this.status,
     required this.sourceType,
     required this.eligibilities,
+    required this.merchant,
     required this.issuedAt,
     required this.annualCycleExpiresAt,
   });
 
   factory Coupon.fromJson(Map<String, dynamic> json) {
+    final merchantJson = json['merchant'] as Map<String, dynamic>?;
+
     return Coupon(
       id: json['id'] as int,
       code: json['code'] as String,
@@ -39,6 +62,7 @@ class Coupon {
       eligibilities: (json['eligibilities'] as List<dynamic>? ?? [])
           .map((e) => CouponEligibility.fromJson(e as Map<String, dynamic>))
           .toList(),
+      merchant: merchantJson != null ? CouponMerchantRef.fromJson(merchantJson) : null,
       issuedAt: json['issued_at'] != null ? DateTime.tryParse(json['issued_at'] as String) : null,
       annualCycleExpiresAt: json['annual_cycle_expires_at'] != null
           ? DateTime.tryParse(json['annual_cycle_expires_at'] as String)
@@ -51,6 +75,7 @@ class Coupon {
   final String status;
   final String sourceType;
   final List<CouponEligibility> eligibilities;
+  final CouponMerchantRef? merchant;
   final DateTime? issuedAt;
   final DateTime? annualCycleExpiresAt;
 
