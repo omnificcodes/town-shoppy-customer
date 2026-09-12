@@ -1,0 +1,56 @@
+name: Publish build to build_branch
+
+# Rebuilds the customer app as static web assets on every push to main and
+# publishes them to build_branch, overwriting its history each time -- same
+# pattern as town-shoppy-admin's own publish-build.yml. Forge deploys
+# customer.townshoppy.com as a Static HTML site straight from build_branch,
+# no build step on the server.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.6"
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Build web
+        env:
+          # Baked into the compiled JS at build time -- update here if the
+          # production API domain ever changes, then push to main.
+          API_BASE_URL: https://api.townshoppy.com/api/v1
+        run: >
+          flutter build web --release
+          --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
+          --dart-define=APP_ENV=production
+
+      - name: Publish to build_branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          publish_dir=$(mktemp -d)
+          cp -r build/web/. "$publish_dir"/
+
+          cd "$publish_dir"
+          git init -q
+          git checkout -q -b build_branch
+          git add -A
+          git commit -q -m "Build from ${GITHUB_SHA:0:7} ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin build_branch

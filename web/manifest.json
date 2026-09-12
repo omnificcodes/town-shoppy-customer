@@ -1,11 +1,11 @@
 {
-    "name": "customer",
-    "short_name": "customer",
+    "name": "Town Shoppy",
+    "short_name": "Town Shoppy",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FAF8F6",
+    "theme_color": "#FF6B00",
+    "description": "Shop local, earn Town Coin, and win Lucky Draw prizes.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
