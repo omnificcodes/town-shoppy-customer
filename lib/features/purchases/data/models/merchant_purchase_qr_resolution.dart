@@ -8,6 +8,8 @@ class MerchantPurchaseQrResolution {
     required this.branchId,
     required this.branchName,
     required this.branchAddressLine,
+    required this.acceptsTownCoin,
+    required this.discountRate,
   });
 
   factory MerchantPurchaseQrResolution.fromJson(Map<String, dynamic> json) {
@@ -19,6 +21,8 @@ class MerchantPurchaseQrResolution {
       branchId: branch['id'] as int,
       branchName: branch['name'] as String,
       branchAddressLine: branch['address_line'] as String?,
+      acceptsTownCoin: merchant['accepts_town_coin'] as bool? ?? false,
+      discountRate: (merchant['discount_rate'] as num?)?.toDouble(),
     );
   }
 
@@ -27,4 +31,13 @@ class MerchantPurchaseQrResolution {
   final int branchId;
   final String branchName;
   final String? branchAddressLine;
+
+  /// Whether this merchant takes Town Coin at all, and at what percentage
+  /// of the bill. Both arrive with the scan so the savings line can update
+  /// as the customer types, with no round trip per keystroke. The server
+  /// recomputes the real figure when the request is submitted.
+  final bool acceptsTownCoin;
+  final double? discountRate;
+
+  bool get canDiscount => acceptsTownCoin && (discountRate ?? 0) > 0;
 }

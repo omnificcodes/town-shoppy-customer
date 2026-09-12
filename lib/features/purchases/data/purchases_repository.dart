@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
 import '../../../core/networking/offset_page.dart';
+import 'models/counter_redemption.dart';
 import 'models/merchant_purchase_qr_resolution.dart';
 import 'models/purchase.dart';
 
@@ -70,18 +71,31 @@ class PurchasesRepository {
   /// re-resolves the target itself; the customer cannot end up requesting
   /// against a different merchant/branch than the one they scanned.
   /// `Idempotency-Key` required, same pattern as RedemptionsRepository.initiate().
-  Future<Purchase> requestPurchase({
+  /// With [redeem] true the server also spends this customer's Town Coins
+  /// against the same bill, in the same call, and returns the resulting
+  /// redemption in `meta`. How much is never sent from here -- the server
+  /// derives it from the merchant's own rate and the wallet.
+  Future<CounterPurchaseResult> requestPurchase({
     required String token,
     required double billAmount,
     required String idempotencyKey,
+    bool redeem = false,
   }) async {
     try {
       final response = await _dio.post(
         '/purchases/requests',
-        data: {'token': token, 'bill_amount': billAmount},
+        data: {'token': token, 'bill_amount': billAmount, if (redeem) 'redeem': true},
         options: Options(headers: {'Idempotency-Key': idempotencyKey}),
       );
-      return Purchase.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+
+      final redemption = ApiEnvelope.meta(response)?['redemption'];
+
+      return CounterPurchaseResult(
+        purchase: Purchase.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>),
+        redemption: redemption is Map
+            ? CounterRedemption.fromJson(Map<String, dynamic>.from(redemption))
+            : null,
+      );
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }
@@ -91,3 +105,12 @@ class PurchasesRepository {
 final purchasesRepositoryProvider = Provider<PurchasesRepository>((ref) {
   return PurchasesRepository(ref.watch(apiClientProvider).dio);
 });
+
+/// What one counter purchase produced: always a [purchase], plus the
+/// [redemption] when the customer chose to spend coins on the same bill.
+class CounterPurchaseResult {
+  const CounterPurchaseResult({required this.purchase, this.redemption});
+
+  final Purchase purchase;
+  final CounterRedemption? redemption;
+}

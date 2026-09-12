@@ -15,17 +15,19 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/state_panel.dart';
 import '../application/customer_purchase_request_controller.dart';
 import '../data/models/merchant_purchase_qr_resolution.dart';
+import 'counter_waiting_view.dart';
 
-/// Method 1, step 2 — shown immediately after ScanMerchantQrScreen decodes a
-/// token; resolves it here (in [initState], before this widget's first
+/// Method 1, step 2 — shown immediately after ScanMerchantQrScreen decodes
+/// a token; resolves it here (in [initState], before this widget's first
 /// [build] ever watches [customerPurchaseRequestControllerProvider]) so the
 /// autoDispose controller always has an active listener from the moment it
 /// starts resolving -- it is never left to be torn down mid-flight by a
 /// navigation the way "resolve on the previous screen, read the result on
-/// this one" would be. Same "one scrolling form, no paged wizard" shape as
-/// RedemptionInitiationScreen's `_RedemptionForm` (there is no real backend
-/// state machine for these client-side steps -- only "not yet submitted"
-/// and "submitting" exist before a genuine `Purchase` row is created).
+/// this one" would be.
+///
+/// Three client-side steps: type the bill and see what the coins take off
+/// it, check the final figure, then wait at the counter while the merchant
+/// settles. Only the last has anything behind it on the backend.
 class RequestPurchaseScreen extends ConsumerStatefulWidget {
   const RequestPurchaseScreen({required this.scannedToken, super.key});
 
@@ -63,15 +65,11 @@ class _RequestPurchaseScreenState extends ConsumerState<RequestPurchaseScreen> {
     final state = ref.watch(customerPurchaseRequestControllerProvider);
     final controller = ref.read(customerPurchaseRequestControllerProvider.notifier);
 
-    ref.listen(customerPurchaseRequestControllerProvider, (previous, next) {
-      final createdId = next.result?.id;
-      if (createdId != null && previous?.result == null) {
-        context.pushReplacement('/purchases/$createdId');
-      }
-    });
-
     return AppScaffold(
-      title: 'Request purchase',
+      title: switch (state.step) {
+        CounterStep.waiting => 'At the counter',
+        _ => 'Pay with Town Shoppy',
+      },
       padded: false,
       body: switch (state) {
         // A scan that resolved to nothing usable is not something "Try
@@ -89,14 +87,18 @@ class _RequestPurchaseScreenState extends ConsumerState<RequestPurchaseScreen> {
               onPressed: () => context.pop(),
             ),
           ),
-        CustomerPurchaseRequestState(resolution: final resolution?) => _RequestForm(
-            resolution: resolution,
-            state: state,
-            controller: controller,
-            amountController: _amountController,
-            amountTouched: _amountTouched,
-            onAmountTouched: () => setState(() => _amountTouched = true),
-          ),
+        CustomerPurchaseRequestState(resolution: final resolution?) => switch (state.step) {
+            CounterStep.waiting => CounterWaitingView(state: state),
+            CounterStep.review => _ReviewStep(resolution: resolution, state: state, controller: controller),
+            CounterStep.amount => _AmountStep(
+                resolution: resolution,
+                state: state,
+                controller: controller,
+                amountController: _amountController,
+                amountTouched: _amountTouched,
+                onAmountTouched: () => setState(() => _amountTouched = true),
+              ),
+          },
         // Both "still resolving" and the one frame before initState's
         // microtask kicks off the resolve: the same skeleton, shaped like
         // the form that replaces it (merchant card, then the amount field).
@@ -124,8 +126,46 @@ class _FormSkeleton extends StatelessWidget {
   }
 }
 
-class _RequestForm extends StatelessWidget {
-  const _RequestForm({
+/// Who is being paid. Shared by the first two steps so the merchant never
+/// disappears from under the numbers.
+class _MerchantHeader extends StatelessWidget {
+  const _MerchantHeader({required this.resolution});
+
+  final MerchantPurchaseQrResolution resolution;
+
+  @override
+  Widget build(BuildContext context) {
+    final branchLine = [resolution.branchName, resolution.branchAddressLine].whereType<String>().join(' · ');
+
+    return Column(
+      children: [
+        Container(
+          width: AppSize.avatarLg,
+          height: AppSize.avatarLg,
+          decoration: const BoxDecoration(color: AppColors.surfaceMuted, shape: BoxShape.circle),
+          child: const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.lg),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text('To', style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(
+          resolution.merchantName,
+          style: Theme.of(context).textTheme.titleMedium,
+          textAlign: TextAlign.center,
+        ),
+        if (branchLine.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xxs),
+          Text(branchLine, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+        ],
+      ],
+    );
+  }
+}
+
+/// Step 1 — the bill amount, with the saving appearing under it the moment
+/// there is an amount to apply it to.
+class _AmountStep extends StatelessWidget {
+  const _AmountStep({
     required this.resolution,
     required this.state,
     required this.controller,
@@ -146,32 +186,14 @@ class _RequestForm extends StatelessWidget {
     final amountError = amountTouched && amountController.text.isNotEmpty && state.billAmount == null
         ? 'Enter an amount between ₹0.01 and ₹10,00,000'
         : null;
-    final branchLine = [resolution.branchName, resolution.branchAddressLine].whereType<String>().join(' · ');
+
+    final discount = state.estimatedDiscount;
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.page),
       children: [
-        AppCard(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.lg),
-              const SizedBox(width: AppSpacing.smd),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(resolution.merchantName, style: Theme.of(context).textTheme.titleMedium),
-                    if (branchLine.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(branchLine, style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        const SizedBox(height: AppSpacing.md),
+        _MerchantHeader(resolution: resolution),
         const SizedBox(height: AppSpacing.section),
         AppTextField(
           label: 'Bill amount',
@@ -181,7 +203,7 @@ class _RequestForm extends StatelessWidget {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textInputAction: TextInputAction.done,
           inputFormatters: [_DecimalAmountFormatter()],
-          style: AppTypography.numericFinancialMedium,
+          style: AppTypography.numericFinancialLarge,
           helperText: 'The total on your bill, before any discount',
           errorText: amountError,
           onChanged: (value) {
@@ -189,13 +211,177 @@ class _RequestForm extends StatelessWidget {
             controller.setBillAmount(value);
           },
           onSubmitted: (_) {
-            if (state.canSubmit) controller.submit();
+            if (state.canContinue) controller.review();
           },
         ),
+        if (discount > 0) ...[
+          const SizedBox(height: AppSpacing.md),
+          Center(child: _SavingsChip(amount: discount)),
+        ],
+        if (resolution.canDiscount) ...[
+          const SizedBox(height: AppSpacing.md),
+          _RedeemToggle(state: state, controller: controller),
+        ],
+        const SizedBox(height: AppSpacing.section),
+        AppButton(
+          label: 'Continue',
+          icon: Icons.arrow_forward_rounded,
+          onPressed: state.canContinue ? controller.review : null,
+        ),
+        const SizedBox(height: AppSpacing.section),
+      ],
+    );
+  }
+}
+
+/// The "You save ₹350" pill from the reference flow. Green, quiet, and
+/// only ever shown when there is a real figure behind it.
+class _SavingsChip extends StatelessWidget {
+  const _SavingsChip({required this.amount});
+
+  final double amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.successBg,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.savings_outlined, size: AppIconSize.sm, color: AppColors.success),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            'You save ₹${amount.toStringAsFixed(2)}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RedeemToggle extends StatelessWidget {
+  const _RedeemToggle({required this.state, required this.controller});
+
+  final CustomerPurchaseRequestState state;
+  final CustomerPurchaseRequestController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Use my Town Coins', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Spend coins to lower this bill.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Switch(value: state.redeem, onChanged: controller.setRedeem),
+        ],
+      ),
+    );
+  }
+}
+
+/// Step 2 — the figure the customer hands over, and the arithmetic behind
+/// it. Nothing has been created on the backend yet at this point.
+class _ReviewStep extends StatelessWidget {
+  const _ReviewStep({required this.resolution, required this.state, required this.controller});
+
+  final MerchantPurchaseQrResolution resolution;
+  final CustomerPurchaseRequestState state;
+  final CustomerPurchaseRequestController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final bill = state.billAmount ?? 0;
+    final discount = state.estimatedDiscount;
+    final payable = state.estimatedPayable;
+    final hasDiscount = discount > 0;
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.page),
+      children: [
         const SizedBox(height: AppSpacing.md),
-        const InfoBox(
+        _MerchantHeader(resolution: resolution),
+        const SizedBox(height: AppSpacing.section),
+        if (hasDiscount) ...[
+          Center(
+            child: Text(
+              '₹${bill.toStringAsFixed(2)}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+        ],
+        Center(
+          child: Text(
+            '₹${payable.toStringAsFixed(2)}',
+            style: AppTypography.numericFinancialLarge.copyWith(
+              color: hasDiscount ? AppColors.success : AppColors.textPrimary,
+            ),
+          ),
+        ),
+        if (hasDiscount) ...[
+          const SizedBox(height: AppSpacing.md),
+          Center(child: _SavingsChip(amount: discount)),
+        ],
+        const SizedBox(height: AppSpacing.section),
+        AppCard(
+          child: Column(
+            children: [
+              _AmountRow(label: 'Bill amount', value: '₹${bill.toStringAsFixed(2)}'),
+              if (hasDiscount) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _AmountRow(
+                  label: 'Town Coin discount',
+                  value: '− ₹${discount.toStringAsFixed(2)}',
+                  valueColor: AppColors.success,
+                ),
+              ],
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Divider(height: 1, color: AppColors.border),
+              ),
+              _AmountRow(label: 'To pay', value: '₹${payable.toStringAsFixed(2)}', emphasised: true),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Center(
+          child: TextButton.icon(
+            onPressed: controller.backToAmount,
+            icon: const Icon(Icons.edit_outlined, size: AppIconSize.sm),
+            label: const Text('Edit amount'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        // The discount is an estimate until the server recalculates it from
+        // the merchant's own rate and the wallet, so the screen says so
+        // rather than presenting it as already agreed.
+        InfoBox(
           icon: Icons.info_outline_rounded,
-          message: 'The merchant will review and approve this before you receive Town Coins and Lucky Draw coupons.',
+          message: hasDiscount
+              ? 'The merchant confirms this at the counter. Your coins are only spent once they do.'
+              : 'The merchant reviews this before you receive Town Coins and Lucky Draw coupons.',
         ),
         const SizedBox(height: AppSpacing.section),
         if (state.submitError != null) ...[
@@ -203,11 +389,46 @@ class _RequestForm extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
         ],
         AppButton(
-          label: 'Submit request',
+          label: 'Pay ₹${payable.toStringAsFixed(2)}',
+          icon: Icons.lock_outline_rounded,
           isLoading: state.isSubmitting,
-          onPressed: state.canSubmit ? () => controller.submit() : null,
+          onPressed: state.canSubmit ? controller.submit : null,
         ),
         const SizedBox(height: AppSpacing.section),
+      ],
+    );
+  }
+}
+
+class _AmountRow extends StatelessWidget {
+  const _AmountRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.emphasised = false,
+  });
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool emphasised;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: emphasised ? theme.textTheme.titleSmall : theme.textTheme.bodyMedium,
+        ),
+        Text(
+          value,
+          style: (emphasised ? AppTypography.numericFinancialSmall : AppTypography.numericFinancialInline)
+              .copyWith(color: valueColor),
+        ),
       ],
     );
   }
