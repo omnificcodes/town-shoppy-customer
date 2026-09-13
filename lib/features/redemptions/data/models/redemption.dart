@@ -32,6 +32,11 @@ class Redemption {
     required this.verifiedAt,
     required this.createdAt,
     this.qrExpiresAt,
+    this.customer,
+    this.counterPresenceVerified = false,
+    this.merchantDiscountRate,
+    this.maxDiscountAmount,
+    this.updatedAt,
   });
 
   factory Redemption.fromJson(Map<String, dynamic> json) {
@@ -51,6 +56,11 @@ class Redemption {
       verifiedAt: json['verified_at'] != null ? DateTime.tryParse(json['verified_at'] as String) : null,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       qrExpiresAt: json['qr_expires_at'] != null ? DateTime.tryParse(json['qr_expires_at'] as String) : null,
+      customer: json['customer'] is Map ? RedemptionCustomerRef.fromJson(json['customer'] as Map<String, dynamic>) : null,
+      counterPresenceVerified: json['counter_presence_verified'] as bool? ?? false,
+      merchantDiscountRate: (json['merchant_discount_rate'] as num?)?.toDouble(),
+      maxDiscountAmount: (json['max_discount_amount'] as num?)?.toDouble(),
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
     );
   }
 
@@ -74,9 +84,42 @@ class Redemption {
   /// resource omitted it.
   final DateTime? qrExpiresAt;
 
+  /// Present only on the merchant management list (`?context=management`);
+  /// a customer reading their own history, and the merchant detail/verify
+  /// responses, never carry it.
+  final RedemptionCustomerRef? customer;
+
+  /// True when the customer raised this by scanning the branch's own
+  /// counter QR -- what lets the merchant settle it with one tap
+  /// (`verification_method: counter_confirm`) instead of a PIN.
+  final bool counterPresenceVerified;
+  final double? merchantDiscountRate;
+  final double? maxDiscountAmount;
+  final DateTime? updatedAt;
+
+  bool get isInitiated => status == 'initiated';
+
   String get merchantName => merchant?.name ?? 'Merchant';
 
   /// Terminal per `RedemptionStatus::allowedNextStates()` — nothing can
   /// change after these, so pollers stop.
   bool get isTerminal => status == 'settled' || status == 'expired' || status == 'cancelled';
+}
+
+/// `RedemptionResource.customer` -- name plus (management view only) the
+/// account's mobile number.
+class RedemptionCustomerRef {
+  const RedemptionCustomerRef({required this.id, required this.name, required this.mobileNumber});
+
+  factory RedemptionCustomerRef.fromJson(Map<String, dynamic> json) {
+    return RedemptionCustomerRef(
+      id: json['id'] as int,
+      name: json['name'] as String? ?? 'Customer',
+      mobileNumber: json['mobile_number'] as String?,
+    );
+  }
+
+  final int id;
+  final String name;
+  final String? mobileNumber;
 }

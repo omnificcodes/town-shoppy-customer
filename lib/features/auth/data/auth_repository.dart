@@ -109,6 +109,30 @@ class AuthRepository {
     }
   }
 
+  /// `POST /auth/password/set` -- for an account that signed up via OTP and
+  /// has no password yet (`Account.hasPassword == false`). Business mode's
+  /// Security screen, mirroring the merchant web app.
+  Future<void> setPassword({required String password}) async {
+    try {
+      await _dio.post('/auth/password/set', data: {'password': password, 'password_confirmation': password});
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// `POST /auth/password/change` -- the backend re-checks
+  /// `current_password`, so a wrong one comes back as a 422 field error.
+  Future<void> changePassword({required String currentPassword, required String password}) async {
+    try {
+      await _dio.post(
+        '/auth/password/change',
+        data: {'current_password': currentPassword, 'password': password, 'password_confirmation': password},
+      );
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
   /// Best-effort — the caller always clears local session state regardless
   /// of whether this succeeds (a network failure during logout must never
   /// leave the app stuck showing a "signed in" screen).

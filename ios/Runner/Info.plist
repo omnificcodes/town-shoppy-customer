@@ -48,6 +48,8 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Town Shoppy uses your location to show merchants near you.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Town Shoppy uses your camera to scan a merchant's Purchase QR code.</string>
+	<string>Town Shoppy uses your camera to scan a merchant's Purchase QR code, or to take a photo for your business logo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Town Shoppy uses your photo library to pick a logo or cover image for your business.</string>
 </dict>
 </plist>

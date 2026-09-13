@@ -94,6 +94,8 @@ class AppTextField extends StatelessWidget {
         labelText: label,
         hintText: hintText,
         helperText: helperText,
+        // Long helper copy wraps instead of vanishing into an ellipsis.
+        helperMaxLines: 3,
         errorText: errorText,
         prefixText: prefixText,
         prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, size: AppIconSize.md),

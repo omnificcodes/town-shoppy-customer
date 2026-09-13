@@ -44,6 +44,18 @@ dependencies:
   geocoding: ^5.0.0
   url_launcher: ^6.3.2
   flutter_svg: ^2.2.3
+  # Business mode (merchant registration / branch address): draggable map
+  # pin on OpenStreetMap tiles -- the same Leaflet behaviour the merchant
+  # web app has, with no API key or billing. latlong2 is flutter_map's
+  # coordinate type.
+  # Pinned below the latest majors on purpose: the app (and its CI publish
+  # workflow) builds on Flutter 3.32 / Dart 3.8, and newer releases of these
+  # require Dart 3.9+.
+  flutter_map: ^8.1.1
+  latlong2: ^0.9.1
+  # Business mode: logo / cover / offer / prize image uploads to
+  # POST /uploads/image.
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

@@ -96,6 +96,21 @@ class AppColors {
   static const onScrim = Color(0xFFFFFFFF);
   static const onScrimMuted = Color(0xB3FFFFFF); // white at 70%
 
+  // Business mode (the merchant-operator face of this app). The shell's
+  // chrome -- app bar, bottom nav's active state, hero cards -- is anchored
+  // on the brand's deep maroon rather than the customer mode's white/orange
+  // so an owner always knows at a glance which mode they are in
+  // (design-principles.md: customer and merchant surfaces must never be
+  // confusable). Orange stays the CTA colour in both modes; gold is the
+  // merchant wallet's identity per the same doc's "Silver vs. Gold" rule.
+  static const businessInk = Color(0xFF4A1818); // hero/app-bar ground
+  static const businessInkDeep = Color(0xFF2B0C0C); // gradient end, pressed states
+  static const onBusinessInk = Color(0xFFFFFFFF);
+  static const onBusinessInkMuted = Color(0xCCFFFFFF); // white at 80%
+  static const businessTint = Color(0xFFF6EEEE); // maroon at ~6% on white
+  static const businessTintStrong = Color(0xFFEBD9D9); // maroon at ~14%
+  static const businessBorder = Color(0xFFE3CFCF);
+
   // Coupon tile's ticket-stub accent -- a deliberately bespoke navy.
   // Nothing else in the palette is navy-toned (silverDark is blue-gray, the
   // wrong hue, and used elsewhere as a neutral); scoped here rather than

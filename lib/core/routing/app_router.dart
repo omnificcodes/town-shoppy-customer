@@ -2,15 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app_mode/app_mode.dart';
+import '../app_mode/app_mode_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
+import '../../features/auth/data/models/account.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
+import '../../features/business/data/models/merchant_branch.dart';
+import '../../features/business/presentation/billing/business_invoice_detail_screen.dart';
+import '../../features/business/presentation/billing/business_invoices_screen.dart';
+import '../../features/business/presentation/billing/business_payment_detail_screen.dart';
+import '../../features/business/presentation/billing/business_payments_screen.dart';
+import '../../features/business/presentation/branches/branch_form_screen.dart';
+import '../../features/business/presentation/branches/branch_qr_screen.dart';
+import '../../features/business/presentation/branches/business_branches_screen.dart';
+import '../../features/business/presentation/business_dashboard_screen.dart';
+import '../../features/business/presentation/business_qr_scan_screen.dart';
+import '../../features/business/presentation/customers/business_customer_detail_screen.dart';
+import '../../features/business/presentation/customers/business_customers_screen.dart';
+import '../../features/business/data/models/business_offer.dart';
+import '../../features/business/presentation/offers/business_offer_detail_screen.dart';
+import '../../features/business/presentation/offers/business_offers_screen.dart';
+import '../../features/business/presentation/offers/offer_form_screen.dart';
+import '../../features/business/presentation/offers/offer_redemptions_screen.dart';
+import '../../features/business/presentation/prizes/business_prize_detail_screen.dart';
+import '../../features/business/presentation/prizes/business_prizes_screen.dart';
+import '../../features/business/presentation/prizes/prize_form_screen.dart';
+import '../../features/business/presentation/wallet/merchant_wallet_screen.dart';
+import '../../features/business/presentation/direct_pos/direct_pos_screen.dart';
+import '../../features/business/presentation/purchases/business_purchase_detail_screen.dart';
+import '../../features/business/presentation/purchases/business_purchases_screen.dart';
+import '../../features/business/presentation/redemptions/business_redemption_detail_screen.dart';
+import '../../features/business/presentation/redemptions/business_redemptions_screen.dart';
+import '../../features/redemptions/data/models/redemption.dart';
+import '../../features/business/presentation/business_more_screen.dart';
+import '../../features/business/presentation/business_profile_screen.dart';
+import '../../features/business/presentation/business_routes.dart';
+import '../../features/business/presentation/business_security_screen.dart';
+import '../../features/business/presentation/business_shell.dart';
+import '../../features/business/presentation/business_subscriptions_screen.dart';
+import '../../features/business/presentation/edit_business_profile_screen.dart';
+import '../../features/business/presentation/merchant_register_screen.dart';
+import '../../features/business/presentation/mode_chooser_screen.dart';
+import '../../features/business/presentation/package_gate.dart';
 import '../../features/coupons/presentation/coupon_detail_screen.dart';
 import '../../features/coupons/presentation/coupons_list_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -44,8 +84,10 @@ import '../widgets/app_shell.dart';
 const _splashPath = '/splash';
 const _loginPath = '/login';
 const _registerPath = '/register';
+const _registerMerchantPath = '/register-merchant';
 const _forgotPasswordPath = '/forgot-password';
 const _resetPasswordPath = '/reset-password';
+const _chooseModePath = '/choose-mode';
 const _homePath = '/home';
 const _walletPath = '/wallet';
 const _offersPath = '/offers';
@@ -61,7 +103,9 @@ const _merchantsPath = '/merchants';
 
 /// Auth-aware [GoRouter]. Redirect logic — not widget-level checks — is the
 /// single source of truth for "who can see what" (section 13: "do not rely
-/// only on widget-level redirects").
+/// only on widget-level redirects"). That now includes *which mode* an
+/// account is in: Customer routes and `/business/*` routes are mutually
+/// exclusive trees, and the remembered [AppMode] decides which one is open.
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   ref.onDispose(notifier.dispose);
@@ -69,16 +113,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: _splashPath,
     refreshListenable: notifier,
-    redirect: (context, state) => _redirect(ref.read(authControllerProvider), state.matchedLocation),
+    redirect: (context, state) => _redirect(
+      ref.read(authControllerProvider),
+      ref.read(appModeControllerProvider),
+      state.matchedLocation,
+    ),
     routes: [
       GoRoute(path: _splashPath, builder: (context, state) => const _SplashScreen()),
       GoRoute(path: _loginPath, builder: (context, state) => const LoginScreen()),
       GoRoute(path: _registerPath, builder: (context, state) => const RegisterScreen()),
+      // Reachable signed-out (from Login) AND signed-in (from the drawer /
+      // Profile) -- the screen itself decides whether to ask for a password.
+      GoRoute(path: _registerMerchantPath, builder: (context, state) => const MerchantRegisterScreen()),
       GoRoute(path: _forgotPasswordPath, builder: (context, state) => const ForgotPasswordScreen()),
       GoRoute(
         path: _resetPasswordPath,
         builder: (context, state) => ResetPasswordScreen(args: state.extra as ResetPasswordArgs),
       ),
+      GoRoute(path: _chooseModePath, builder: (context, state) => const ModeChooserScreen()),
       GoRoute(path: _purchasesPath, builder: (context, state) => const PurchasesListScreen()),
       // 3-way purchase architecture, Method 1/3 — registered before
       // /purchases/:id below so "scan"/"request"/"my-qr" are never parsed
@@ -172,23 +224,228 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: _profilePath, builder: (context, state) => const ProfileScreen()),
         ],
       ),
+
+      // ---------------------------------------------------------------
+      // Business mode. Same "tab roots inside the shell, everything else
+      // pushed on top" split as the customer tree. Package-gated
+      // destinations are wrapped in RequirePackage here, at the route, so
+      // no screen can forget to gate itself.
+      // ---------------------------------------------------------------
+      ShellRoute(
+        builder: (context, state, child) => BusinessShell(location: state.matchedLocation, child: child),
+        routes: [
+          GoRoute(path: BusinessRoutes.root, builder: (context, state) => const BusinessDashboardScreen()),
+          GoRoute(
+            path: BusinessRoutes.purchases,
+            builder: (context, state) => const RequirePackage(feature: 'Purchases', child: BusinessPurchasesScreen()),
+          ),
+          GoRoute(
+            path: BusinessRoutes.offers,
+            builder: (context, state) => const RequirePackage(feature: 'Offers', child: BusinessOffersScreen()),
+          ),
+          GoRoute(path: BusinessRoutes.more, builder: (context, state) => const BusinessMoreScreen()),
+        ],
+      ),
+      // Purchase detail is pushed on top of the Sales tab (outside the
+      // shell) so the bottom bar's Approve/Reject never fights the nav bar.
+      GoRoute(
+        path: '${BusinessRoutes.purchases}/:id',
+        builder: (context, state) => RequirePackage(
+          feature: 'Purchases',
+          child: BusinessPurchaseDetailScreen(
+            key: ValueKey('business-purchase-${state.pathParameters['id']}'),
+            purchaseId: int.parse(state.pathParameters['id']!),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.counter,
+        builder: (context, state) => const RequirePackage(feature: 'Direct POS', child: DirectPosScreen()),
+      ),
+      // The camera scanner pops with the decoded string; the caller decides
+      // what it means (customer identity QR at the counter, a redemption
+      // QR during verification).
+      GoRoute(
+        path: BusinessRoutes.scan,
+        builder: (context, state) => BusinessQrScanScreen(args: state.extra as BusinessScanArgs? ?? BusinessScanArgs.customerQr),
+      ),
+      GoRoute(
+        path: BusinessRoutes.branches,
+        builder: (context, state) => const RequirePackage(feature: 'Your branches', child: BusinessBranchesScreen()),
+      ),
+      // `/new` before `/:id/...` so "new" is never parsed as an id.
+      GoRoute(
+        path: BusinessRoutes.branchNew,
+        builder: (context, state) => const RequirePackage(feature: 'Your branches', child: BranchFormScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.branches}/:id/edit',
+        builder: (context, state) => RequirePackage(
+          feature: 'Your branches',
+          child: BranchFormScreen(key: ValueKey('branch-edit-${state.pathParameters['id']}'), branch: state.extra as MerchantBranch?),
+        ),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.branches}/:id/qr',
+        builder: (context, state) => RequirePackage(
+          feature: 'Your branches',
+          child: BranchQrScreen(branchId: int.parse(state.pathParameters['id']!), branch: state.extra as MerchantBranch?),
+        ),
+      ),
+      // `/new` before `/:id` so "new" is never parsed as an id.
+      GoRoute(
+        path: BusinessRoutes.offerNew,
+        builder: (context, state) => const RequirePackage(feature: 'Offers', child: OfferFormScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.offers}/:id',
+        builder: (context, state) => RequirePackage(
+          feature: 'Offers',
+          child: BusinessOfferDetailScreen(key: ValueKey('offer-${state.pathParameters['id']}'), offerId: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.offers}/:id/edit',
+        builder: (context, state) => RequirePackage(
+          feature: 'Offers',
+          child: OfferFormScreen(key: ValueKey('offer-edit-${state.pathParameters['id']}'), offer: state.extra as BusinessOffer?),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.customers,
+        builder: (context, state) => const RequirePackage(feature: 'Your customer directory', child: BusinessCustomersScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.customers}/:id',
+        builder: (context, state) => RequirePackage(
+          feature: 'Your customer directory',
+          child: BusinessCustomerDetailScreen(key: ValueKey('customer-${state.pathParameters['id']}'), customerId: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.redemptions,
+        builder: (context, state) => const RequirePackage(feature: 'Town Coin redemptions', child: BusinessRedemptionsScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.redemptions}/:id',
+        builder: (context, state) => RequirePackage(
+          feature: 'Town Coin redemptions',
+          child: BusinessRedemptionDetailScreen(
+            key: ValueKey('business-redemption-${state.pathParameters['id']}'),
+            redemptionId: int.parse(state.pathParameters['id']!),
+            listRow: state.extra as Redemption?,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.offerRedemptions,
+        builder: (context, state) => const RequirePackage(feature: 'Offer redemptions', child: OfferRedemptionsScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.wallet,
+        builder: (context, state) => const RequirePackage(feature: 'Your merchant wallet', child: MerchantWalletScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.prizes,
+        builder: (context, state) => const RequirePackage(feature: 'Sponsored prizes', child: BusinessPrizesScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.prizeNew,
+        builder: (context, state) => const RequirePackage(feature: 'Sponsored prizes', child: PrizeFormScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.prizes}/:id',
+        builder: (context, state) => RequirePackage(
+          feature: 'Sponsored prizes',
+          child: BusinessPrizeDetailScreen(key: ValueKey('prize-${state.pathParameters['id']}'), prizeId: int.parse(state.pathParameters['id']!)),
+        ),
+      ),
+      GoRoute(path: BusinessRoutes.payments, builder: (context, state) => const BusinessPaymentsScreen()),
+      GoRoute(
+        path: '${BusinessRoutes.payments}/:id',
+        builder: (context, state) => BusinessPaymentDetailScreen(key: ValueKey('payment-${state.pathParameters['id']}'), paymentId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(path: BusinessRoutes.subscriptions, builder: (context, state) => const BusinessSubscriptionsScreen()),
+      GoRoute(path: BusinessRoutes.invoices, builder: (context, state) => const BusinessInvoicesScreen()),
+      GoRoute(
+        path: '${BusinessRoutes.invoices}/:id',
+        builder: (context, state) => BusinessInvoiceDetailScreen(key: ValueKey('invoice-${state.pathParameters['id']}'), invoiceId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(path: BusinessRoutes.profile, builder: (context, state) => const BusinessProfileScreen()),
+      GoRoute(path: BusinessRoutes.profileEdit, builder: (context, state) => const EditBusinessProfileScreen()),
+      // Notifications are account-scoped, so the customer screen is the
+      // business screen too -- one inbox, two entry points.
+      GoRoute(path: BusinessRoutes.notifications, builder: (context, state) => const NotificationsScreen()),
+      GoRoute(path: BusinessRoutes.security, builder: (context, state) => const BusinessSecurityScreen()),
+      GoRoute(path: BusinessRoutes.securityPassword, builder: (context, state) => const BusinessPasswordScreen()),
     ],
   );
 });
 
-String? _redirect(AuthState authState, String location) {
+String? _redirect(AuthState authState, AppModeState modeState, String location) {
   final onSplash = location == _splashPath;
   final onLogin = location == _loginPath;
   final onRegister = location == _registerPath;
+  final onRegisterMerchant = location == _registerMerchantPath;
   final onForgotPassword = location == _forgotPasswordPath;
   final onResetPassword = location == _resetPasswordPath;
-  final onPublicAuthRoute = onLogin || onRegister || onForgotPassword || onResetPassword;
+  final onPublicAuthRoute = onLogin || onRegister || onRegisterMerchant || onForgotPassword || onResetPassword;
   final onProtected = !onSplash && !onPublicAuthRoute;
 
   return switch (authState) {
     AuthInitial() => onSplash ? null : _splashPath,
     AuthUnauthenticated() || AuthSessionExpired() => onPublicAuthRoute ? null : _loginPath,
-    AuthAuthenticated() => onProtected ? null : _homePath,
+    AuthAuthenticated(:final account) => _redirectAuthenticated(
+        account,
+        modeState,
+        location,
+        onSplash: onSplash,
+        onProtected: onProtected,
+        onRegisterMerchant: onRegisterMerchant,
+      ),
+  };
+}
+
+/// Signed-in routing. Three trees exist -- Customer, Business, and the
+/// small shared set (chooser, merchant registration) -- and the remembered
+/// mode picks between the first two:
+///
+/// * no merchant profile  -> Customer tree only; `/business/*` and the
+///   chooser bounce to Home (mode is irrelevant).
+/// * merchant, no choice  -> the chooser, and nothing else.
+/// * merchant, Business   -> `/business/*` only.
+/// * merchant, Customer   -> Customer tree only.
+String? _redirectAuthenticated(
+  Account account,
+  AppModeState modeState,
+  String location, {
+  required bool onSplash,
+  required bool onProtected,
+  required bool onRegisterMerchant,
+}) {
+  // Reachable from both modes and from the Login screen; the screen
+  // itself adapts to "already signed in".
+  if (onRegisterMerchant) return null;
+
+  final onBusiness = location == BusinessRoutes.root || location.startsWith('${BusinessRoutes.root}/');
+  final onChooser = location == _chooseModePath;
+
+  if (!account.hasMerchantAccess) {
+    if (onBusiness || onChooser) return _homePath;
+    return onProtected ? null : _homePath;
+  }
+
+  // The saved mode is read from disk asynchronously; until it's known the
+  // splash stays up rather than flashing the chooser at a returning owner.
+  if (!modeState.loaded) return onSplash ? null : _splashPath;
+
+  final mode = modeState.mode;
+  if (mode == null) return onChooser ? null : _chooseModePath;
+  if (onChooser) return null; // explicit "switch mode" visit from a menu
+
+  return switch (mode) {
+    AppMode.business => onBusiness ? null : BusinessRoutes.root,
+    AppMode.customer => onBusiness ? _homePath : (onProtected ? null : _homePath),
   };
 }
 
@@ -251,20 +508,23 @@ class _DelayedIndicatorState extends State<_DelayedIndicator> {
   }
 }
 
-/// Bridges Riverpod's [authControllerProvider] to go_router's
-/// [Listenable]-based `refreshListenable`, so a state change (login,
-/// logout, session expiry) immediately re-evaluates [_redirect] instead of
-/// only on the next navigation event.
+/// Bridges Riverpod's [authControllerProvider] and [appModeControllerProvider]
+/// to go_router's [Listenable]-based `refreshListenable`, so a state change
+/// (login, logout, session expiry, mode switch) immediately re-evaluates
+/// [_redirect] instead of only on the next navigation event.
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
-    _subscription = ref.listen<AuthState>(authControllerProvider, (previous, next) => notifyListeners());
+    _authSubscription = ref.listen<AuthState>(authControllerProvider, (previous, next) => notifyListeners());
+    _modeSubscription = ref.listen<AppModeState>(appModeControllerProvider, (previous, next) => notifyListeners());
   }
 
-  late final ProviderSubscription<AuthState> _subscription;
+  late final ProviderSubscription<AuthState> _authSubscription;
+  late final ProviderSubscription<AppModeState> _modeSubscription;
 
   @override
   void dispose() {
-    _subscription.close();
+    _authSubscription.close();
+    _modeSubscription.close();
     super.dispose();
   }
 }

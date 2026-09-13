@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/app_mode/app_mode.dart';
+import '../../../core/app_mode/app_mode_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../business/presentation/business_routes.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -108,6 +111,29 @@ class ProfileScreen extends ConsumerWidget {
                 ],
               ],
             ),
+          ),
+          const SizedBox(height: AppSpacing.section),
+          const SectionHeader(title: 'Business'),
+          const SizedBox(height: AppSpacing.smd),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: account.hasMerchantAccess
+                ? NavLinkRow(
+                    icon: Icons.storefront_rounded,
+                    iconColor: AppColors.businessInk,
+                    title: 'Switch to Business app',
+                    subtitle: 'Counter, offers, redemptions and your shop profile',
+                    onTap: () async {
+                      await ref.read(appModeControllerProvider.notifier).select(AppMode.business);
+                      if (context.mounted) context.go(BusinessRoutes.root);
+                    },
+                  )
+                : NavLinkRow(
+                    icon: Icons.storefront_outlined,
+                    title: 'Register your business',
+                    subtitle: 'Join Town Shoppy as a merchant',
+                    onTap: () => context.push('/register-merchant'),
+                  ),
           ),
           const SizedBox(height: AppSpacing.section),
           InfoBox(

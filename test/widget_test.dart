@@ -42,6 +42,12 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> logout() async {}
 
   @override
+  Future<void> setPassword({required String password}) async {}
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String password}) async {}
+
+  @override
   Future<OtpRequestResult> forgotPassword({required String mobileNumber, String? channel}) async =>
       throw UnimplementedError();
 

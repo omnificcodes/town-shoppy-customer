@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/app_mode/app_mode.dart';
+import '../../../../core/app_mode/app_mode_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../../auth/application/auth_state.dart';
+import '../../../business/presentation/business_routes.dart';
 
 /// Opened from [HomeHeader]'s hamburger icon -- a quick-nav shortcut list,
 /// not a duplicate of [ProfileScreen] (which stays the full account
@@ -67,6 +70,30 @@ class HomeDrawer extends ConsumerWidget {
                   if (account?.customerProfile?.referralCode != null)
                     _DrawerItem(icon: Icons.card_giftcard_outlined, label: 'Refer & earn', route: '/referrals'),
                   _DrawerItem(icon: Icons.notifications_outlined, label: 'Notifications', route: '/notifications'),
+                  if (account?.hasMerchantAccess == true) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.storefront_rounded, color: AppColors.businessInk),
+                      title: const Text('Switch to Business app'),
+                      subtitle: const Text('Manage your shop'),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        await ref.read(appModeControllerProvider.notifier).select(AppMode.business);
+                        if (context.mounted) context.go(BusinessRoutes.root);
+                      },
+                    ),
+                  ] else ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.storefront_outlined, color: AppColors.textPrimary),
+                      title: const Text('Register your business'),
+                      subtitle: const Text('Join Town Shoppy as a merchant'),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        context.push('/register-merchant');
+                      },
+                    ),
+                  ],
                 ],
               ),
             ),

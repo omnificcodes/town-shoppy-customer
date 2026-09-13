@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/app_mode/app_mode_controller.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/networking/api_client.dart';
@@ -144,6 +145,9 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _clearSessionAndCustomerState() async {
     await _storage.delete(AppConstants.secureStorageAuthTokenKey);
+    // The Customer/Business choice belongs to the account that made it --
+    // the next sign-in (possibly a different number) starts from scratch.
+    await ref.read(appModeControllerProvider.notifier).clear();
     ref.read(sessionEpochProvider.notifier).bump();
   }
 }

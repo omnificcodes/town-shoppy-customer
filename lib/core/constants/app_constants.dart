@@ -11,4 +11,8 @@ class AppConstants {
   /// — no refresh-token flow exists on the backend; a 401 always means
   /// "sign in again," never "silently refresh" (see AuthController).
   static const String secureStorageAuthTokenKey = 'auth_token';
+
+  /// Last-used [AppMode] (`customer` / `business`) for accounts that can use
+  /// both -- see `AppModeController`. Cleared alongside the token on sign-out.
+  static const String secureStorageAppModeKey = 'app_mode';
 }

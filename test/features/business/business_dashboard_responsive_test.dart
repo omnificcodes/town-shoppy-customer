@@ -1,0 +1,124 @@
+import 'package:customer/core/networking/offset_page.dart';
+import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/auth/application/auth_controller.dart';
+import 'package:customer/features/auth/application/auth_state.dart';
+import 'package:customer/features/auth/data/models/account.dart';
+import 'package:customer/features/auth/data/models/merchant_profile_ref.dart';
+import 'package:customer/features/business/application/business_context.dart';
+import 'package:customer/features/business/data/models/business_merchant.dart';
+import 'package:customer/features/business/data/models/merchant_entitlement.dart';
+import 'package:customer/features/business/data/models/purchase_stats.dart';
+import 'package:customer/features/business/presentation/business_dashboard_screen.dart';
+import 'package:customer/features/notifications/application/unread_count_provider.dart';
+import 'package:customer/features/purchases/data/models/purchase.dart';
+import 'package:customer/features/redemptions/data/models/redemption.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../helpers/responsive_test_helper.dart';
+
+const _account = Account(
+  id: 1,
+  mobileNumber: '+919990003001',
+  status: 'active',
+  isSuperAdmin: false,
+  roles: ['merchant_owner'],
+  customerProfile: null,
+  merchantOwnerProfiles: [MerchantProfileRef(id: 1, merchantId: 5, status: 'active')],
+);
+
+class _AuthenticatedController extends AuthController {
+  @override
+  AuthState build() => const AuthAuthenticated(_account);
+}
+
+final _merchant = BusinessMerchant.fromJson({
+  'id': 5,
+  'name': 'Sunrise Grocers and Provisions of Ernakulam',
+  'status': 'active',
+  'accepts_town_coin': true,
+  'is_featured': false,
+  'category': {'id': 1, 'name': 'Grocery & Kirana', 'slug': 'grocery-kirana'},
+  'association': {'id': 2, 'name': 'Ernakulam Traders', 'slug': 'ernakulam-traders', 'town': {'id': 3, 'name': 'Kochi', 'slug': 'kochi'}},
+});
+
+final _purchase = Purchase.fromJson({
+  'id': 10,
+  'merchant_id': 5,
+  'bill_amount': 1234.5,
+  'currency': 'INR',
+  'status': 'recorded',
+  'created_at': DateTime.now().toIso8601String(),
+});
+
+final _redemption = Redemption.fromJson({
+  'id': 11,
+  'bill_amount': 500,
+  'coins_requested': 50,
+  'status': 'initiated',
+  'created_at': DateTime.now().toIso8601String(),
+});
+
+Widget _wrap({required bool hasPackage}) {
+  return ProviderScope(
+    overrides: [
+      authControllerProvider.overrideWith(_AuthenticatedController.new),
+      myMerchantProvider.overrideWith((ref) async => _merchant),
+      merchantEntitlementProvider.overrideWith(
+        (ref) async => MerchantEntitlement(hasPackage: hasPackage, status: hasPackage ? 'active' : null, planName: hasPackage ? 'VIP' : null, inGracePeriod: false),
+      ),
+      mySubscriptionProvider.overrideWith((ref) async => null),
+      unreadNotificationCountProvider.overrideWith((ref) async => 3),
+      dashboardPendingPurchasesCountProvider.overrideWith((ref) async => 2),
+      dashboardAwaitingRedemptionsProvider.overrideWith(
+        (ref) async => OffsetPage(items: [_redemption], currentPage: 1, lastPage: 1, total: 1),
+      ),
+      dashboardRecentPurchasesProvider.overrideWith((ref) async => [_purchase]),
+      purchaseStatsProvider.overrideWith(
+        (ref, range) async => PurchaseStats.fromJson({
+          'range': range,
+          'from': '2026-08-15',
+          'total': 42,
+          'trend': [for (var i = 0; i < 30; i++) {'date': '2026-08-${(i + 1).toString().padLeft(2, '0')}', 'count': i % 5}],
+          'breakdown_by_branch': [
+            {'branch_id': 1, 'branch_name': 'Main', 'count': 30},
+            {'branch_id': 2, 'branch_name': 'Annex', 'count': 12},
+          ],
+        }),
+      ),
+    ],
+    child: MaterialApp(theme: AppTheme.light, home: const BusinessDashboardScreen()),
+  );
+}
+
+void main() {
+  testWidgets('dashboard renders every section without overflow at each viewport', (tester) async {
+    await forEachViewport(
+      tester,
+      () => _wrap(hasPackage: true),
+      verify: (tester, size) async {
+        expect(find.textContaining('Sunrise Grocers'), findsOneWidget);
+        expect(find.text('BUSINESS'), findsOneWidget);
+        expect(find.text('Pending purchases'), findsOneWidget);
+        expect(find.text('Awaiting verification'), findsWidgets);
+        expect(find.text('42'), findsOneWidget);
+        expect(find.text('Please select a package'), findsNothing);
+        // Below the fold on phone viewports -- the sliver list builds lazily.
+        await tester.dragUntilVisible(find.text('Quick actions'), find.byType(CustomScrollView), const Offset(0, -300));
+        expect(find.text('Quick actions'), findsOneWidget);
+        await tester.dragUntilVisible(find.textContaining('1234.50'), find.byType(CustomScrollView), const Offset(0, -300));
+        expect(find.textContaining('1234.50'), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('shows the select-a-package banner when the shop has no package', (tester) async {
+    await tester.pumpWidget(_wrap(hasPackage: false));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Please select a package'), findsOneWidget);
+    expect(find.text('Choose a package'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}

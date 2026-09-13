@@ -32,6 +32,9 @@ class Purchase {
     required this.reviewedAt,
     required this.rejectionReason,
     required this.createdAt,
+    this.source,
+    this.duplicateFlagNotes,
+    this.updatedAt,
   });
 
   factory Purchase.fromJson(Map<String, dynamic> json) {
@@ -51,6 +54,9 @@ class Purchase {
       reviewedAt: json['reviewed_at'] != null ? DateTime.tryParse(json['reviewed_at'] as String) : null,
       rejectionReason: json['rejection_reason'] as String?,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      source: json['source'] as String?,
+      duplicateFlagNotes: json['duplicate_flag_notes'] as String?,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
     );
   }
 
@@ -67,6 +73,12 @@ class Purchase {
   final DateTime? reviewedAt;
   final String? rejectionReason;
   final DateTime? createdAt;
+
+  /// Merchant-side fields (`source`, flag notes, `updated_at`) -- shown on
+  /// the Business purchase detail, irrelevant to a customer.
+  final String? source;
+  final String? duplicateFlagNotes;
+  final DateTime? updatedAt;
 
   /// Falls back to a stable placeholder when the relation wasn't loaded
   /// (should not happen for any customer-facing call, but a purchase list

@@ -51,6 +51,10 @@ void main() {
         expect(find.text('Purchases'), findsOneWidget);
         expect(find.text('Redemptions'), findsOneWidget);
         expect(find.text('Referrals'), findsOneWidget);
+        expect(find.text('Register your business'), findsOneWidget);
+        // Below the fold on phone viewports now that the Business section
+        // sits above it -- ListView builds lazily, so scroll it into view.
+        await tester.dragUntilVisible(find.text('Sign out'), find.byType(ListView), const Offset(0, -200));
         expect(find.text('Sign out'), findsOneWidget);
       },
     );

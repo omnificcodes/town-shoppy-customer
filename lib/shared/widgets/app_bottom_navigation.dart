@@ -23,11 +23,24 @@ class BottomNavItemData {
 /// navigation state too. The bar grows with the system text scale (capped)
 /// and respects the bottom safe area on gesture-nav devices.
 class AppBottomNavigation extends StatelessWidget {
-  const AppBottomNavigation({super.key, required this.currentIndex, required this.onTap, required this.items});
+  const AppBottomNavigation({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    required this.items,
+    this.activeColor = AppColors.orange,
+    this.activeTint = AppColors.orangeTint,
+  });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<BottomNavItemData> items;
+
+  /// The selected tab's icon/label colour and the pill behind its icon.
+  /// Customer mode keeps the brand orange; Business mode passes its own
+  /// maroon identity so the two shells never look alike.
+  final Color activeColor;
+  final Color activeTint;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +76,7 @@ class AppBottomNavigation extends StatelessWidget {
   Widget _tab(BuildContext context, int index) {
     final item = items[index];
     final selected = index == currentIndex;
-    final color = selected ? AppColors.orange : AppColors.textSecondary;
+    final color = selected ? activeColor : AppColors.textSecondary;
 
     return Semantics(
       button: true,
@@ -79,7 +92,7 @@ class AppBottomNavigation extends StatelessWidget {
               curve: Curves.easeOut,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
               decoration: BoxDecoration(
-                color: selected ? AppColors.orangeTint : Colors.transparent,
+                color: selected ? activeTint : Colors.transparent,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
               ),
               child: Icon(selected ? item.activeIcon : item.icon, color: color, size: AppIconSize.lg),
@@ -104,15 +117,29 @@ class AppBottomNavigation extends StatelessWidget {
 /// The raised circular Scan & Pay action docked in the bottom nav's notch —
 /// [AppShell] supplies this as the [Scaffold.floatingActionButton].
 class ScanAndPayFab extends StatelessWidget {
-  const ScanAndPayFab({super.key, required this.onTap});
+  const ScanAndPayFab({
+    super.key,
+    required this.onTap,
+    this.semanticLabel = 'Scan & Pay',
+    this.icon = Icons.qr_code_scanner_rounded,
+    this.color = AppColors.crimson,
+    this.foregroundColor = AppColors.onCrimson,
+  });
 
   final VoidCallback onTap;
+
+  /// Business mode reuses this docked action as its "Counter" (Direct POS)
+  /// button with its own label/icon/colour.
+  final String semanticLabel;
+  final IconData icon;
+  final Color color;
+  final Color foregroundColor;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Scan & Pay',
+      label: semanticLabel,
       child: Material(
         color: Colors.transparent,
         shape: const CircleBorder(),
@@ -124,13 +151,13 @@ class ScanAndPayFab extends StatelessWidget {
             height: AppSize.fab,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.crimson,
+              color: color,
               boxShadow: [
-                BoxShadow(color: AppColors.crimson.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
+                BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
               ],
               border: Border.all(color: AppColors.surface, width: 3),
             ),
-            child: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.onCrimson, size: AppIconSize.xl),
+            child: Icon(icon, color: foregroundColor, size: AppIconSize.xl),
           ),
         ),
       ),

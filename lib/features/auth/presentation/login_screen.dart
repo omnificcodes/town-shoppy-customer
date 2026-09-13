@@ -161,6 +161,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 label: 'Create an account',
                                 onPressed: isSubmitting ? null : () => context.push('/register'),
                               ),
+                              const SizedBox(height: AppSpacing.md),
+                              // Business owners start here -- the same
+                              // app hosts the merchant side once their
+                              // number is registered as a merchant.
+                              AuthTintedPillButton(
+                                leading: 'Own a shop?',
+                                trailing: 'Register as a merchant',
+                                onPressed: isSubmitting ? null : () => context.push('/register-merchant'),
+                              ),
                               const SizedBox(height: AppSpacing.xl),
                             ],
                           ),
