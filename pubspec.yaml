@@ -56,6 +56,12 @@ dependencies:
   # Business mode: logo / cover / offer / prize image uploads to
   # POST /uploads/image.
   image_picker: ^1.1.2
+  # Business mode (Android only): native in-app subscription checkout.
+  # iOS and the web build keep the browser hand-off to the merchant web
+  # app (Apple's In-App Purchase rule for digital subscriptions doesn't
+  # apply to Android or to a plain website) -- see
+  # subscription_checkout_controller.dart.
+  razorpay_flutter: ^1.4.6
 
 dev_dependencies:
   flutter_test:

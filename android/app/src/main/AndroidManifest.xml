@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Every API call needs this; made explicit (rather than relying on a
+         plugin's own manifest to carry it) now that Razorpay's native
+         checkout runs its own network requests inside its own Activity. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- "Nearby merchants" search sends the device's coordinates to
          GET /merchants/nearby - coarse is enough for a merchant-radius
          search, fine is requested too since it's what most users grant by

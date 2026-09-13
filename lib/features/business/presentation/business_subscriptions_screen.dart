@@ -17,16 +17,21 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/nav_link_card.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../auth/application/auth_controller.dart';
+import '../../auth/application/auth_state.dart';
 import '../application/business_context.dart';
+import '../application/subscription_checkout_controller.dart';
 import '../data/models/merchant_subscription.dart';
 import '../data/models/subscription_plan.dart';
 import 'business_routes.dart';
 import 'business_status.dart';
 import 'widgets/business_page_header.dart';
 
-/// Current package + the plan catalogue. Checkout is a hand-off to the
-/// merchant web app in the browser (product decision -- no payment SDK in
-/// the app), so the only button here opens that page.
+/// Current package + the plan catalogue. On Android, paying for a plan
+/// happens right here via Razorpay's native checkout sheet. On iOS and the
+/// web build, checkout stays a hand-off to the merchant web app in the
+/// browser -- see `subscription_checkout_controller.dart` for why the two
+/// platforms deliberately differ.
 class BusinessSubscriptionsScreen extends ConsumerWidget {
   const BusinessSubscriptionsScreen({super.key});
 
@@ -40,6 +45,25 @@ class BusinessSubscriptionsScreen extends ConsumerWidget {
     final plans = ref.watch(subscriptionPlansProvider);
     final textTheme = Theme.of(context).textTheme;
     final hasActive = subscription.value?.grantsFullService ?? entitlement.value?.hasPackage ?? false;
+    final useNativeCheckout = ref.watch(nativeCheckoutAvailableProvider) && isOwner;
+
+    // Registered on every build regardless of [useNativeCheckout] -- Riverpod
+    // expects `ref.listen` calls to stay unconditional across rebuilds; the
+    // side effect itself is a no-op unless native checkout is actually in
+    // use, since nothing calls the controller's `start()` otherwise.
+    ref.listen<SubscriptionCheckoutState>(subscriptionCheckoutControllerProvider, (previous, next) {
+      if (!useNativeCheckout || !context.mounted) return;
+      if (next.status == SubscriptionCheckoutStatus.success) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('Subscribed to ${next.completedPlanName}.')));
+        ref.read(subscriptionCheckoutControllerProvider.notifier).acknowledge();
+      } else if (next.status == SubscriptionCheckoutStatus.error && next.error != null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(next.error!.message)));
+      }
+    });
 
     return BusinessScaffold(
       title: 'Subscriptions',
@@ -126,17 +150,44 @@ class BusinessSubscriptionsScreen extends ConsumerWidget {
             plans.when(
               loading: () => const Column(children: [LoadingSkeletonCard(), SizedBox(height: AppSpacing.sm), LoadingSkeletonCard()]),
               error: (e, _) => ErrorState(error: e is AppException ? e : const UnknownAppException(), onRetry: () => ref.invalidate(subscriptionPlansProvider)),
-              data: (list) => Column(
-                children: [
-                  for (final plan in list) ...[
-                    _PlanCard(plan: plan, isCurrent: subscription.value?.plan?.id == plan.id),
-                    const SizedBox(height: AppSpacing.smd),
+              data: (list) {
+                final sub = subscription.value;
+                final subPlanId = sub?.plan?.id;
+                final subPlanPrice = sub?.plan?.price;
+                final isEntitled = sub?.grantsFullService ?? false;
+                final hasStalledSubscription = sub != null && !isEntitled;
+                final checkoutState = useNativeCheckout ? ref.watch(subscriptionCheckoutControllerProvider) : null;
+                final auth = ref.watch(authControllerProvider);
+                final mobileNumber = auth is AuthAuthenticated ? auth.account.mobileNumber : '';
+
+                return Column(
+                  children: [
+                    for (final plan in list) ...[
+                      _PlanCard(
+                        plan: plan,
+                        isCurrent: isEntitled && subPlanId == plan.id,
+                        isStalled: hasStalledSubscription && subPlanId == plan.id,
+                        isCheaperThanCurrent: isEntitled && subPlanPrice != null && plan.price < subPlanPrice,
+                        nativeCheckout: useNativeCheckout,
+                        busy: checkoutState?.isBusyFor(plan.id) ?? false,
+                        onSubscribe: useNativeCheckout
+                            ? () => ref.read(subscriptionCheckoutControllerProvider.notifier).start(plan, contactNumber: mobileNumber)
+                            : null,
+                      ),
+                      const SizedBox(height: AppSpacing.smd),
+                    ],
                   ],
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.sm),
-            if (isOwner)
+            if (useNativeCheckout)
+              const InfoBox(
+                icon: Icons.verified_user_outlined,
+                tone: AppTone.neutral,
+                message: 'Payments are processed securely by Razorpay. Your package applies the moment payment completes.',
+              )
+            else if (isOwner)
               _subscribeUrl == null
                   ? const InfoBox(
                       icon: Icons.language_rounded,
@@ -239,23 +290,48 @@ class _CurrentPlanCard extends StatelessWidget {
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan, required this.isCurrent});
+  const _PlanCard({
+    required this.plan,
+    required this.isCurrent,
+    this.isStalled = false,
+    this.isCheaperThanCurrent = false,
+    this.nativeCheckout = false,
+    this.busy = false,
+    this.onSubscribe,
+  });
 
   final SubscriptionPlan plan;
   final bool isCurrent;
+
+  /// A subscription exists that points at this plan but never activated
+  /// (its last payment failed or was abandoned) -- shown as "Payment
+  /// pending" rather than a false "Current", with a Retry action instead
+  /// of a dead "Subscribe" button.
+  final bool isStalled;
+
+  /// True entitlement downgrades aren't wired into the app yet (they need
+  /// no payment at all -- a separate, simpler feature); shown as a hint
+  /// pointing at the web rather than a broken in-app action.
+  final bool isCheaperThanCurrent;
+  final bool nativeCheckout;
+  final bool busy;
+  final VoidCallback? onSubscribe;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     return AppCard(
-      borderColor: isCurrent ? AppColors.businessInk : null,
+      borderColor: isCurrent ? AppColors.businessInk : (isStalled ? AppColors.pending : null),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(child: Text(plan.name, style: textTheme.titleLarge)),
-              if (isCurrent) const StatusBadge(label: 'Current', tone: AppTone.info),
+              if (isCurrent)
+                const StatusBadge(label: 'Current', tone: AppTone.info)
+              else if (isStalled)
+                const StatusBadge(label: 'Payment pending', tone: AppTone.pending, icon: Icons.error_outline_rounded),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -276,6 +352,21 @@ class _PlanCard extends StatelessWidget {
               runSpacing: AppSpacing.xs,
               children: [for (final f in plan.enabledFeatureLabels) StatusBadge(label: f, tone: AppTone.neutral, icon: Icons.check_rounded)],
             ),
+          ],
+          if (nativeCheckout) ...[
+            const SizedBox(height: AppSpacing.smd),
+            if (isCurrent)
+              const SizedBox.shrink()
+            else if (isCheaperThanCurrent)
+              Text('Downgrade from the Subscriptions page on the web.', style: AppTypography.caption)
+            else
+              AppButton(
+                label: isStalled ? 'Retry payment' : 'Subscribe',
+                icon: isStalled ? Icons.refresh_rounded : Icons.workspace_premium_rounded,
+                variant: isStalled ? AppButtonVariant.secondary : AppButtonVariant.primary,
+                isLoading: busy,
+                onPressed: busy ? null : onSubscribe,
+              ),
           ],
         ],
       ),
