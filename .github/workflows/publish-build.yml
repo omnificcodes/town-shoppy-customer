@@ -31,9 +31,13 @@ jobs:
           # Baked into the compiled JS at build time -- update here if the
           # production API domain ever changes, then push to main.
           API_BASE_URL: https://api.townshoppy.com/api/v1
+          # Merchant web app origin (no trailing slash): Business mode opens its
+          # subscribe page in the browser for package checkout.
+          MERCHANT_WEB_URL: https://app.townshoppy.com
         run: >
           flutter build web --release
           --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
+          --dart-define=MERCHANT_WEB_URL=${{ env.MERCHANT_WEB_URL }}
           --dart-define=APP_ENV=production
 
       - name: Publish to build_branch
