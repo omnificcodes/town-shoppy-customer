@@ -30,5 +30,13 @@ class Env {
   /// instead of offering a dead link.
   static const String merchantWebUrl = String.fromEnvironment('MERCHANT_WEB_URL', defaultValue: '');
 
+  /// This app's OWN hosted web origin (no trailing slash) -- used only to
+  /// build a shareable product link (`$customerWebUrl/products/{id}`) for
+  /// the WhatsApp order message, since that link must be a real URL a
+  /// recipient without the app can still open in a browser. Empty when not
+  /// configured (e.g. local dev), in which case the order message simply
+  /// omits the link rather than sending a dead one.
+  static const String customerWebUrl = String.fromEnvironment('CUSTOMER_WEB_URL', defaultValue: '');
+
   static bool get isProduction => name == 'production';
 }

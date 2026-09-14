@@ -55,6 +55,42 @@ class NotificationsRepository {
       ApiEnvelope.rethrowAsAppException(e);
     }
   }
+
+  /// `POST /notifications/device-token` — registers (or, if this exact
+  /// token previously belonged to a different account on the same
+  /// physical device, reassigns) this install's FCM token. Safe to call
+  /// on every app start / login; the backend upserts by token, never
+  /// creates a duplicate row.
+  Future<void> registerDeviceToken({
+    required String fcmToken,
+    required String platform,
+    String? deviceId,
+    String? appVersion,
+    String? deviceName,
+  }) async {
+    try {
+      await _dio.post('/notifications/device-token', data: {
+        'fcm_token': fcmToken,
+        'platform': platform,
+        if (deviceId != null) 'device_id': deviceId,
+        if (appVersion != null) 'app_version': appVersion,
+        if (deviceName != null) 'device_name': deviceName,
+      });
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// `DELETE /notifications/device-token` — deactivates this install's
+  /// token, e.g. on logout, so a signed-out device stops receiving a push
+  /// meant for whoever signs in next.
+  Future<void> deactivateDeviceToken(String fcmToken) async {
+    try {
+      await _dio.delete('/notifications/device-token', data: {'fcm_token': fcmToken});
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
 }
 
 final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {

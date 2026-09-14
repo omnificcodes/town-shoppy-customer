@@ -15,4 +15,10 @@ class AppConstants {
   /// Last-used [AppMode] (`customer` / `business`) for accounts that can use
   /// both -- see `AppModeController`. Cleared alongside the token on sign-out.
   static const String secureStorageAppModeKey = 'app_mode';
+
+  /// The FCM token this install last successfully registered with the
+  /// backend -- lets PushNotificationService skip a redundant
+  /// register-device-token call on every app start when the token hasn't
+  /// actually changed, and lets it deactivate the right token on logout.
+  static const String secureStorageFcmTokenKey = 'fcm_token';
 }

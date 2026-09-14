@@ -14,6 +14,8 @@ class BusinessRoutes {
 
   static const branches = '/business/branches';
   static const branchNew = '/business/branches/new';
+  static const products = '/business/products';
+  static const productNew = '/business/products/new';
   static const customers = '/business/customers';
   static const redemptions = '/business/redemptions';
   static const offerRedemptions = '/business/offer-redemptions';
@@ -71,6 +73,7 @@ class BusinessDestination {
     BusinessDestination(label: 'Direct POS', icon: Icons.point_of_sale_rounded, path: BusinessRoutes.counter, group: 'Business', subtitle: 'Record a bill at the counter', gated: true),
     BusinessDestination(label: 'Redemptions', icon: Icons.qr_code_2_rounded, path: BusinessRoutes.redemptions, group: 'Business', subtitle: 'Verify Town Coin spent here', gated: true),
     BusinessDestination(label: 'Offers', icon: Icons.campaign_rounded, path: BusinessRoutes.offers, group: 'Business', subtitle: 'Promotions shown to your town', gated: true),
+    BusinessDestination(label: 'Products', icon: Icons.shopping_bag_rounded, path: BusinessRoutes.products, group: 'Business', subtitle: 'Your catalog, ordered via WhatsApp', gated: true),
     BusinessDestination(label: 'Offer redemptions', icon: Icons.redeem_rounded, path: BusinessRoutes.offerRedemptions, group: 'Business', subtitle: 'Customers claiming your offers', gated: true),
     BusinessDestination(label: 'Wallet', icon: Icons.account_balance_wallet_rounded, path: BusinessRoutes.wallet, group: 'Wallet', subtitle: 'Blue and Red coin balances', gated: true),
     BusinessDestination(label: 'Sponsored prizes', icon: Icons.emoji_events_rounded, path: BusinessRoutes.prizes, group: 'Lucky Draw', subtitle: 'Put your brand on a draw', gated: true, ownerOnly: true),

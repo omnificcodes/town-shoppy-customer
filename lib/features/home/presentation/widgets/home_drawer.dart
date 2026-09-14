@@ -64,6 +64,7 @@ class HomeDrawer extends ConsumerWidget {
                   _DrawerItem(icon: Icons.person_outline_rounded, label: 'Profile', route: '/profile'),
                   _DrawerItem(icon: Icons.savings_outlined, label: 'Wallet', route: '/wallet'),
                   _DrawerItem(icon: Icons.storefront_outlined, label: 'Discover merchants', route: '/merchants'),
+                  _DrawerItem(icon: Icons.shopping_bag_outlined, label: 'Shopping', route: '/shopping'),
                   _DrawerItem(icon: Icons.receipt_long_outlined, label: 'Purchases', route: '/purchases'),
                   _DrawerItem(icon: Icons.confirmation_number_outlined, label: 'Coupons & Lucky Draw', route: '/coupons'),
                   _DrawerItem(icon: Icons.qr_code_2_outlined, label: 'Redemptions', route: '/redemptions'),

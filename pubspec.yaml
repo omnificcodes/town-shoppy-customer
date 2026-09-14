@@ -62,6 +62,15 @@ dependencies:
   # apply to Android or to a plain website) -- see
   # subscription_checkout_controller.dart.
   razorpay_flutter: ^1.4.6
+  # Push notifications (Android/iOS; no-op on the web build -- see
+  # push_notification_service.dart). Firebase.initializeApp() is wrapped
+  # in a try/catch so a build with no google-services.json/
+  # GoogleService-Info.plist yet (this repo doesn't have one until a
+  # Firebase project is created) still runs normally with push silently
+  # disabled, exactly like every other "stub until configured" integration
+  # in this app.
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.6.0
 
 dev_dependencies:
   flutter_test:
@@ -74,6 +83,16 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.4
+
+# firebase_core_web 3.11.0 (a transitive dep pulled in by the approved
+# firebase_core) ships a genuine `dart:js_interop` typing bug -- calls
+# `e.isA<JSObject>()` on a value whose static type is plain `Object`, which
+# fails to compile with BOTH dart2js (`flutter build web`) and DDC
+# (`flutter run -d chrome`) on this project's pinned Dart 3.8.1. Pinned back
+# to the last version published before this regression until upstream ships
+# a fix -- verified 3.10.0 compiles cleanly for both targets.
+dependency_overrides:
+  firebase_core_web: 3.10.0
 
 # Launcher icon generation: `dart run flutter_launcher_icons`. The source
 # PNG already has rounded, transparent corners; on Android the adaptive

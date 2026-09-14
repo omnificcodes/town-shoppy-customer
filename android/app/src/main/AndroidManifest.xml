@@ -14,6 +14,12 @@
          both need the camera. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Android 13+ (API 33) requires this as a runtime-requested
+         permission before any notification can be shown at all.
+         firebase_messaging's FirebaseMessaging.requestPermission() call
+         triggers the system prompt for it automatically; this declaration
+         is what makes that prompt possible in the first place. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
         android:label="TownShoppy"
         android:name="${applicationName}"

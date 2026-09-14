@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/networking/api_client.dart';
 import '../../../core/storage/secure_storage_service.dart';
+import '../../notifications/application/push_notification_service.dart';
 import '../data/auth_repository.dart';
 import 'auth_state.dart';
 
@@ -55,6 +56,7 @@ class AuthController extends Notifier<AuthState> {
     try {
       final account = await _repository.me();
       state = AuthAuthenticated(account);
+      unawaited(ref.read(pushNotificationServiceProvider.notifier).registerForCurrentAccount());
     } on UnauthenticatedException {
       await _storage.delete(AppConstants.secureStorageAuthTokenKey);
       state = const AuthUnauthenticated();
@@ -80,6 +82,9 @@ class AuthController extends Notifier<AuthState> {
       await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
       ref.read(sessionEpochProvider.notifier).bump();
       state = AuthAuthenticated(result.account);
+      // Never awaited: a slow or declined permission prompt must not hold
+      // up sign-in.
+      unawaited(ref.read(pushNotificationServiceProvider.notifier).registerForCurrentAccount());
     } on AppException catch (e) {
       state = AuthUnauthenticated(error: e);
     }
@@ -94,6 +99,7 @@ class AuthController extends Notifier<AuthState> {
       await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
       ref.read(sessionEpochProvider.notifier).bump();
       state = AuthAuthenticated(result.account);
+      unawaited(ref.read(pushNotificationServiceProvider.notifier).registerForCurrentAccount());
     } on AppException catch (e) {
       state = AuthUnauthenticated(error: e);
     }
@@ -144,6 +150,11 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> _clearSessionAndCustomerState() async {
+    // Best-effort, before the token that authorizes it is deleted below --
+    // a signed-out device must stop receiving pushes meant for whoever
+    // just left, not linger until the next account happens to log in and
+    // overwrite the same token's registration.
+    await ref.read(pushNotificationServiceProvider.notifier).deregisterCurrentDevice();
     await _storage.delete(AppConstants.secureStorageAuthTokenKey);
     // The Customer/Business choice belongs to the account that made it --
     // the next sign-in (possibly a different number) starts from scratch.

@@ -34,10 +34,14 @@ jobs:
           # Merchant web app origin (no trailing slash): Business mode opens its
           # subscribe page in the browser for package checkout.
           MERCHANT_WEB_URL: https://app.townshoppy.com
+          # This app's own hosted origin -- used to build the shareable
+          # product link sent in a "Order via WhatsApp" message.
+          CUSTOMER_WEB_URL: https://customer.townshoppy.com
         run: >
           flutter build web --release
           --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
           --dart-define=MERCHANT_WEB_URL=${{ env.MERCHANT_WEB_URL }}
+          --dart-define=CUSTOMER_WEB_URL=${{ env.CUSTOMER_WEB_URL }}
           --dart-define=APP_ENV=production
 
       - name: Publish to build_branch

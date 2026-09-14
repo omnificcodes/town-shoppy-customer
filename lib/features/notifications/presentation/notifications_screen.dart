@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/app_mode/app_mode.dart';
+import '../../../core/app_mode/app_mode_controller.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../auth/application/auth_controller.dart';
+import '../../auth/application/auth_state.dart';
 import '../application/notifications_controller.dart';
+import '../data/models/app_notification.dart';
+import 'notification_navigation.dart';
 import 'notification_tile.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
@@ -90,11 +97,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 final notification = data.items[index];
                 return NotificationTile(
                   notification: notification,
-                  onTap: () {
-                    if (notification.isUnread) {
-                      ref.read(notificationsControllerProvider.notifier).markRead(notification.id);
-                    }
-                  },
+                  onTap: () => _openNotification(context, ref, notification),
                 );
               },
             ),
@@ -102,5 +105,34 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         },
       ),
     );
+  }
+
+  /// Marks the notification read, then opens the screen it's about --
+  /// switching Customer/Business mode first when that screen lives on the
+  /// other side (this one inbox holds both, for an account that runs a
+  /// shop). Falls back to just marking read for any type this screen
+  /// doesn't yet have a destination for.
+  Future<void> _openNotification(BuildContext context, WidgetRef ref, AppNotification notification) async {
+    if (notification.isUnread) {
+      ref.read(notificationsControllerProvider.notifier).markRead(notification.id);
+    }
+
+    final target = notificationTarget(notification.type);
+    if (target == null) return;
+
+    final auth = ref.read(authControllerProvider);
+    if (target.mode == AppMode.business && !(auth is AuthAuthenticated && auth.account.hasMerchantAccess)) {
+      // Defensive only -- every business-mode notification type is sent
+      // exclusively to a merchant owner/staff account server-side.
+      return;
+    }
+
+    if (ref.read(appModeControllerProvider).mode != target.mode) {
+      await ref.read(appModeControllerProvider.notifier).select(target.mode);
+      if (!context.mounted) return;
+      context.go(target.path);
+    } else {
+      context.push(target.path);
+    }
   }
 }

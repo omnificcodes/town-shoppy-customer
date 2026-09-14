@@ -34,6 +34,8 @@ import '../../features/business/presentation/offers/offer_redemptions_screen.dar
 import '../../features/business/presentation/prizes/business_prize_detail_screen.dart';
 import '../../features/business/presentation/prizes/business_prizes_screen.dart';
 import '../../features/business/presentation/prizes/prize_form_screen.dart';
+import '../../features/business/presentation/products/business_products_screen.dart';
+import '../../features/business/presentation/products/product_form_screen.dart';
 import '../../features/business/presentation/wallet/merchant_wallet_screen.dart';
 import '../../features/business/presentation/direct_pos/direct_pos_screen.dart';
 import '../../features/business/presentation/purchases/business_purchase_detail_screen.dart';
@@ -65,6 +67,9 @@ import '../../features/offer_redemptions/presentation/offer_redeem_screen.dart';
 import '../../features/offer_redemptions/presentation/offer_redemption_detail_screen.dart';
 import '../../features/offer_redemptions/presentation/offer_redemptions_list_screen.dart';
 import '../../features/offers/presentation/offers_list_screen.dart';
+import '../../features/products/data/models/product.dart';
+import '../../features/products/presentation/product_detail_screen.dart';
+import '../../features/products/presentation/products_list_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/wallet/presentation/wallet_screen.dart';
@@ -100,6 +105,8 @@ const _redemptionsPath = '/redemptions';
 const _offerRedemptionsPath = '/offer-redemptions';
 const _referralsPath = '/referrals';
 const _merchantsPath = '/merchants';
+const _shoppingPath = '/shopping';
+const _productsPath = '/products';
 
 /// Auth-aware [GoRouter]. Redirect logic — not widget-level checks — is the
 /// single source of truth for "who can see what" (section 13: "do not rely
@@ -211,6 +218,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => MerchantDetailScreen(merchantId: int.parse(state.pathParameters['id']!)),
       ),
       GoRoute(
+        path: _shoppingPath,
+        // Pushed from the merchant detail page's Products section "See
+        // all" with `extra: (merchantId, merchantName)` to scope this same
+        // screen to one merchant; the drawer's own entry pushes it with no
+        // `extra` for the global catalog.
+        builder: (context, state) {
+          final scope = state.extra as (int, String)?;
+          return ProductsListScreen(merchantId: scope?.$1, merchantName: scope?.$2);
+        },
+      ),
+      // Standalone/top-level (not the ShellRoute below) and carved out of
+      // the login gate in `_redirect` -- its whole purpose is to also open
+      // for a merchant who taps this link from a WhatsApp order message on
+      // a device that may not be signed in at all. See ProductDetailScreen's
+      // own docblock.
+      GoRoute(
+        path: '$_productsPath/:id',
+        builder: (context, state) => ProductDetailScreen(productId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(
         path: '$_merchantsPath/:id/redeem',
         builder: (context, state) => RedemptionInitiationScreen(merchantId: int.parse(state.pathParameters['id']!)),
       ),
@@ -312,6 +339,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: BusinessRoutes.products,
+        builder: (context, state) => const RequirePackage(feature: 'Products', child: BusinessProductsScreen()),
+      ),
+      // `/new` before `/:id/edit` so "new" is never parsed as an id.
+      GoRoute(
+        path: BusinessRoutes.productNew,
+        builder: (context, state) => const RequirePackage(feature: 'Products', child: ProductFormScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.products}/:id/edit',
+        builder: (context, state) => RequirePackage(
+          feature: 'Products',
+          child: ProductFormScreen(key: ValueKey('product-edit-${state.pathParameters['id']}'), product: state.extra as Product?),
+        ),
+      ),
+      GoRoute(
         path: BusinessRoutes.customers,
         builder: (context, state) => const RequirePackage(feature: 'Your customer directory', child: BusinessCustomersScreen()),
       ),
@@ -383,6 +426,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 });
 
 String? _redirect(AuthState authState, AppModeState modeState, String location) {
+  // A product's own detail page is the one deliberately public route in
+  // this app -- it must open for anyone who taps its link from a WhatsApp
+  // order message (see ProductDetailScreen's docblock), regardless of auth
+  // state, and regardless of which state [authState] is currently in (a
+  // fresh web load lands here with AuthInitial() while session restore is
+  // still in flight -- this check must win over every branch below, not
+  // just the Unauthenticated one).
+  if (location.startsWith('$_productsPath/')) return null;
+
   final onSplash = location == _splashPath;
   final onLogin = location == _loginPath;
   final onRegister = location == _registerPath;

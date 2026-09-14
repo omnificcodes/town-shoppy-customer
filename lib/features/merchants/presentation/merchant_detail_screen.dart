@@ -13,6 +13,8 @@ import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../products/application/products_list_controller.dart';
+import '../../products/presentation/product_card.dart';
 import '../application/merchant_branches_provider.dart';
 import '../application/merchant_detail_provider.dart';
 import '../data/models/merchant.dart';
@@ -80,6 +82,9 @@ class _MerchantDetailBody extends ConsumerWidget {
 
         const SizedBox(height: AppSpacing.section),
         _BranchesSection(merchant: merchant),
+
+        const SizedBox(height: AppSpacing.section),
+        _ProductsSection(merchant: merchant),
 
         if (merchant.websiteUrl != null && merchant.websiteUrl!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.section),
@@ -426,6 +431,64 @@ class _BranchActionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A preview of this merchant's product catalog -- up to the first page,
+/// same "a failure here doesn't block the rest of the profile" policy as
+/// [_BranchesSection]. Collapses to nothing (not an empty-state) when the
+/// merchant simply has no products yet, since this is an optional
+/// enhancement to the profile, not a core section every merchant needs.
+class _ProductsSection extends ConsumerWidget {
+  const _ProductsSection({required this.merchant});
+
+  final Merchant merchant;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final products = ref.watch(productsListControllerProvider(merchant.id));
+
+    return products.when(
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [SectionHeader(title: 'Products'), SizedBox(height: AppSpacing.sm), LoadingSkeletonCard()],
+      ),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (data) {
+        if (data.items.isEmpty) return const SizedBox.shrink();
+
+        final preview = data.items.take(4).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Products',
+              actionLabel: data.items.length > preview.length || data.hasMore ? 'See all' : null,
+              onAction: data.items.length > preview.length || data.hasMore
+                  ? () => context.push('/shopping', extra: (merchant.id, merchant.name))
+                  : null,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: AppSpacing.smd,
+                crossAxisSpacing: AppSpacing.smd,
+                childAspectRatio: 0.58,
+              ),
+              itemCount: preview.length,
+              itemBuilder: (context, index) {
+                final product = preview[index];
+                return ProductCard(product: product, showMerchantName: false, onTap: () => context.push('/products/${product.id}'));
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
