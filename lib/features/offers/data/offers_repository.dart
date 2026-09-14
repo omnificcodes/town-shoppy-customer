@@ -37,10 +37,20 @@ class OffersRepository {
   /// publicly-visible offers at active merchants (see that controller's
   /// own guest/customer branch), page-paginated same as
   /// `MerchantsRepository.list()`. Unlike [nearby], this needs no device
-  /// location, so it is the Offers tab's primary listing.
-  Future<OffsetPage<Offer>> list({int page = 1, int perPage = 20}) async {
+  /// location, so it is the Offers tab's primary listing. [categoryId] and
+  /// [expiringWithinDays] map onto the controller's own `category_id` and
+  /// `expiring_within_days` filters, so pagination counts the filtered set.
+  Future<OffsetPage<Offer>> list({int page = 1, int perPage = 20, int? categoryId, int? expiringWithinDays}) async {
     try {
-      final response = await _dio.get('/offers', queryParameters: {'page': page, 'per_page': perPage});
+      final response = await _dio.get(
+        '/offers',
+        queryParameters: {
+          'page': page,
+          'per_page': perPage,
+          'category_id': ?categoryId,
+          'expiring_within_days': ?expiringWithinDays,
+        },
+      );
       final items = (ApiEnvelope.data(response) as List<dynamic>)
           .map((e) => Offer.fromJson(e as Map<String, dynamic>))
           .toList();
