@@ -6,10 +6,11 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import 'category_visual.dart';
 
 /// A horizontally-scrolling, *selectable* row of category tiles — the
-/// filter-row counterpart to Home's [CategorySlider] (which only ever
+/// filter-row counterpart to Home's category grid (which only ever
 /// navigates, never shows a selected state). Reuses the same
 /// [CategoryVisual] keyword lookup so a category reads identically wherever
-/// it appears in the app.
+/// it appears in the app. The selected tile gets the brand-orange border
+/// the Stitch redesign uses.
 class CategoryFilterStrip extends StatelessWidget {
   const CategoryFilterStrip({
     super.key,
@@ -23,10 +24,10 @@ class CategoryFilterStrip extends StatelessWidget {
   final ValueChanged<int?> onSelect;
 
   /// The strip's height at the default text scale: a tile (icon badge +
-  /// one label line + padding + border) plus the strip's own vertical
+  /// gap + one label line + padding + border) plus the strip's own vertical
   /// padding. [CategoryFilterStripSkeleton] uses the same figure so the
   /// loading → loaded transition never shifts the list below.
-  static const double _baseHeight = 84;
+  static const double _baseHeight = 104;
 
   /// How much one label line grows per unit of text scale — `labelSmall`
   /// is 12sp at 1.35 line height.
@@ -54,7 +55,7 @@ class CategoryFilterStrip extends StatelessWidget {
           if (index == 0) {
             return _CategoryFilterTile(
               icon: Icons.apps_rounded,
-              color: AppColors.orange,
+              color: AppColors.orangeDeep,
               label: 'All',
               selected: currentCategoryId == null,
               onTap: () => onSelect(null),
@@ -125,48 +126,53 @@ class _CategoryFilterTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const double minWidth = 72;
+  static const double minWidth = 88;
   static const double maxWidth = 124;
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(AppSpacing.radiusMd);
+
     return Semantics(
       button: true,
       selected: selected,
       label: selected ? '$label, selected' : label,
       child: Material(
-        color: selected ? color.withValues(alpha: 0.1) : AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        color: selected ? AppColors.orangeTint : AppColors.surface,
+        borderRadius: radius,
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          borderRadius: radius,
           onTap: onTap,
           child: Container(
             constraints: const BoxConstraints(minWidth: minWidth, maxWidth: maxWidth),
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.smd),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(color: selected ? color : AppColors.border, width: selected ? 1.5 : 1),
+              borderRadius: radius,
+              border: Border.all(color: selected ? AppColors.orangeDeep : AppColors.border, width: selected ? 2 : 1),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: AppSize.avatarSm,
-                  height: AppSize.avatarSm,
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  width: AppSize.controlSm,
+                  height: AppSize.controlSm,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
+                  ),
                   child: Icon(icon, color: color, size: AppIconSize.md),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                        color: selected ? AppColors.textPrimary : AppColors.textSecondary,
-                      ),
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),

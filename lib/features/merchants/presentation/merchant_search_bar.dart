@@ -53,7 +53,10 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
           child: Container(
             margin: const EdgeInsets.all(AppSpacing.sm),
             padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,6 +84,7 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
   @override
   Widget build(BuildContext context) {
     final filterActive = widget.acceptsTownCoinOnly;
+    final fieldRadius = BorderRadius.circular(AppSpacing.radiusMd);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
@@ -95,8 +99,19 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
                 hintText: 'Search merchants or categories',
                 prefixIcon: const Icon(Icons.search_rounded, size: AppIconSize.md, color: AppColors.textSecondary),
                 filled: true,
-                fillColor: AppColors.surfaceMuted,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg), borderSide: BorderSide.none),
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: fieldRadius,
+                  borderSide: const BorderSide(color: AppColors.orangeDeep, width: 1.5),
+                ),
                 // Real vertical padding (the theme's own field height), not
                 // zero: a zero-height content box clipped the hint and the
                 // typed text at 1.3x system text scale.
@@ -109,17 +124,20 @@ class _MerchantSearchBarState extends State<MerchantSearchBar> {
             button: true,
             label: filterActive ? 'Filters, Accepts Town Coin on' : 'Filters',
             child: Material(
-              color: filterActive ? AppColors.orange : AppColors.surfaceMuted,
-              shape: const CircleBorder(),
+              color: filterActive ? AppColors.orangeDeep : AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: fieldRadius,
+                side: BorderSide(color: filterActive ? AppColors.orangeDeep : AppColors.border),
+              ),
               child: InkWell(
-                customBorder: const CircleBorder(),
+                customBorder: RoundedRectangleBorder(borderRadius: fieldRadius),
                 onTap: _openFilters,
                 child: SizedBox(
                   width: AppSize.controlMd,
                   height: AppSize.controlMd,
                   child: Icon(
-                    Icons.tune_rounded,
-                    color: filterActive ? AppColors.onOrange : AppColors.textPrimary,
+                    Icons.filter_alt_outlined,
+                    color: filterActive ? AppColors.onCrimson : AppColors.textPrimary,
                     size: AppIconSize.lg,
                   ),
                 ),

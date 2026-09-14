@@ -6,6 +6,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../../core/location/location_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
@@ -14,7 +15,6 @@ import '../application/merchant_categories_provider.dart';
 import '../application/merchants_list_controller.dart';
 import '../application/nearby_merchants_controller.dart';
 import 'category_filter_strip.dart';
-import 'discover_banner.dart';
 import 'merchant_card.dart';
 import 'merchant_search_bar.dart';
 import 'merchants_discovery_header.dart';
@@ -22,26 +22,31 @@ import 'nearby_merchant_card.dart';
 
 enum _MerchantsTab { all, nearby }
 
-/// The merchant-discovery browsing screen. "All" supports server-side name
-/// search and an `accepts_town_coin` filter (both confirmed real on
+/// The merchant-discovery browsing screen, following the Google Stitch
+/// redesign. "All" supports server-side name search and an
+/// `accepts_town_coin` filter (both confirmed real on
 /// `MerchantController::index()`), plus category — there is still no
-/// `town_id` filter. "Nearby" wraps `GET /merchants/nearby` (Phase 1
-/// completion audit item #8: the backend endpoint existed but no client
-/// called it) and needs the device's GPS coordinate, requested on demand
-/// rather than on screen open; it has no search parameter on the backend,
-/// so the search bar only ever appears on the "All" tab.
+/// `town_id` filter. "Near me" wraps `GET /merchants/nearby` and needs the
+/// device's GPS coordinate, requested on demand rather than on screen open;
+/// it has no search parameter on the backend, so the search bar only ever
+/// appears on the "All" tab.
 ///
-/// One [CustomScrollView] for the whole screen: the header, banner, and
-/// filter strip scroll away with the results instead of sitting in a fixed
-/// block above them, which overflowed on short viewports (landscape, a
-/// large system text scale, or the keyboard open).
+/// Stitch's "Sort: Relevance" control and the "< 3 km" radius in its Near me
+/// label are absent on purpose: `GET /merchants` only orders by name, and
+/// the nearby radius is a server setting, not a figure this screen can
+/// promise.
+///
+/// One [CustomScrollView] for the whole screen: the header and filters
+/// scroll away with the results instead of sitting in a fixed block above
+/// them, which overflowed on short viewports (landscape, a large system
+/// text scale, or the keyboard open).
 class MerchantsListScreen extends ConsumerStatefulWidget {
   const MerchantsListScreen({super.key, this.initialCategoryId});
 
-  /// Set when arriving from Home's category slider (passed as route
-  /// `extra`) — applied once the controller's own initial, unfiltered
-  /// `build()` resolves, same "resolve on the screen that displays it"
-  /// deferral `RequestPurchaseScreen.initState()` already uses.
+  /// Set when arriving from Home's category grid (passed as route `extra`) —
+  /// applied once the controller's own initial, unfiltered `build()`
+  /// resolves, same "resolve on the screen that displays it" deferral
+  /// `RequestPurchaseScreen.initState()` already uses.
   final int? initialCategoryId;
 
   @override
@@ -88,7 +93,7 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
   void _switchTab(_MerchantsTab tab) {
     if (_tab == tab) return;
     setState(() => _tab = tab);
-    // Leaving "Nearby" clears its state so a stale permission-denied/error
+    // Leaving "Near me" clears its state so a stale permission-denied/error
     // card doesn't linger — coming back gets a fresh "Use my location" ask.
     if (tab == _MerchantsTab.all) {
       ref.read(nearbyMerchantsControllerProvider.notifier).reset();
@@ -113,6 +118,7 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
     final listState = ref.watch(merchantsListControllerProvider).value;
 
     return Scaffold(
+      backgroundColor: AppColors.surfaceMuted,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refresh,
@@ -130,10 +136,8 @@ class _MerchantsListScreenState extends ConsumerState<MerchantsListScreen> {
                         onToggleAcceptsTownCoin: (value) =>
                             ref.read(merchantsListControllerProvider.notifier).setAcceptsTownCoinOnly(value),
                       ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const DiscoverBanner(),
-                    const SizedBox(height: AppSpacing.sm),
-                    _TabToggle(tab: _tab, onChanged: _switchTab),
+                    _TabButtons(tab: _tab, onChanged: _switchTab),
+                    const SizedBox(height: AppSpacing.xs),
                     if (_tab == _MerchantsTab.all) _AllCategoryFilterRow() else _NearbyCategoryFilterRow(),
                     if (_tab == _MerchantsTab.all) const _ResultsCountRow(),
                   ],
@@ -157,21 +161,31 @@ class _ResultsCountRow extends ConsumerWidget {
     if (state == null) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.xs, AppSpacing.page, AppSpacing.xs),
-      child: Text(
-        state.total == 1 ? '1 merchant found' : '${state.total} merchants found',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.smd, AppSpacing.page, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              state.total == 1 ? '1 MERCHANT FOUND' : '${state.total} MERCHANTS FOUND',
+              style: AppTypography.overline.copyWith(color: AppColors.textSecondary, letterSpacing: 0.8),
+            ),
+          ),
+          if (state.isChangingFilter)
+            const SizedBox(
+              width: AppIconSize.xs,
+              height: AppIconSize.xs,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.orangeDeep),
+            ),
+        ],
       ),
     );
   }
 }
 
-/// A two-way segmented toggle, purpose-built for this fixed-width row
-/// (unlike a scrolling filter chip, which hugs its own content inside a
-/// horizontally *scrolling* list and has never needed to shrink its label
-/// to fit a tight [Expanded] slot).
-class _TabToggle extends StatelessWidget {
-  const _TabToggle({required this.tab, required this.onChanged});
+/// "All merchants" and "Near me" as two side-by-side buttons, the selected
+/// one filled in the brand's deep orange.
+class _TabButtons extends StatelessWidget {
+  const _TabButtons({required this.tab, required this.onChanged});
 
   final _MerchantsTab tab;
   final ValueChanged<_MerchantsTab> onChanged;
@@ -179,36 +193,33 @@ class _TabToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, 0),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.xs),
-        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
-        child: Row(
-          children: [
-            Expanded(
-              child: _TabToggleSegment(
-                label: 'All',
-                selected: tab == _MerchantsTab.all,
-                onTap: () => onChanged(_MerchantsTab.all),
-              ),
+      padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.smd, AppSpacing.page, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TabButton(
+              label: 'All merchants',
+              selected: tab == _MerchantsTab.all,
+              onTap: () => onChanged(_MerchantsTab.all),
             ),
-            Expanded(
-              child: _TabToggleSegment(
-                label: 'Near me',
-                icon: Icons.near_me_rounded,
-                selected: tab == _MerchantsTab.nearby,
-                onTap: () => onChanged(_MerchantsTab.nearby),
-              ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: _TabButton(
+              label: 'Near me',
+              icon: Icons.navigation_rounded,
+              selected: tab == _MerchantsTab.nearby,
+              onTap: () => onChanged(_MerchantsTab.nearby),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _TabToggleSegment extends StatelessWidget {
-  const _TabToggleSegment({required this.label, required this.selected, required this.onTap, this.icon});
+class _TabButton extends StatelessWidget {
+  const _TabButton({required this.label, required this.selected, required this.onTap, this.icon});
 
   final String label;
   final bool selected;
@@ -217,27 +228,33 @@ class _TabToggleSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(AppSpacing.radiusControl);
+    final foreground = selected ? AppColors.onCrimson : AppColors.textPrimary;
+    final shownIcon = icon;
+
     return Semantics(
       button: true,
       selected: selected,
       label: selected ? '$label, selected' : label,
+      excludeSemantics: true,
       child: Material(
-        color: selected ? AppColors.orange : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        color: selected ? AppColors.orangeDeep : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: BorderSide(color: selected ? AppColors.orangeDeep : AppColors.border),
+        ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+          borderRadius: radius,
           onTap: onTap,
           child: ConstrainedBox(
-            // 40dp segment inside the track's 4dp padding = a 48dp row,
-            // regardless of label size.
-            constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+            constraints: const BoxConstraints(minHeight: AppSpacing.touchTarget),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.sm),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: AppIconSize.sm, color: selected ? AppColors.onOrange : AppColors.textPrimary),
+                  if (shownIcon != null) ...[
+                    Icon(shownIcon, size: AppIconSize.sm, color: selected ? foreground : AppColors.orangeDeep),
                     const SizedBox(width: AppSpacing.xs),
                   ],
                   Flexible(
@@ -246,10 +263,9 @@ class _TabToggleSegment extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: selected ? AppColors.onOrange : AppColors.textPrimary,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge?.copyWith(color: foreground, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -262,9 +278,9 @@ class _TabToggleSegment extends StatelessWidget {
   }
 }
 
-const _listPadding = EdgeInsets.all(AppSpacing.page);
+const _listPadding = EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.smd, AppSpacing.page, AppSpacing.xxl);
 
-/// Six placeholder cards while a list is loading — a sliver so it can sit
+/// Placeholder cards while a list is loading — a sliver so it can sit
 /// inside the screen's single [CustomScrollView].
 class _SkeletonSliver extends StatelessWidget {
   const _SkeletonSliver();
@@ -274,9 +290,9 @@ class _SkeletonSliver extends StatelessWidget {
     return SliverPadding(
       padding: _listPadding,
       sliver: SliverList.separated(
-        itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (_, _) => const LoadingSkeletonCard(),
+        itemCount: 4,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+        itemBuilder: (_, _) => LoadingSkeleton(height: 190, borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
       ),
     );
   }
@@ -335,7 +351,7 @@ class _AllMerchantsBody extends ConsumerWidget {
           padding: _listPadding,
           sliver: SliverList.separated(
             itemCount: data.items.length + (data.hasMore ? 1 : 0),
-            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               if (index >= data.items.length) {
                 return const Padding(
@@ -386,54 +402,54 @@ class _NearbyMerchantsBody extends ConsumerWidget {
       // a retry as the secondary one) — not just a "try again".
       data: (uiState) => switch (uiState) {
         NearbyPromptState() => _FillSliver(
-            child: EmptyState(
-              icon: Icons.my_location_rounded,
-              title: 'Find merchants near you',
-              message: 'Town Shoppy will ask for your location to show the closest participating businesses.',
-              action: AppButton(
-                label: 'Use my location',
-                onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
-              ),
+          child: EmptyState(
+            icon: Icons.my_location_rounded,
+            title: 'Find merchants near you',
+            message: 'Town Shoppy will ask for your location to show the closest participating businesses.',
+            action: AppButton(
+              label: 'Use my location',
+              onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
             ),
           ),
+        ),
         NearbyLocatingState() => const _SkeletonSliver(),
         NearbyServiceDisabledState() => _FillSliver(
-            child: EmptyState(
-              icon: Icons.location_disabled_rounded,
-              title: 'Location services are off',
-              message: 'Turn on location services for this device to find nearby merchants.',
-              action: AppButton(
-                label: 'Open location settings',
-                onPressed: () async {
-                  await ref.read(locationServiceProvider).openLocationSettings();
-                },
-              ),
-              secondaryAction: AppButton(
-                label: 'Try again',
-                variant: AppButtonVariant.text,
-                onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
-              ),
+          child: EmptyState(
+            icon: Icons.location_disabled_rounded,
+            title: 'Location services are off',
+            message: 'Turn on location services for this device to find nearby merchants.',
+            action: AppButton(
+              label: 'Open location settings',
+              onPressed: () async {
+                await ref.read(locationServiceProvider).openLocationSettings();
+              },
+            ),
+            secondaryAction: AppButton(
+              label: 'Try again',
+              variant: AppButtonVariant.text,
+              onPressed: () => ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad(),
             ),
           ),
+        ),
         NearbyPermissionDeniedState(:final forever) => _FillSliver(
-            child: EmptyState(
-              icon: Icons.location_off_rounded,
-              title: 'Location permission needed',
-              message: forever
-                  ? "Town Shoppy can't ask for location permission again — enable it from this app's settings."
-                  : 'Allow location access to find merchants near you.',
-              action: AppButton(
-                label: forever ? 'Open app settings' : 'Allow location',
-                onPressed: () async {
-                  if (forever) {
-                    await ref.read(locationServiceProvider).openAppSettings();
-                  } else {
-                    await ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
-                  }
-                },
-              ),
+          child: EmptyState(
+            icon: Icons.location_off_rounded,
+            title: 'Location permission needed',
+            message: forever
+                ? "Town Shoppy can't ask for location permission again — enable it from this app's settings."
+                : 'Allow location access to find merchants near you.',
+            action: AppButton(
+              label: forever ? 'Open app settings' : 'Allow location',
+              onPressed: () async {
+                if (forever) {
+                  await ref.read(locationServiceProvider).openAppSettings();
+                } else {
+                  await ref.read(nearbyMerchantsControllerProvider.notifier).requestLocationAndLoad();
+                }
+              },
             ),
           ),
+        ),
         NearbyReadyState(:final data) => _NearbyResultsSliver(data: data),
       },
     );
@@ -470,7 +486,7 @@ class _NearbyResultsSliver extends ConsumerWidget {
       padding: _listPadding,
       sliver: SliverList.separated(
         itemCount: data.items.length + (data.hasMore ? 1 : 0),
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
         itemBuilder: (context, index) {
           if (index >= data.items.length) {
             return const Padding(
