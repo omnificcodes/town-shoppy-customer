@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 
 /// A section title with an optional subtitle and an optional trailing
 /// action ("See all"). One shape for every "heading above a group of
 /// content" in the app, so section rhythm is identical screen to screen.
+///
+/// The title is the Stitch redesign's extra-bold heading
+/// ([AppTypography.sectionTitle]); the action is set in
+/// [AppColors.orangeDeep] because the brand orange isn't AA-readable as
+/// small text on white.
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.title, this.subtitle, this.actionLabel, this.onAction, this.icon});
 
@@ -30,10 +37,10 @@ class SectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              Semantics(header: true, child: Text(title, style: AppTypography.sectionTitle)),
               if (subtitle != null) ...[
                 const SizedBox(height: AppSpacing.xxs),
-                Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
+                Text(subtitle!, style: AppTypography.caption),
               ],
             ],
           ),
@@ -46,8 +53,18 @@ class SectionHeader extends StatelessWidget {
             height: AppSpacing.touchTarget,
             child: TextButton(
               onPressed: onAction,
-              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm)),
-              child: Text(actionLabel!),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.orangeDeep,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(actionLabel!),
+                  const Icon(Icons.chevron_right_rounded, size: AppIconSize.sm),
+                ],
+              ),
             ),
           ),
         ],

@@ -91,6 +91,12 @@ class AppColors {
   static const orangeTintStrong = Color(0xFFFFE3CC); // orange at ~18%
   static const orangeBorder = Color(0xFFFFD2AE);
 
+  /// The deep end of the brand orange (the Stitch redesign's `brand-700`).
+  /// Two jobs [orange] can't do: carrying white text on a saturated
+  /// surface (white on this is 5.2:1, white on [orange] only 2.9:1), and
+  /// small orange text on white, such as "See all" links, at WCAG AA.
+  static const orangeDeep = Color(0xFFC2410C);
+
   // Full-bleed dark surfaces (the QR scanner) and text on them.
   static const scrim = Color(0xFF000000);
   static const onScrim = Color(0xFFFFFFFF);

@@ -31,6 +31,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: AppTypography.fontFamily,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.surfaceMuted,
       textTheme: AppTypography.textTheme,

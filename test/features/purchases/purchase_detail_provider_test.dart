@@ -29,10 +29,11 @@ class FakePurchasesRepository implements PurchasesRepository {
   Future<MerchantPurchaseQrResolution> resolveMerchantQr(String token) async => throw UnimplementedError();
 
   @override
-  Future<Purchase> requestPurchase({
+  Future<CounterPurchaseResult> requestPurchase({
     required String token,
     required double billAmount,
     required String idempotencyKey,
+    bool redeem = false,
   }) async => throw UnimplementedError();
 }
 

@@ -97,10 +97,14 @@ class MerchantsRepository {
   /// full page of [perPage] came back, and equal to [page] (no more pages)
   /// whenever a short page comes back — the standard "infer the end from a
   /// short page" pattern, not a real page count.
+  ///
+  /// [radiusKm] maps to the endpoint's own `radius_km` (0.1 up to the
+  /// server's configured maximum); omitted, the server uses its default.
   Future<OffsetPage<NearbyMerchant>> nearby({
     required double latitude,
     required double longitude,
     int? categoryId,
+    double? radiusKm,
     int page = 1,
     int perPage = 50,
   }) async {
@@ -113,6 +117,7 @@ class MerchantsRepository {
           'page': page,
           'per_page': perPage,
           if (categoryId != null) 'category_id': categoryId,
+          if (radiusKm != null) 'radius_km': radiusKm,
         },
       );
       final items = (ApiEnvelope.data(response) as List<dynamic>)

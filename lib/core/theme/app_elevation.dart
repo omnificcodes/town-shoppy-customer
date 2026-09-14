@@ -34,6 +34,16 @@ class AppElevation {
   /// Dialogs and bottom sheets.
   static const double level4 = 16;
 
+  /// A resting card on the Stitch-era screens: a barely-there lift under
+  /// the existing hairline border, not a replacement for it.
+  static List<BoxShadow> get card => [
+        BoxShadow(
+          color: AppColors.deepMaroon.withValues(alpha: 0.05),
+          blurRadius: 6,
+          offset: const Offset(0, 1),
+        ),
+      ];
+
   /// For content that sits just above the page — e.g. a popover menu.
   static List<BoxShadow> get subtle => [
         BoxShadow(

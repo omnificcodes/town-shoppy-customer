@@ -30,8 +30,9 @@ class HomeLocationReady extends HomeLocationState {
 
 class HomeLocationController extends AsyncNotifier<HomeLocationState> {
   // geocoding 5.x dropped the old top-level `placemarkFromCoordinates()`
-  // convenience function in favor of this instance-based API.
-  final _geocoding = Geocoding();
+  // convenience function in favor of this instance-based API. Created on
+  // first use, so a controller that never geocodes never touches the plugin.
+  late final _geocoding = Geocoding();
 
   @override
   Future<HomeLocationState> build() => _resolve();

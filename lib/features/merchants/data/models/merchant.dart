@@ -1,5 +1,6 @@
 import 'association_ref.dart';
 import 'merchant_branch_ref.dart';
+import 'merchant_business_hours.dart';
 import 'merchant_category.dart';
 import 'town_ref.dart';
 
@@ -8,10 +9,9 @@ import 'town_ref.dart';
 /// `GET /merchants` / `GET /merchants/{id}` (`MerchantController::index()`'s
 /// `isPrivileged` check requires Super Admin or Association Admin
 /// specifically; a customer or merchant-owner/staff account gets this same
-/// public resource). Never includes `owner_name`, `contact_mobile_number`,
-/// `gst_number`, `verified_at`, `rejection_reason`, or
-/// `duplicate_flag_notes` — those exist only on `MerchantPrivateResource`,
-/// which this app never reaches.
+/// public resource). Never includes `owner_name`, `gst_number`,
+/// `verified_at`, `rejection_reason`, or `duplicate_flag_notes` — those
+/// exist only on `MerchantPrivateResource`, which this app never reaches.
 ///
 /// `branch` is still only the merchant's single primary branch (unchanged in
 /// `MerchantPublicResource` itself) — for the full, active-only branch list,
@@ -21,6 +21,11 @@ import 'town_ref.dart';
 /// (deliberately public, unlike `owner_name`/`gst_number` — see
 /// `MerchantPublicResource`'s docblock), used for the detail screen's
 /// tap-to-call action.
+///
+/// [tagline], [coverImageUrl] and [businessHours] were always in the API
+/// response; the app just hadn't read them until the Stitch redesign, whose
+/// shop cards show a cover photo and whether a shop is open. All three are
+/// optional, so existing call sites are unaffected.
 class Merchant {
   const Merchant({
     required this.id,
@@ -35,6 +40,9 @@ class Merchant {
     required this.category,
     required this.association,
     required this.branch,
+    this.tagline,
+    this.coverImageUrl,
+    this.businessHours,
   });
 
   factory Merchant.fromJson(Map<String, dynamic> json) {
@@ -51,6 +59,9 @@ class Merchant {
       category: json['category'] is Map ? MerchantCategory.fromJson(json['category'] as Map<String, dynamic>) : null,
       association: json['association'] is Map ? AssociationRef.fromJson(json['association'] as Map<String, dynamic>) : null,
       branch: json['branch'] is Map ? MerchantBranchRef.fromJson(json['branch'] as Map<String, dynamic>) : null,
+      tagline: json['tagline'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
+      businessHours: MerchantBusinessHours.tryParse(json['business_hours']),
     );
   }
 
@@ -66,6 +77,11 @@ class Merchant {
   final MerchantCategory? category;
   final AssociationRef? association;
   final MerchantBranchRef? branch;
+  final String? tagline;
+  final String? coverImageUrl;
+
+  /// Null when the merchant never set hours -- "unknown", not "closed".
+  final MerchantBusinessHours? businessHours;
 
   TownRef? get town => association?.town;
 }

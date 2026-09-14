@@ -4,22 +4,24 @@ import 'app_colors.dart';
 
 /// Type scale for the customer app.
 ///
-/// Deliberately uses Flutter's platform default (Roboto) rather than adding
-/// a `google_fonts` dependency to match the admin web app's Geist font —
-/// design-principles.md leaves typography undecided for a reason ("the
-/// brief didn't specify them"), and a zero-dependency system font keeps
-/// this foundation phase from pulling in network-loaded font assets for a
-/// choice that isn't load-bearing yet. Revisit if a specific typeface is
-/// later approved.
+/// Set in Plus Jakarta Sans, the typeface the Google Stitch redesign uses,
+/// bundled as font assets (see pubspec.yaml) rather than loaded through a
+/// `google_fonts` dependency, so text never waits on the network and no new
+/// package was needed. Every style below names the family explicitly, and
+/// [AppTheme] sets it app-wide, so a style built outside this file still
+/// lands in the same face.
 ///
-/// Sizes intentionally never drop below 13sp (design-principles.md +
-/// section 18's "avoid overly small text"), and line heights are generous
-/// for comfortable extended reading (financial/activity history is a
-/// primary use case, not just glanceable cards).
+/// Sizes intentionally never drop below 12sp except [overline] (design-
+/// principles.md + section 18's "avoid overly small text"). Stitch sets some
+/// labels at 10-11px; those are raised to this floor on purpose. Line
+/// heights stay generous for comfortable extended reading (financial and
+/// activity history is a primary use case, not just glanceable cards).
 class AppTypography {
   AppTypography._();
 
-  static const _base = TextStyle(color: AppColors.textPrimary, height: 1.35);
+  static const fontFamily = 'PlusJakartaSans';
+
+  static const _base = TextStyle(fontFamily: fontFamily, color: AppColors.textPrimary, height: 1.35);
 
   static TextTheme get textTheme => TextTheme(
         displaySmall: _base.copyWith(fontSize: 32, fontWeight: FontWeight.w700, height: 1.2),
@@ -46,10 +48,33 @@ class AppTypography {
         ),
       );
 
+  /// The screen-opening greeting ("Good evening, Sudheer") -- Stitch's
+  /// extra-bold display line with tight tracking.
+  static const greeting = TextStyle(
+    fontFamily: fontFamily,
+    color: AppColors.textPrimary,
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    height: 1.2,
+    letterSpacing: -0.3,
+  );
+
+  /// A section heading above a group of content ("Browse by Category").
+  /// [SectionHeader] uses it, so every section title shares one weight.
+  static const sectionTitle = TextStyle(
+    fontFamily: fontFamily,
+    color: AppColors.textPrimary,
+    fontSize: 17,
+    fontWeight: FontWeight.w800,
+    height: 1.25,
+    letterSpacing: -0.2,
+  );
+
   /// Secondary metadata under a title (timestamps, "Valid till …", helper
   /// lines). Sits between `labelSmall` and `bodySmall` so those two stop
   /// being pressed into caption duty.
   static const caption = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textSecondary,
     fontSize: 12,
     fontWeight: FontWeight.w500,
@@ -60,6 +85,7 @@ class AppTypography {
   /// eyebrow text). The only style allowed below 12sp, and only in caps
   /// with tracking, which is what keeps it legible at that size.
   static const overline = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textSecondary,
     fontSize: 11,
     fontWeight: FontWeight.w700,
@@ -70,6 +96,7 @@ class AppTypography {
   /// Text inside a [StatusBadge]/chip — bold so it survives the tinted
   /// background, never smaller than 12.
   static const badgeLabel = TextStyle(
+    fontFamily: fontFamily,
     fontSize: 12,
     fontWeight: FontWeight.w700,
     height: 1.1,
@@ -80,6 +107,7 @@ class AppTypography {
   /// balance updates, and a distinct letter-spacing from prose headings so a
   /// number reads as data, not as a heading that happens to be a number.
   static const numericFinancialLarge = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: 40,
     fontWeight: FontWeight.w700,
@@ -89,6 +117,7 @@ class AppTypography {
   );
 
   static const numericFinancialMedium = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: 22,
     fontWeight: FontWeight.w700,
@@ -98,6 +127,7 @@ class AppTypography {
   );
 
   static const numericFinancialSmall = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: 15,
     fontWeight: FontWeight.w600,
@@ -107,6 +137,7 @@ class AppTypography {
 
   /// A coin/amount inside a sentence or tile trailing slot ("+120 coins").
   static const numericFinancialInline = TextStyle(
+    fontFamily: fontFamily,
     color: AppColors.textPrimary,
     fontSize: 13,
     fontWeight: FontWeight.w600,

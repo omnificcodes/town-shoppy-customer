@@ -40,6 +40,7 @@ class FakeMerchantsRepository implements MerchantsRepository {
     required double latitude,
     required double longitude,
     int? categoryId,
+    double? radiusKm,
     int page = 1,
     int perPage = 50,
   }) async => throw UnimplementedError();

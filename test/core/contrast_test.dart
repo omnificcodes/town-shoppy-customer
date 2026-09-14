@@ -58,4 +58,39 @@ void main() {
       expect(contrastRatio(AppColors.textSecondary, AppColors.surface), greaterThanOrEqualTo(kMinContrast));
     });
   });
+
+  // The Stitch redesign puts white text on saturated orange and small
+  // orange text on white. The brand orange itself fails both, which is why
+  // those surfaces use `orangeDeep` -- these pin that choice.
+  group('Stitch redesign pairings (WCAG AA, normal text)', () {
+    test('white on orangeDeep: promo hero copy, selected filter pills', () {
+      expect(contrastRatio(AppColors.onCrimson, AppColors.orangeDeep), greaterThanOrEqualTo(kMinContrast));
+    });
+
+    test('orangeDeep on white surface: "See all" and tile action links', () {
+      expect(contrastRatio(AppColors.orangeDeep, AppColors.surface), greaterThanOrEqualTo(kMinContrast));
+    });
+
+    test('orangeDeep on orangeTint: warm offer card chips', () {
+      expect(contrastRatio(AppColors.orangeDeep, AppColors.orangeTint), greaterThanOrEqualTo(kMinContrast));
+    });
+
+    test('goldLight on orangeDeep: promo hero eyebrow and tag', () {
+      expect(contrastRatio(AppColors.goldLight, AppColors.orangeDeep), greaterThanOrEqualTo(kMinContrast));
+    });
+
+    test('goldDark on orangeTint: association partners caption', () {
+      expect(contrastRatio(AppColors.goldDark, AppColors.orangeTint), greaterThanOrEqualTo(kMinContrast));
+    });
+
+    test('white on success: green offer card button', () {
+      expect(contrastRatio(AppColors.onCrimson, AppColors.success), greaterThanOrEqualTo(kMinContrast));
+    });
+
+    test('the brand orange really does fail as small text on white', () {
+      // Guards the reason orangeDeep exists: if this ever passes, the
+      // brand orange changed and orangeDeep may no longer be needed.
+      expect(contrastRatio(AppColors.orange, AppColors.surface), lessThan(kMinContrast));
+    });
+  });
 }
