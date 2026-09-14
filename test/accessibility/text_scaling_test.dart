@@ -23,6 +23,28 @@ import 'package:customer/features/profile/presentation/profile_screen.dart';
 import 'package:customer/features/redemptions/application/redemption_detail_provider.dart';
 import 'package:customer/features/redemptions/data/models/redemption.dart';
 import 'package:customer/features/redemptions/presentation/redemption_verification_screen.dart';
+import 'package:customer/core/networking/cursor_page.dart';
+import 'package:customer/features/coupons/application/coupons_list_controller.dart';
+import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
+import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
+import 'package:customer/features/wallet/data/wallet_repository.dart';
+
+/// Profile shows the wallet balance, so its scaling test needs one that
+/// never reaches for the network.
+class _FakeWalletRepository implements WalletRepository {
+  @override
+  Future<SilverWalletBalance> balance() async => const SilverWalletBalance(
+        balance: 1234567,
+        universalBalance: 1234567,
+        shopExclusiveBalance: 0,
+        shopExclusiveBreakdown: [],
+        balanceInrEquivalent: 123456.7,
+        updatedAt: null,
+      );
+
+  @override
+  Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
+}
 
 /// Section 20-24 of the Phase 10 brief: a practical text-scaling stress
 /// test on a representative set of screens (login, a data-heavy detail
@@ -262,7 +284,11 @@ void main() {
         tester,
         scale,
         () => ProviderScope(
-          overrides: [authControllerProvider.overrideWith(_AuthenticatedController.new)],
+          overrides: [
+            authControllerProvider.overrideWith(_AuthenticatedController.new),
+            walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+            couponCountsProvider.overrideWith((ref) async => const CouponCounts(active: 98765, won: 3, expired: 12)),
+          ],
           child: MaterialApp(
             theme: AppTheme.light,
             home: _scaled(scale, const ProfileScreen()),
