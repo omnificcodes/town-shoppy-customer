@@ -17,9 +17,20 @@ class _FakeOffersRepository implements OffersRepository {
   final calls = <({int page, int? categoryId, int? expiringWithinDays})>[];
 
   @override
-  Future<OffsetPage<Offer>> list({int page = 1, int perPage = 20, int? categoryId, int? expiringWithinDays}) async {
+  Future<OffsetPage<Offer>> list({
+    int page = 1,
+    int perPage = 20,
+    int? categoryId,
+    int? expiringWithinDays,
+    int? merchantId,
+  }) async {
     calls.add((page: page, categoryId: categoryId, expiringWithinDays: expiringWithinDays));
-    return OffsetPage(items: [_offer(1, coin: true), _offer(2), _announcement(3)], currentPage: 1, lastPage: 1, total: 3);
+    return OffsetPage(
+      items: [_offer(1, coin: true), _offer(2), _announcement(3)],
+      currentPage: 1,
+      lastPage: 1,
+      total: 3,
+    );
   }
 
   @override
@@ -32,42 +43,42 @@ class _FakeOffersRepository implements OffersRepository {
 
 /// Worst-case lengths in every slot: the backend caps none of them.
 Offer _offer(int id, {bool coin = false}) => Offer(
-      id: id,
-      merchantId: id,
-      merchantName: 'The Grand Downtown Corner Cafe and Bakery Emporium',
-      merchantLogoUrl: null,
-      title: 'Weekend feast: flat 25% off across every cafe and bakery counter in the whole town',
-      description: 'Valid on dine-in and takeaway orders above five hundred rupees, every weekend this month',
-      imageUrl: null,
-      offerType: id.isEven ? 'fixed_discount' : 'percentage_discount',
-      discountValue: id.isEven ? 1500 : 12.5,
-      terms: null,
-      startsAt: null,
-      endsAt: DateTime.now().add(const Duration(days: 14)),
-      distanceKm: null,
-      coinDiscountRate: coin ? 7.5 : null,
-      applicableItem: null,
-      isCoinRedeemable: coin,
-    );
+  id: id,
+  merchantId: id,
+  merchantName: 'The Grand Downtown Corner Cafe and Bakery Emporium',
+  merchantLogoUrl: null,
+  title: 'Weekend feast: flat 25% off across every cafe and bakery counter in the whole town',
+  description: 'Valid on dine-in and takeaway orders above five hundred rupees, every weekend this month',
+  imageUrl: null,
+  offerType: id.isEven ? 'fixed_discount' : 'percentage_discount',
+  discountValue: id.isEven ? 1500 : 12.5,
+  terms: null,
+  startsAt: null,
+  endsAt: DateTime.now().add(const Duration(days: 14)),
+  distanceKm: null,
+  coinDiscountRate: coin ? 7.5 : null,
+  applicableItem: null,
+  isCoinRedeemable: coin,
+);
 
 Offer _announcement(int id) => Offer(
-      id: id,
-      merchantId: id,
-      merchantName: 'Alathur Silks',
-      merchantLogoUrl: null,
-      title: 'Onam collection now in store',
-      description: null,
-      imageUrl: null,
-      offerType: 'announcement',
-      discountValue: null,
-      terms: null,
-      startsAt: null,
-      endsAt: null,
-      distanceKm: null,
-      coinDiscountRate: null,
-      applicableItem: null,
-      isCoinRedeemable: false,
-    );
+  id: id,
+  merchantId: id,
+  merchantName: 'Alathur Silks',
+  merchantLogoUrl: null,
+  title: 'Onam collection now in store',
+  description: null,
+  imageUrl: null,
+  offerType: 'announcement',
+  discountValue: null,
+  terms: null,
+  startsAt: null,
+  endsAt: null,
+  distanceKm: null,
+  coinDiscountRate: null,
+  applicableItem: null,
+  isCoinRedeemable: false,
+);
 
 const _categories = [
   MerchantCategory(id: 1, name: 'Bakery, Sweets and Confectionery', slug: 'bakery'),

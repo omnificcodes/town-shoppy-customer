@@ -28,6 +28,22 @@ import 'package:customer/features/coupons/application/coupons_list_controller.da
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
 import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
 import 'package:customer/features/wallet/data/wallet_repository.dart';
+import 'package:customer/core/networking/offset_page.dart';
+import 'package:customer/features/offers/application/merchant_offers_provider.dart';
+import 'package:customer/features/offers/data/models/offer.dart';
+import 'package:customer/features/products/data/models/product.dart';
+import 'package:customer/features/products/data/products_repository.dart';
+
+/// Merchant detail loads the shop's product catalog; an empty one keeps
+/// its scaling test off the network.
+class _EmptyProductsRepository implements ProductsRepository {
+  @override
+  Future<OffsetPage<Product>> list({int? merchantId, int page = 1, int perPage = 20}) async =>
+      const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0);
+
+  @override
+  Future<Product> show(int id) async => throw UnimplementedError();
+}
 
 /// Profile shows the wallet balance, so its scaling test needs one that
 /// never reaches for the network.
@@ -233,6 +249,9 @@ void main() {
           overrides: [
             merchantDetailProvider(1).overrideWith((ref) async => _merchant),
             merchantBranchesProvider(1).overrideWith((ref) async => _branches),
+            merchantOffersProvider(1).overrideWith((ref) async => const <Offer>[]),
+            productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
+            walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
           ],
           child: MaterialApp(
             theme: AppTheme.light,

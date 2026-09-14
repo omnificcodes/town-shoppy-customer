@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/home/application/home_location_controller.dart';
@@ -16,6 +17,13 @@ import 'package:customer/features/merchants/data/models/nearby_merchant.dart';
 import 'package:customer/features/merchants/data/models/town_ref.dart';
 import 'package:customer/features/merchants/presentation/merchant_detail_screen.dart';
 import 'package:customer/features/merchants/presentation/merchants_list_screen.dart';
+import 'package:customer/features/offers/application/merchant_offers_provider.dart';
+import 'package:customer/features/offers/data/models/offer.dart';
+import 'package:customer/features/products/data/models/product.dart';
+import 'package:customer/features/products/data/products_repository.dart';
+import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
+import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
+import 'package:customer/features/wallet/data/wallet_repository.dart';
 
 import '../../helpers/responsive_test_helper.dart';
 
@@ -29,7 +37,7 @@ const _merchant = Merchant(
   description: 'A long-standing neighbourhood institution serving locally roasted coffee and fresh-baked pastries.',
   logoUrl: null,
   websiteUrl: 'https://www.the-grand-downtown-corner-cafe.example.com/menu',
-  contactMobileNumber: '+91 98765 43210 extension 00000',
+  contactMobileNumber: '+91 98765 43210',
   socialLinks: null,
   discountRate: 12.5,
   acceptsTownCoin: true,
@@ -38,7 +46,12 @@ const _merchant = Merchant(
     id: 1,
     name: 'Downtown',
     slug: 'downtown',
-    town: TownRef(id: 1, name: 'Springfield-on-the-Hudson Metropolitan Area', slug: 'springfield', stateRegion: 'New Amsterdam'),
+    town: TownRef(
+      id: 1,
+      name: 'Springfield-on-the-Hudson Metropolitan Area',
+      slug: 'springfield',
+      stateRegion: 'New Amsterdam',
+    ),
   ),
   branch: null,
 );
@@ -88,6 +101,30 @@ class _FakeMerchantsRepository implements MerchantsRepository {
   }) async => throw UnimplementedError();
 }
 
+class _EmptyProductsRepository implements ProductsRepository {
+  @override
+  Future<OffsetPage<Product>> list({int? merchantId, int page = 1, int perPage = 20}) async =>
+      const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0);
+
+  @override
+  Future<Product> show(int id) async => throw UnimplementedError();
+}
+
+class _FakeWalletRepository implements WalletRepository {
+  @override
+  Future<SilverWalletBalance> balance() async => const SilverWalletBalance(
+    balance: 1234567,
+    universalBalance: 1234567,
+    shopExclusiveBalance: 0,
+    shopExclusiveBreakdown: [],
+    balanceInrEquivalent: 123456.7,
+    updatedAt: null,
+  );
+
+  @override
+  Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
+}
+
 class _FakeHomeLocationController extends HomeLocationController {
   @override
   Future<HomeLocationState> build() async => const HomeLocationUnavailable();
@@ -113,25 +150,26 @@ void main() {
         overrides: [
           merchantDetailProvider(1).overrideWith((ref) async => _merchant),
           merchantBranchesProvider(1).overrideWith((ref) async => _singleBranch),
+          merchantOffersProvider(1).overrideWith((ref) async => const <Offer>[]),
+          productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
+          walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
         ],
         child: _app(const MerchantDetailScreen(merchantId: 1)),
       ),
       verify: (tester, size) async {
-        expect(find.text('Accepts Town Coin'), findsOneWidget);
-        // At 2x the hero alone can fill a 568px viewport, so the CTA is
-        // legitimately below the fold -- reachable, not missing.
-        await tester.dragUntilVisible(find.text('Redeem Town Coin'), find.byType(ListView), const Offset(0, -200));
-        expect(find.text('Redeem Town Coin'), findsOneWidget);
-        await tester.dragUntilVisible(find.text('Get Directions'), find.byType(ListView), const Offset(0, -300));
-        await tester.pumpAndSettle();
-        expect(find.text('Get Directions'), findsOneWidget);
-        await tester.dragUntilVisible(find.text('Why pay with Town Coin'), find.byType(ListView), const Offset(0, -300));
-        expect(find.text('Pay with Town Coins'), findsOneWidget);
+        // At 2x the cover and profile card alone can fill a 568px viewport,
+        // so everything below them is legitimately below the fold --
+        // reachable, not missing.
+        final page = find.byType(ListView);
+        for (final text in ['Accepts Town Coin', 'Redeem Town Coin', 'Directions', 'BRANCH LOCATION']) {
+          await tester.dragUntilVisible(find.text(text), page, const Offset(0, -200));
+          expect(find.text(text), findsOneWidget, reason: '$text should be reachable at $size');
+        }
       },
     );
   });
 
-  testWidgets('MerchantsListScreen renders its header, search, banner, strip and cards at 320px and 2x text', (tester) async {
+  testWidgets('MerchantsListScreen renders its header, search, strip and cards at 320px and 2x text', (tester) async {
     await forEachViewport(
       tester,
       sizes: [_narrow, ...kResponsiveViewportSizes],

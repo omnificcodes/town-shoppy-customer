@@ -40,13 +40,20 @@ class OffersRepository {
   /// location, so it is the Offers tab's primary listing. [categoryId] and
   /// [expiringWithinDays] map onto the controller's own `category_id` and
   /// `expiring_within_days` filters, so pagination counts the filtered set.
-  Future<OffsetPage<Offer>> list({int page = 1, int perPage = 20, int? categoryId, int? expiringWithinDays}) async {
+  Future<OffsetPage<Offer>> list({
+    int page = 1,
+    int perPage = 20,
+    int? categoryId,
+    int? expiringWithinDays,
+    int? merchantId,
+  }) async {
     try {
       final response = await _dio.get(
         '/offers',
         queryParameters: {
           'page': page,
           'per_page': perPage,
+          'merchant_id': ?merchantId,
           'category_id': ?categoryId,
           'expiring_within_days': ?expiringWithinDays,
         },
