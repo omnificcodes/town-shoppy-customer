@@ -39,7 +39,7 @@ class ProductCard extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     if (product.primaryImageUrl != null)
-                      Image.network(product.primaryImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _ProductPlaceholder())
+                      Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, product.primaryImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _ProductPlaceholder())
                     else
                       const _ProductPlaceholder(),
                     if (product.acceptsTownCoin)

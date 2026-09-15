@@ -184,7 +184,7 @@ class _Preview extends StatelessWidget {
             : const ColoredBox(color: AppColors.surfaceMuted),
       );
     }
-    return Image.network(
+    return Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, 
       url!,
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => const ColoredBox(

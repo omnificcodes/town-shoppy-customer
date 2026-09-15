@@ -62,7 +62,7 @@ class BusinessProfileScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   child: AspectRatio(
                     aspectRatio: 16 / 7,
-                    child: Image.network(m.coverImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.businessTint)),
+                    child: Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, m.coverImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.businessTint)),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),

@@ -120,7 +120,7 @@ class _ImageGallery extends StatelessWidget {
       aspectRatio: 1,
       child: PageView.builder(
         itemCount: product.imageUrls.length,
-        itemBuilder: (context, index) => Image.network(
+        itemBuilder: (context, index) => Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, 
           product.imageUrls[index],
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => const _ProductHeroPlaceholder(),

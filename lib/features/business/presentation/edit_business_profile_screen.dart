@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -15,6 +16,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../merchants/application/merchant_categories_provider.dart';
+import '../../profile/presentation/social_platforms.dart';
 import '../application/business_context.dart';
 import '../application/edit_business_profile_controller.dart';
 import '../data/business_merchant_repository.dart';
@@ -26,6 +28,10 @@ import 'widgets/business_page_header.dart';
 /// sections. Logo/cover upload immediately on pick (the URL is what gets
 /// saved); empty text clears the column. Owner only -- the router never
 /// lets staff in here, and the backend 403s anyway.
+///
+/// Social links get one field per platform (YouTube, Facebook, Instagram,
+/// LinkedIn). Links the web edit sheet saved under any other platform name
+/// are not shown but are sent back unchanged on every save.
 class EditBusinessProfileScreen extends ConsumerStatefulWidget {
   const EditBusinessProfileScreen({super.key});
 
@@ -43,8 +49,13 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
   final _email = TextEditingController();
   final _website = TextEditingController();
   final _discount = TextEditingController();
-  final List<_SocialLinkRow> _social = [];
+  final Map<SocialPlatform, TextEditingController> _social = {
+    for (final p in SocialPlatform.values) p: TextEditingController(),
+  };
   final Map<String, DayHours> _hours = {};
+
+  /// Saved links under any other platform name, kept as-is.
+  Map<String, String> _otherSocial = const {};
 
   int? _categoryId;
   String? _logoUrl;
@@ -58,8 +69,8 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     for (final c in [_name, _ownerName, _tagline, _description, _gst, _phone, _email, _website, _discount]) {
       c.dispose();
     }
-    for (final r in _social) {
-      r.dispose();
+    for (final c in _social.values) {
+      c.dispose();
     }
     super.dispose();
   }
@@ -75,14 +86,29 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     _phone.text = m.contactMobileNumber ?? '';
     _email.text = m.contactEmail ?? '';
     _website.text = m.websiteUrl ?? '';
-    _discount.text = m.discountRate == null ? '' : (m.discountRate == m.discountRate!.roundToDouble() ? m.discountRate!.toInt().toString() : m.discountRate.toString());
+    _discount.text = m.discountRate == null
+        ? ''
+        : (m.discountRate == m.discountRate!.roundToDouble()
+              ? m.discountRate!.toInt().toString()
+              : m.discountRate.toString());
     _categoryId = m.category?.id;
     _logoUrl = m.logoUrl;
     _coverUrl = m.coverImageUrl;
     _acceptsTownCoin = m.acceptsTownCoin;
+
+    // The web edit sheet takes a free-typed platform name, so "Instagram"
+    // and "instagram" both land in the Instagram field.
+    final other = <String, String>{};
     for (final e in m.socialLinks?.entries ?? const <MapEntry<String, String>>[]) {
-      _social.add(_SocialLinkRow(platform: e.key, url: e.value));
+      final platform = SocialPlatform.values.where((p) => p.key == e.key.trim().toLowerCase()).firstOrNull;
+      if (platform != null && _social[platform]!.text.isEmpty) {
+        _social[platform]!.text = e.value;
+      } else if (platform == null) {
+        other[e.key] = e.value;
+      }
     }
+    _otherSocial = other;
+
     for (final day in merchantWeekdays) {
       _hours[day] = m.businessHours?.forDay(day) ?? DayHours.unset;
     }
@@ -110,11 +136,16 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     return n == null || n < 0 || n > 100 ? 'Enter a number between 0 and 100.' : null;
   }
 
+  String? _socialError(SocialPlatform p) => p.validate(_social[p]!.text);
+
   Future<void> _pickTime(String day, {required bool opening}) async {
     final current = _hours[day]!;
     final raw = opening ? current.open : current.close;
     final parts = raw.split(':');
-    final initial = TimeOfDay(hour: int.tryParse(parts[0]) ?? 9, minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0);
+    final initial = TimeOfDay(
+      hour: int.tryParse(parts[0]) ?? 9,
+      minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+    );
     final picked = await showTimePicker(context: context, initialTime: initial);
     if (picked == null) return;
     final text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
@@ -123,14 +154,24 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
 
   void _submit(int merchantId) {
     setState(() => _touched = true);
-    if (_nameError != null || _ownerError != null || _emailError != null || _websiteError != null || _discountError != null) return;
+    if (_nameError != null ||
+        _ownerError != null ||
+        _emailError != null ||
+        _websiteError != null ||
+        _discountError != null ||
+        SocialPlatform.values.any((p) => _socialError(p) != null)) {
+      return;
+    }
 
     final social = <String, String>{
-      for (final r in _social)
-        if (r.platform.text.trim().isNotEmpty && r.url.text.trim().isNotEmpty) r.platform.text.trim(): r.url.text.trim(),
+      ..._otherSocial,
+      for (final p in SocialPlatform.values)
+        if (_social[p]!.text.trim().isNotEmpty) p.key: _social[p]!.text.trim(),
     };
 
-    ref.read(editBusinessProfileControllerProvider.notifier).submit(
+    ref
+        .read(editBusinessProfileControllerProvider.notifier)
+        .submit(
           merchantId,
           buildMerchantUpdateBody(
             name: _name.text,
@@ -170,7 +211,10 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
       padded: false,
       body: merchant.when(
         loading: () => const LoadingSkeletonList(count: 6),
-        error: (e, _) => ErrorState(error: e is AppException ? e : const UnknownAppException(), onRetry: () => ref.invalidate(myMerchantProvider)),
+        error: (e, _) => ErrorState(
+          error: e is AppException ? e : const UnknownAppException(),
+          onRetry: () => ref.invalidate(myMerchantProvider),
+        ),
         data: (m) {
           _initFrom(m);
           String? serverError(String field) => state.fieldErrors[field]?.firstOrNull;
@@ -178,13 +222,33 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.page),
             children: [
-              const SectionHeader(title: 'Basic information', subtitle: 'Core details customers see.', icon: Icons.storefront_rounded),
+              const SectionHeader(
+                title: 'Basic information',
+                subtitle: 'Core details customers see.',
+                icon: Icons.storefront_rounded,
+              ),
               const SizedBox(height: AppSpacing.smd),
-              AppTextField(label: 'Business name', controller: _name, errorText: serverError('name') ?? (_touched ? _nameError : null), textInputAction: TextInputAction.next),
+              AppTextField(
+                label: 'Business name',
+                controller: _name,
+                errorText: serverError('name') ?? (_touched ? _nameError : null),
+                textInputAction: TextInputAction.next,
+              ),
               const SizedBox(height: AppSpacing.smd),
-              AppTextField(label: 'Owner name', controller: _ownerName, errorText: serverError('owner_name') ?? (_touched ? _ownerError : null), textInputAction: TextInputAction.next),
+              AppTextField(
+                label: 'Owner name',
+                controller: _ownerName,
+                errorText: serverError('owner_name') ?? (_touched ? _ownerError : null),
+                textInputAction: TextInputAction.next,
+              ),
               const SizedBox(height: AppSpacing.smd),
-              AppTextField(label: 'Tagline', controller: _tagline, hintText: 'A short line under your business name', maxLength: 255, errorText: serverError('tagline')),
+              AppTextField(
+                label: 'Tagline',
+                controller: _tagline,
+                hintText: 'A short line under your business name',
+                maxLength: 255,
+                errorText: serverError('tagline'),
+              ),
               const SizedBox(height: AppSpacing.smd),
               categories.when(
                 loading: () => const LoadingSkeleton(height: AppSize.field),
@@ -197,11 +261,22 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
                 ),
               ),
               const SizedBox(height: AppSpacing.smd),
-              AppTextField(label: 'Description', controller: _description, maxLines: 4, maxLength: 2000, hintText: 'What do you sell? What makes your business unique?', errorText: serverError('description')),
+              AppTextField(
+                label: 'Description',
+                controller: _description,
+                maxLines: 4,
+                maxLength: 2000,
+                hintText: 'What do you sell? What makes your business unique?',
+                errorText: serverError('description'),
+              ),
               const SizedBox(height: AppSpacing.smd),
               AppTextField(label: 'GST number', controller: _gst, maxLength: 32, errorText: serverError('gst_number')),
               const SizedBox(height: AppSpacing.section),
-              const SectionHeader(title: 'Contact', subtitle: 'How customers reach your business directly.', icon: Icons.phone_outlined),
+              const SectionHeader(
+                title: 'Contact',
+                subtitle: 'How customers reach your business directly.',
+                icon: Icons.phone_outlined,
+              ),
               const SizedBox(height: AppSpacing.smd),
               AppTextField(
                 label: 'Business phone',
@@ -220,9 +295,19 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
                 errorText: serverError('contact_email') ?? (_touched ? _emailError : null),
               ),
               const SizedBox(height: AppSpacing.section),
-              const SectionHeader(title: 'Web presence', subtitle: 'Website, logo, and social links.', icon: Icons.language_rounded),
+              const SectionHeader(
+                title: 'Web presence',
+                subtitle: 'Website, logo and cover image.',
+                icon: Icons.language_rounded,
+              ),
               const SizedBox(height: AppSpacing.smd),
-              AppTextField(label: 'Website', controller: _website, hintText: 'https://…', keyboardType: TextInputType.url, errorText: serverError('website_url') ?? (_touched ? _websiteError : null)),
+              AppTextField(
+                label: 'Website',
+                controller: _website,
+                hintText: 'https://…',
+                keyboardType: TextInputType.url,
+                errorText: serverError('website_url') ?? (_touched ? _websiteError : null),
+              ),
               const SizedBox(height: AppSpacing.smd),
               Text('Logo', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.xs),
@@ -239,7 +324,10 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
               const SizedBox(height: AppSpacing.smd),
               Text('Cover image', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.xxs),
-              Text('The banner shown at the top of the storefront profile.', style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                'The banner shown at the top of the storefront profile.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: AppSpacing.xs),
               ImagePickerField(
                 label: 'cover image',
@@ -251,36 +339,28 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
                 },
                 onRemoved: () => setState(() => _coverUrl = null),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text('Social links', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: AppSpacing.xs),
-              for (var i = 0; i < _social.length; i++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: 110, child: AppTextField(label: 'Platform', controller: _social[i].platform, hintText: 'instagram')),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(child: AppTextField(label: 'Link', controller: _social[i].url, hintText: 'https://…', keyboardType: TextInputType.url)),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: AppColors.textSecondary),
-                        tooltip: 'Remove social link',
-                        onPressed: () => setState(() => _social.removeAt(i).dispose()),
-                      ),
-                    ],
-                  ),
-                ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => _social.add(_SocialLinkRow())),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Add social link'),
-                ),
-              ),
               const SizedBox(height: AppSpacing.section),
-              const SectionHeader(title: 'Business hours', subtitle: 'When customers can find you open, per day.', icon: Icons.schedule_rounded),
+              const SectionHeader(
+                title: 'Social media links',
+                subtitle: 'Paste the link to your business page on each platform.',
+                icon: Icons.link_rounded,
+              ),
+              const SizedBox(height: AppSpacing.smd),
+              for (final p in SocialPlatform.values) ...[
+                _SocialLinkField(
+                  platform: p,
+                  controller: _social[p]!,
+                  errorText: serverError('social_links.${p.key}') ?? (_touched ? _socialError(p) : null),
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: AppSpacing.smd),
+              ],
+              const SizedBox(height: AppSpacing.section - AppSpacing.smd),
+              const SectionHeader(
+                title: 'Business hours',
+                subtitle: 'When customers can find you open, per day.',
+                icon: Icons.schedule_rounded,
+              ),
               const SizedBox(height: AppSpacing.smd),
               AppCard(
                 padding: EdgeInsets.zero,
@@ -300,7 +380,11 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
                 ),
               ),
               const SizedBox(height: AppSpacing.section),
-              const SectionHeader(title: 'Rewards', subtitle: 'Discounts and Town Coin settings.', icon: Icons.percent_rounded),
+              const SectionHeader(
+                title: 'Rewards',
+                subtitle: 'Discounts and Town Coin settings.',
+                icon: Icons.percent_rounded,
+              ),
               const SizedBox(height: AppSpacing.smd),
               AppTextField(
                 label: 'Discount rate (%)',
@@ -324,7 +408,11 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
                 InfoBox(icon: Icons.error_outline_rounded, tone: AppTone.error, message: state.error!.message),
                 const SizedBox(height: AppSpacing.md),
               ],
-              AppButton(label: 'Save changes', isLoading: state.isSubmitting, onPressed: state.isUploading ? null : () => _submit(m.id)),
+              AppButton(
+                label: 'Save changes',
+                isLoading: state.isSubmitting,
+                onPressed: state.isUploading ? null : () => _submit(m.id),
+              ),
               const SizedBox(height: AppSpacing.xl),
             ],
           );
@@ -334,22 +422,76 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
   }
 }
 
-class _SocialLinkRow {
-  _SocialLinkRow({String platform = '', String url = ''})
-      : platform = TextEditingController(text: platform),
-        url = TextEditingController(text: url);
+/// One platform: its brand icon tile, then the link field.
+class _SocialLinkField extends StatelessWidget {
+  const _SocialLinkField({
+    required this.platform,
+    required this.controller,
+    required this.errorText,
+    required this.onChanged,
+  });
 
-  final TextEditingController platform;
-  final TextEditingController url;
+  final SocialPlatform platform;
+  final TextEditingController controller;
+  final String? errorText;
+  final VoidCallback onChanged;
 
-  void dispose() {
-    platform.dispose();
-    url.dispose();
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ExcludeSemantics(
+          child: Container(
+            width: AppSize.field,
+            height: AppSize.field,
+            decoration: BoxDecoration(
+              color: platform.brandColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
+              border: Border.all(color: platform.brandColor.withValues(alpha: 0.25)),
+            ),
+            child: Center(child: FaIcon(platform.icon, color: platform.brandColor, size: AppIconSize.lg)),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.next,
+            autocorrect: false,
+            onChanged: (_) => onChanged(),
+            decoration: InputDecoration(
+              labelText: platform.label,
+              hintText: platform.hint,
+              errorText: errorText,
+              errorMaxLines: 2,
+              suffixIcon: controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close_rounded, size: AppIconSize.sm),
+                      tooltip: 'Clear ${platform.label} link',
+                      onPressed: () {
+                        controller.clear();
+                        onChanged();
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
 class _DayHoursRow extends StatelessWidget {
-  const _DayHoursRow({required this.label, required this.hours, required this.onToggle, required this.onPickOpen, required this.onPickClose});
+  const _DayHoursRow({
+    required this.label,
+    required this.hours,
+    required this.onToggle,
+    required this.onPickOpen,
+    required this.onPickClose,
+  });
 
   final String label;
   final DayHours hours;
@@ -377,9 +519,16 @@ class _DayHoursRow extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Row(
                 children: [
-                  Expanded(child: _TimeChip(label: hours.open, onTap: onPickOpen)),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm), child: Text('to', style: textTheme.bodySmall)),
-                  Expanded(child: _TimeChip(label: hours.close, onTap: onPickClose)),
+                  Expanded(
+                    child: _TimeChip(label: hours.open, onTap: onPickOpen),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    child: Text('to', style: textTheme.bodySmall),
+                  ),
+                  Expanded(
+                    child: _TimeChip(label: hours.close, onTap: onPickClose),
+                  ),
                 ],
               ),
             ),
@@ -399,7 +548,10 @@ class _TimeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onTap,
-      style: OutlinedButton.styleFrom(minimumSize: const Size(0, AppSize.controlSm), padding: const EdgeInsets.symmetric(horizontal: AppSpacing.smd)),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, AppSize.controlSm),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.smd),
+      ),
       icon: const Icon(Icons.access_time_rounded, size: AppIconSize.sm),
       label: Text(label),
     );

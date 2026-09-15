@@ -69,7 +69,7 @@ class _Hero extends StatelessWidget {
           if (imageUrl == null)
             fallback
           else ...[
-            Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
+            Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, imageUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
             // Keeps the chips legible over a busy photo.
             DecoratedBox(
               decoration: BoxDecoration(

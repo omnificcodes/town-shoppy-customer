@@ -241,7 +241,7 @@ class _Thumbnail extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
       child: hasImage
-          ? Image.network(product.primaryImageUrl!, width: AppSize.avatarLg, height: AppSize.avatarLg, fit: BoxFit.cover)
+          ? Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, product.primaryImageUrl!, width: AppSize.avatarLg, height: AppSize.avatarLg, fit: BoxFit.cover)
           : Container(
               width: AppSize.avatarLg,
               height: AppSize.avatarLg,

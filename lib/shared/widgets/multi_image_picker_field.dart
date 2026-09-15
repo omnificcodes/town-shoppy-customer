@@ -135,7 +135,7 @@ class _ImageThumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            child: Image.network(
+            child: Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, 
               url,
               width: _size,
               height: _size,

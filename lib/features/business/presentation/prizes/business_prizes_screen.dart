@@ -178,7 +178,7 @@ class _PrizeRow extends StatelessWidget {
                 width: AppSize.avatarLg,
                 height: AppSize.avatarLg,
                 child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                    ? Image.network(p.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _PrizeIcon())
+                    ? Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, p.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _PrizeIcon())
                     : const _PrizeIcon(),
               ),
             ),

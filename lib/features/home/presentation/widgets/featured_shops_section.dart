@@ -227,7 +227,7 @@ class _Cover extends StatelessWidget {
     final url = merchant.coverImageUrl;
     if (url == null) return fallback;
 
-    return Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback);
+    return Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, url, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback);
   }
 }
 

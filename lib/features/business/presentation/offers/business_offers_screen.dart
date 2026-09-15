@@ -735,6 +735,7 @@ class OfferCard extends StatelessWidget {
                     children: [
                       if (offer.imageUrl != null && offer.imageUrl!.isNotEmpty)
                         Image.network(
+                          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                           offer.imageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => const _OfferPlaceholder(),

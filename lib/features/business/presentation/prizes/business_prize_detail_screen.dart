@@ -68,7 +68,7 @@ class _BusinessPrizeDetailScreenState extends ConsumerState<BusinessPrizeDetailS
                 AspectRatio(
                   aspectRatio: 16 / 9,
                   child: p.imageUrl != null && p.imageUrl!.isNotEmpty
-                      ? Image.network(p.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _Placeholder())
+                      ? Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, p.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _Placeholder())
                       : const _Placeholder(),
                 ),
                 Padding(

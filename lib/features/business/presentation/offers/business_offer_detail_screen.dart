@@ -62,7 +62,7 @@ class BusinessOfferDetailScreen extends ConsumerWidget {
               AspectRatio(
                 aspectRatio: 16 / 9,
                 child: o.imageUrl != null && o.imageUrl!.isNotEmpty
-                    ? Image.network(o.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _Placeholder())
+                    ? Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, o.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _Placeholder())
                     : const _Placeholder(),
               ),
               Padding(

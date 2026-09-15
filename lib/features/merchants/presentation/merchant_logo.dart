@@ -26,6 +26,7 @@ class MerchantLogo extends StatelessWidget {
         child: url == null || url!.isEmpty
             ? _fallback(context)
             : Image.network(
+                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                 url!,
                 width: size,
                 height: size,

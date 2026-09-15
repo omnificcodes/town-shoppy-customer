@@ -245,7 +245,12 @@ class _CoverAndProfile extends StatelessWidget {
               if (coverUrl == null)
                 fallback
               else
-                Image.network(coverUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
+                Image.network(
+                  webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                  coverUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => fallback,
+                ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

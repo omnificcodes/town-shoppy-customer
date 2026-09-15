@@ -100,7 +100,7 @@ class _PartnerTile extends StatelessWidget {
               ),
               child: logoUrl == null
                   ? _CodeMark(code: code)
-                  : Image.network(logoUrl, fit: BoxFit.contain, errorBuilder: (_, _, _) => _CodeMark(code: code)),
+                  : Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, logoUrl, fit: BoxFit.contain, errorBuilder: (_, _, _) => _CodeMark(code: code)),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(

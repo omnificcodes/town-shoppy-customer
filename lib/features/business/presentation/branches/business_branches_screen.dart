@@ -189,7 +189,7 @@ class _BranchCard extends StatelessWidget {
                   height: AppSize.avatarLg,
                   child: image == null
                       ? const ColoredBox(color: AppColors.businessTint, child: Icon(Icons.storefront_rounded, color: AppColors.businessInk))
-                      : Image.network(image, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.businessTint, child: Icon(Icons.storefront_rounded, color: AppColors.businessInk))),
+                      : Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, image, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.businessTint, child: Icon(Icons.storefront_rounded, color: AppColors.businessInk))),
                 ),
               ),
               const SizedBox(width: AppSpacing.smd),

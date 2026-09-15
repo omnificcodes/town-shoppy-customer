@@ -353,6 +353,7 @@ class _PhotoHeader extends StatelessWidget {
                     label: hasCover ? 'Cover image' : 'No cover image',
                     child: hasCover
                         ? Image.network(
+                            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                             coverUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) => const _CoverPlaceholder(),
@@ -395,6 +396,7 @@ class _PhotoHeader extends StatelessWidget {
                             label: hasPhoto ? 'Profile photo' : 'No profile photo',
                             child: hasPhoto
                                 ? Image.network(
+                                    webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                                     photoUrl!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, _, _) => _InitialsAvatar(initials: initials),
