@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -19,11 +18,13 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
 import '../application/edit_profile_controller.dart';
 import '../data/customer_profile_repository.dart';
-import 'social_platforms.dart';
 
 /// Everything here is optional, same "progressive profile completion"
 /// principle the backend's `CustomerProfile` docblock states -- a customer
 /// can save with only their name changed, or nothing at all.
+///
+/// Social links are not edited here; Save never sends `social_links`, so any
+/// already saved stay untouched.
 ///
 /// Photos upload the moment they are picked (`POST /uploads/image`) and
 /// only become the profile's once Save sends the returned URL -- the same
@@ -38,11 +39,7 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 enum _ImageSlot { photo, cover }
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final Map<SocialPlatform, TextEditingController> _socialControllers = {
-    for (final p in SocialPlatform.values) p: TextEditingController(),
-  };
 
   DateTime? _dateOfBirth;
   DateTime? _anniversaryDate;
@@ -53,20 +50,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _initialized = false;
   DateTime? _initialDateOfBirth;
   DateTime? _initialAnniversaryDate;
-  Map<String, String>? _initialSocialLinks;
   String? _initialProfilePhotoUrl;
   String? _initialCoverImageUrl;
-
-  /// Links saved under any other platform (from the earlier free-form
-  /// editor). Not shown, but sent back on every save so none are lost.
-  Map<String, String> _otherSocialLinks = const {};
 
   @override
   void dispose() {
     _nameController.dispose();
-    for (final controller in _socialControllers.values) {
-      controller.dispose();
-    }
     super.dispose();
   }
 
@@ -84,16 +73,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _profilePhotoUrl = _initialProfilePhotoUrl;
     _initialCoverImageUrl = profile?.coverImageUrl;
     _coverImageUrl = _initialCoverImageUrl;
-
-    final links = profile?.socialLinks;
-    _initialSocialLinks = links;
-    for (final platform in SocialPlatform.values) {
-      _socialControllers[platform]!.text = links?[platform.key] ?? '';
-    }
-    _otherSocialLinks = {
-      for (final entry in links?.entries ?? const <MapEntry<String, String>>[])
-        if (!SocialPlatform.keys.contains(entry.key)) entry.key: entry.value,
-    };
   }
 
   Future<void> _pickDate({required DateTime? initial, required ValueChanged<DateTime?> onPicked}) async {
@@ -120,20 +99,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
-  Map<String, String>? get _socialLinksMap {
-    final links = <String, String>{
-      ..._otherSocialLinks,
-      for (final platform in SocialPlatform.values)
-        if (_socialControllers[platform]!.text.trim().isNotEmpty)
-          platform.key: _socialControllers[platform]!.text.trim(),
-    };
-    return links.isEmpty ? null : links;
-  }
-
   void _submit() {
-    if (!(_formKey.currentState?.validate() ?? true)) return;
-    final socialLinks = _socialLinksMap;
-
     ref
         .read(editProfileControllerProvider.notifier)
         .submit(
@@ -142,8 +108,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           clearDateOfBirth: _dateOfBirth == null && _initialDateOfBirth != null,
           anniversaryDate: _anniversaryDate,
           clearAnniversaryDate: _anniversaryDate == null && _initialAnniversaryDate != null,
-          socialLinks: socialLinks,
-          clearSocialLinks: socialLinks == null && _initialSocialLinks != null,
           profilePhotoUrl: _profilePhotoUrl,
           clearProfilePhoto: _profilePhotoUrl == null && _initialProfilePhotoUrl != null,
           coverImageUrl: _coverImageUrl,
@@ -169,66 +133,52 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit profile')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.page),
-          children: [
-            _PhotoHeader(
-              coverUrl: _coverImageUrl,
-              photoUrl: _profilePhotoUrl,
-              initials: _initials(_nameController.text, authState.account.mobileNumber),
-              uploading: _uploading,
-              onPickCover: (file) => _upload(_ImageSlot.cover, file),
-              onRemoveCover: () => setState(() => _coverImageUrl = null),
-              onPickPhoto: (file) => _upload(_ImageSlot.photo, file),
-              onRemovePhoto: () => setState(() => _profilePhotoUrl = null),
-            ),
-            const SizedBox(height: AppSpacing.section),
-            AppTextField(label: 'Name', controller: _nameController, textInputAction: TextInputAction.next),
-            const SizedBox(height: AppSpacing.section),
-            const SectionHeader(
-              icon: Icons.cake_outlined,
-              title: 'Special dates',
-              subtitle: 'Optional -- we can send you a little something.',
-            ),
-            const SizedBox(height: AppSpacing.smd),
-            _DateField(
-              label: 'Date of birth',
-              value: _dateOfBirth,
-              onTap: () => _pickDate(initial: _dateOfBirth, onPicked: (d) => setState(() => _dateOfBirth = d)),
-              onClear: _dateOfBirth == null ? null : () => setState(() => _dateOfBirth = null),
-            ),
-            const SizedBox(height: AppSpacing.smd),
-            _DateField(
-              label: 'Anniversary',
-              value: _anniversaryDate,
-              onTap: () => _pickDate(initial: _anniversaryDate, onPicked: (d) => setState(() => _anniversaryDate = d)),
-              onClear: _anniversaryDate == null ? null : () => setState(() => _anniversaryDate = null),
-            ),
-            const SizedBox(height: AppSpacing.section),
-            const SectionHeader(
-              icon: Icons.link_rounded,
-              title: 'Social media links',
-              subtitle: 'Optional -- paste the link to your profile or page.',
-            ),
-            const SizedBox(height: AppSpacing.smd),
-            for (final platform in SocialPlatform.values) ...[
-              _SocialLinkField(platform: platform, controller: _socialControllers[platform]!),
-              const SizedBox(height: AppSpacing.smd),
-            ],
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.page),
+        children: [
+          _PhotoHeader(
+            coverUrl: _coverImageUrl,
+            photoUrl: _profilePhotoUrl,
+            initials: _initials(_nameController.text, authState.account.mobileNumber),
+            uploading: _uploading,
+            onPickCover: (file) => _upload(_ImageSlot.cover, file),
+            onRemoveCover: () => setState(() => _coverImageUrl = null),
+            onPickPhoto: (file) => _upload(_ImageSlot.photo, file),
+            onRemovePhoto: () => setState(() => _profilePhotoUrl = null),
+          ),
+          const SizedBox(height: AppSpacing.section),
+          AppTextField(label: 'Name', controller: _nameController, textInputAction: TextInputAction.next),
+          const SizedBox(height: AppSpacing.section),
+          const SectionHeader(
+            icon: Icons.cake_outlined,
+            title: 'Special dates',
+            subtitle: 'Optional -- we can send you a little something.',
+          ),
+          const SizedBox(height: AppSpacing.smd),
+          _DateField(
+            label: 'Date of birth',
+            value: _dateOfBirth,
+            onTap: () => _pickDate(initial: _dateOfBirth, onPicked: (d) => setState(() => _dateOfBirth = d)),
+            onClear: _dateOfBirth == null ? null : () => setState(() => _dateOfBirth = null),
+          ),
+          const SizedBox(height: AppSpacing.smd),
+          _DateField(
+            label: 'Anniversary',
+            value: _anniversaryDate,
+            onTap: () => _pickDate(initial: _anniversaryDate, onPicked: (d) => setState(() => _anniversaryDate = d)),
+            onClear: _anniversaryDate == null ? null : () => setState(() => _anniversaryDate = null),
+          ),
+          const SizedBox(height: AppSpacing.section),
+          if (editState.submitError != null) ...[
+            InfoBox(tone: AppTone.error, icon: Icons.error_outline_rounded, message: editState.submitError!.message),
             const SizedBox(height: AppSpacing.md),
-            if (editState.submitError != null) ...[
-              InfoBox(tone: AppTone.error, icon: Icons.error_outline_rounded, message: editState.submitError!.message),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            AppButton(
-              label: isBusy ? 'Uploading photo…' : 'Save changes',
-              isLoading: editState.isSubmitting,
-              onPressed: isBusy ? null : _submit,
-            ),
           ],
-        ),
+          AppButton(
+            label: isBusy ? 'Uploading photo…' : 'Save changes',
+            isLoading: editState.isSubmitting,
+            onPressed: isBusy ? null : _submit,
+          ),
+        ],
       ),
     );
   }
@@ -572,63 +522,6 @@ class _ImageMenuButton extends StatelessWidget {
         ),
       ],
       child: Opacity(opacity: enabled ? 1 : 0.6, child: pill),
-    );
-  }
-}
-
-/// One platform row: the brand icon tile, then the link field validated
-/// against that platform's hosts.
-class _SocialLinkField extends StatelessWidget {
-  const _SocialLinkField({required this.platform, required this.controller});
-
-  final SocialPlatform platform;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ExcludeSemantics(
-          child: Container(
-            width: AppSize.field,
-            height: AppSize.field,
-            decoration: BoxDecoration(
-              color: platform.brandColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
-              border: Border.all(color: platform.brandColor.withValues(alpha: 0.25)),
-            ),
-            child: Center(
-              child: FaIcon(platform.icon, color: platform.brandColor, size: AppIconSize.lg),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: TextFormField(
-            controller: controller,
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            validator: (value) => platform.validate(value ?? ''),
-            decoration: InputDecoration(
-              labelText: platform.label,
-              hintText: platform.hint,
-              suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                valueListenable: controller,
-                builder: (context, value, _) => value.text.isEmpty
-                    ? const SizedBox.shrink()
-                    : IconButton(
-                        icon: const Icon(Icons.close_rounded, size: AppIconSize.sm),
-                        tooltip: 'Clear ${platform.label} link',
-                        onPressed: controller.clear,
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

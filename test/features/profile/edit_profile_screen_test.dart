@@ -24,7 +24,7 @@ final _account = Account(
     name: 'Ammu Krishnan',
     dateOfBirth: null,
     anniversaryDate: null,
-    socialLinks: const {'instagram': 'https://instagram.com/ammu', 'twitter': 'https://x.com/ammu'},
+    socialLinks: const {'instagram': 'https://instagram.com/ammu'},
     referralCode: 'AMMU01',
     status: 'active',
     profilePhotoUrl: 'https://cdn.example.com/photo.jpg',
@@ -64,6 +64,7 @@ class _FakeCustomerProfileRepository extends CustomerProfileRepository {
     calls.add({
       'name': name,
       'socialLinks': socialLinks,
+      'clearSocialLinks': clearSocialLinks,
       'profilePhotoUrl': profilePhotoUrl,
       'clearProfilePhoto': clearProfilePhoto,
       'coverImageUrl': coverImageUrl,
@@ -95,10 +96,12 @@ Widget _wrap(_FakeCustomerProfileRepository repository) {
   );
 }
 
-Finder _linkField(String label) => find.widgetWithText(TextFormField, label);
-
 void main() {
-  testWidgets('shows photo controls and one field per platform without overflow at every viewport', (tester) async {
+  // A tap that misses must fail the test, never pass it vacuously.
+  setUp(() => WidgetController.hitTestWarningShouldBeFatal = true);
+  tearDown(() => WidgetController.hitTestWarningShouldBeFatal = false);
+
+  testWidgets('shows photo controls, name and dates, and no social links, at every viewport', (tester) async {
     await forEachViewport(
       tester,
       () => _wrap(_FakeCustomerProfileRepository()),
@@ -109,33 +112,15 @@ void main() {
         expect(find.text('Remove photo'), findsOneWidget);
 
         final list = find.byType(Scrollable).first;
-        await tester.scrollUntilVisible(_linkField('LinkedIn'), 200, scrollable: list);
-        for (final label in ['YouTube', 'Facebook', 'Instagram', 'LinkedIn']) {
-          expect(_linkField(label), findsOneWidget);
-        }
-        expect(find.text('https://instagram.com/ammu'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('Save changes'), 200, scrollable: list);
+        expect(find.text('Special dates'), findsOneWidget);
+        expect(find.text('Social media links'), findsNothing);
+        expect(find.text('YouTube'), findsNothing);
       },
     );
   });
 
-  testWidgets('a link for the wrong site blocks Save and explains why', (tester) async {
-    final repository = _FakeCustomerProfileRepository();
-    await tester.pumpWidget(_wrap(repository));
-    await tester.pumpAndSettle();
-
-    final list = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(_linkField('YouTube'), 200, scrollable: list);
-    await tester.enterText(_linkField('YouTube'), 'https://vimeo.com/ammu');
-    await tester.scrollUntilVisible(find.text('Save changes'), 200, scrollable: list);
-    await tester.tap(find.text('Save changes'));
-    await tester.pumpAndSettle();
-
-    expect(repository.calls, isEmpty);
-    await tester.scrollUntilVisible(find.text('Enter a YouTube link'), -200, scrollable: list);
-    expect(find.text('Enter a YouTube link'), findsOneWidget);
-  });
-
-  testWidgets('Save sends the platform links, keeps other saved links, and clears a removed photo', (tester) async {
+  testWidgets('Save leaves saved social links untouched and clears a removed photo', (tester) async {
     final repository = _FakeCustomerProfileRepository();
     await tester.pumpWidget(_wrap(repository));
     await tester.pumpAndSettle();
@@ -144,20 +129,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Upload photo'), findsOneWidget);
 
-    final list = find.byType(Scrollable).first;
-    await tester.scrollUntilVisible(_linkField('LinkedIn'), 200, scrollable: list);
-    await tester.enterText(_linkField('LinkedIn'), '  https://in.linkedin.com/in/ammu  ');
-    await tester.scrollUntilVisible(find.text('Save changes'), 200, scrollable: list);
-    await tester.tap(find.text('Save changes'));
+    final save = find.text('Save changes');
+    await tester.scrollUntilVisible(save, 200, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
     await tester.pumpAndSettle();
 
     expect(repository.calls, hasLength(1));
     final call = repository.calls.single;
-    expect(call['socialLinks'], {
-      'twitter': 'https://x.com/ammu',
-      'instagram': 'https://instagram.com/ammu',
-      'linkedin': 'https://in.linkedin.com/in/ammu',
-    });
+    expect(call['name'], 'Ammu Krishnan');
+    expect(call['socialLinks'], isNull);
+    expect(call['clearSocialLinks'], isFalse);
     expect(call['profilePhotoUrl'], isNull);
     expect(call['clearProfilePhoto'], isTrue);
     expect(call['clearCoverImage'], isFalse);
