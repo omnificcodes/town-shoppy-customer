@@ -9,6 +9,7 @@ import 'package:customer/features/business/data/models/business_offer.dart';
 import 'package:customer/features/business/data/models/merchant_wallet.dart';
 import 'package:customer/features/business/presentation/offers/business_offers_screen.dart';
 import 'package:customer/features/business/presentation/wallet/merchant_wallet_screen.dart';
+import 'package:customer/features/notifications/application/unread_count_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,10 +55,17 @@ class _FakeOffersController extends BusinessOffersController {
       );
 }
 
-Widget _offers() => ProviderScope(
+class _EmptyOffersController extends BusinessOffersController {
+  @override
+  Future<BusinessOffersState> build() async =>
+      const BusinessOffersState(items: [], currentPage: 1, lastPage: 1, counts: OfferStatusCounts.empty);
+}
+
+Widget _offers({bool empty = false}) => ProviderScope(
       overrides: [
         authControllerProvider.overrideWith(_AuthenticatedController.new),
-        businessOffersControllerProvider.overrideWith(_FakeOffersController.new),
+        businessOffersControllerProvider.overrideWith(empty ? _EmptyOffersController.new : _FakeOffersController.new),
+        unreadNotificationCountProvider.overrideWith((ref) async => 3),
       ],
       child: MaterialApp(theme: AppTheme.light, home: const BusinessOffersScreen()),
     );
@@ -78,6 +86,23 @@ void main() {
       verify: (tester, size) async {
         expect(find.textContaining('A very long offer title'), findsOneWidget);
         expect(find.text('12.5% Town Coin'), findsOneWidget);
+        expect(find.text('New offer'), findsOneWidget);
+        expect(find.text('Offers'), findsOneWidget);
+        expect(find.text('LIVE NOW'), findsOneWidget);
+        expect(find.text('NOT PUBLISHED'), findsOneWidget);
+        expect(find.text('Scheduled'), findsWidgets);
+      },
+    );
+  });
+
+  testWidgets('an empty offers list shows the empty state with New offer for owners', (tester) async {
+    await forEachViewport(
+      tester,
+      () => _offers(empty: true),
+      verify: (tester, size) async {
+        expect(find.text('No offers yet'), findsOneWidget);
+        expect(find.text('ALL CREATED'), findsOneWidget);
+        // Only the empty-state button; the floating one steps aside.
         expect(find.text('New offer'), findsOneWidget);
       },
     );
