@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
@@ -23,6 +24,10 @@ class CustomerProfileRepository {
     bool clearAnniversaryDate = false,
     Map<String, String>? socialLinks,
     bool clearSocialLinks = false,
+    String? profilePhotoUrl,
+    bool clearProfilePhoto = false,
+    String? coverImageUrl,
+    bool clearCoverImage = false,
   }) async {
     final body = <String, dynamic>{
       if (name != null) 'name': name,
@@ -32,11 +37,32 @@ class CustomerProfileRepository {
       else if (clearAnniversaryDate)
         'anniversary_date': null,
       if (socialLinks != null) 'social_links': socialLinks else if (clearSocialLinks) 'social_links': null,
+      if (profilePhotoUrl != null)
+        'profile_photo_url': profilePhotoUrl
+      else if (clearProfilePhoto)
+        'profile_photo_url': null,
+      if (coverImageUrl != null) 'cover_image_url': coverImageUrl else if (clearCoverImage) 'cover_image_url': null,
     };
 
     try {
       final response = await _dio.patch('/customer-profile', data: body);
       return CustomerProfile.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// `POST /uploads/image` -- multipart field `image`, JPEG/PNG/WebP up to
+  /// 5 MB, returns the public URL to store as the profile photo or cover.
+  /// [XFile] rather than `dart:io File` so the same call works on web.
+  Future<String> uploadImage(XFile file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      final form = FormData.fromMap({
+        'image': MultipartFile.fromBytes(bytes, filename: file.name.isEmpty ? 'image.jpg' : file.name),
+      });
+      final response = await _dio.post('/uploads/image', data: form);
+      return (ApiEnvelope.data(response) as Map<String, dynamic>)['url'] as String;
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }

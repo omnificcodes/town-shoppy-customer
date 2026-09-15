@@ -15,7 +15,12 @@ class EditProfileState {
   /// the next time the edit screen opens.
   final bool success;
 
-  EditProfileState copyWith({bool? isSubmitting, AppException? submitError, bool clearSubmitError = false, bool? success}) {
+  EditProfileState copyWith({
+    bool? isSubmitting,
+    AppException? submitError,
+    bool clearSubmitError = false,
+    bool? success,
+  }) {
     return EditProfileState(
       isSubmitting: isSubmitting ?? this.isSubmitting,
       submitError: clearSubmitError ? null : (submitError ?? this.submitError),
@@ -38,12 +43,18 @@ class EditProfileController extends Notifier<EditProfileState> {
     bool clearAnniversaryDate = false,
     Map<String, String>? socialLinks,
     bool clearSocialLinks = false,
+    String? profilePhotoUrl,
+    bool clearProfilePhoto = false,
+    String? coverImageUrl,
+    bool clearCoverImage = false,
   }) async {
     if (state.isSubmitting) return;
 
     state = state.copyWith(isSubmitting: true, clearSubmitError: true);
     try {
-      await ref.read(customerProfileRepositoryProvider).update(
+      await ref
+          .read(customerProfileRepositoryProvider)
+          .update(
             name: name,
             dateOfBirth: dateOfBirth,
             clearDateOfBirth: clearDateOfBirth,
@@ -51,6 +62,10 @@ class EditProfileController extends Notifier<EditProfileState> {
             clearAnniversaryDate: clearAnniversaryDate,
             socialLinks: socialLinks,
             clearSocialLinks: clearSocialLinks,
+            profilePhotoUrl: profilePhotoUrl,
+            clearProfilePhoto: clearProfilePhoto,
+            coverImageUrl: coverImageUrl,
+            clearCoverImage: clearCoverImage,
           );
 
       // So the greeting/profile screen reflect the edit immediately, not
@@ -64,5 +79,6 @@ class EditProfileController extends Notifier<EditProfileState> {
   }
 }
 
-final editProfileControllerProvider =
-    NotifierProvider.autoDispose<EditProfileController, EditProfileState>(EditProfileController.new);
+final editProfileControllerProvider = NotifierProvider.autoDispose<EditProfileController, EditProfileState>(
+  EditProfileController.new,
+);

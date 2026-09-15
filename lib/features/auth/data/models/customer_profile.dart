@@ -1,8 +1,9 @@
 /// Mirrors `App\Domain\Customer\Http\Resources\CustomerProfileResource`
-/// exactly. `dateOfBirth`/`anniversaryDate`/`socialLinks` are the first
-/// slice of "progressive profile completion" fields (address/gender/photo
-/// remain unbuilt) -- every one of them, name included, is optional and
-/// editable via `PATCH /customer-profile` (see `CustomerProfileRepository`).
+/// exactly. `dateOfBirth`/`anniversaryDate`/`socialLinks` and
+/// `profilePhotoUrl`/`coverImageUrl` are the "progressive profile
+/// completion" fields (address/gender remain unbuilt) -- every one of them,
+/// name included, is optional and editable via `PATCH /customer-profile`
+/// (see `CustomerProfileRepository`).
 class CustomerProfile {
   const CustomerProfile({
     required this.id,
@@ -12,6 +13,8 @@ class CustomerProfile {
     required this.socialLinks,
     required this.referralCode,
     required this.status,
+    this.profilePhotoUrl,
+    this.coverImageUrl,
   });
 
   factory CustomerProfile.fromJson(Map<String, dynamic> json) {
@@ -23,6 +26,8 @@ class CustomerProfile {
       socialLinks: (json['social_links'] as Map<String, dynamic>?)?.map((key, value) => MapEntry(key, value as String)),
       referralCode: json['referral_code'] as String?,
       status: json['status'] as String,
+      profilePhotoUrl: json['profile_photo_url'] as String?,
+      coverImageUrl: json['cover_image_url'] as String?,
     );
   }
 
@@ -33,4 +38,6 @@ class CustomerProfile {
   final Map<String, String>? socialLinks;
   final String? referralCode;
   final String status;
+  final String? profilePhotoUrl;
+  final String? coverImageUrl;
 }

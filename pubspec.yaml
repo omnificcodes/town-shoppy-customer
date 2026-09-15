@@ -71,6 +71,7 @@ dependencies:
   # in this app.
   firebase_core: ^4.14.0
   firebase_messaging: ^16.6.0
+  font_awesome_flutter: ^10.9.1
 
 dev_dependencies:
   flutter_test:
