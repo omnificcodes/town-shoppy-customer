@@ -13,6 +13,24 @@ class PurchaseMerchantRef {
   final String name;
 }
 
+/// Who made a purchase -- `PurchaseResource`'s `customer`, returned only to
+/// the merchant's own Owner/Staff on `GET /purchases/{id}`.
+class PurchaseCustomerRef {
+  const PurchaseCustomerRef({required this.id, required this.name, required this.mobileNumber});
+
+  factory PurchaseCustomerRef.fromJson(Map<String, dynamic> json) {
+    return PurchaseCustomerRef(
+      id: json['id'] as int,
+      name: json['name'] as String?,
+      mobileNumber: json['mobile_number'] as String?,
+    );
+  }
+
+  final int id;
+  final String? name;
+  final String? mobileNumber;
+}
+
 /// Mirrors `App\Domain\Purchase\Http\Resources\PurchaseResource` — only the
 /// fields a customer can usefully see about their own purchase (never the
 /// merchant-facing `duplicate_flag_notes`/`coupon_rule_snapshot` internals,
@@ -35,6 +53,7 @@ class Purchase {
     this.source,
     this.duplicateFlagNotes,
     this.updatedAt,
+    this.customer,
   });
 
   factory Purchase.fromJson(Map<String, dynamic> json) {
@@ -57,6 +76,9 @@ class Purchase {
       source: json['source'] as String?,
       duplicateFlagNotes: json['duplicate_flag_notes'] as String?,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      customer: json['customer'] is Map
+          ? PurchaseCustomerRef.fromJson(json['customer'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -79,6 +101,9 @@ class Purchase {
   final String? source;
   final String? duplicateFlagNotes;
   final DateTime? updatedAt;
+
+  /// Merchant-side only: who made this purchase. Null for customers.
+  final PurchaseCustomerRef? customer;
 
   /// Falls back to a stable placeholder when the relation wasn't loaded
   /// (should not happen for any customer-facing call, but a purchase list

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -103,6 +104,27 @@ class _BusinessPurchaseDetailScreenState extends ConsumerState<BusinessPurchaseD
             padding: const EdgeInsets.all(AppSpacing.page),
             children: [
               _Hero(purchase: p),
+              if (p.customer != null) ...[
+                const SizedBox(height: AppSpacing.section),
+                const SectionHeader(title: 'Customer', icon: Icons.person_outline_rounded),
+                const SizedBox(height: AppSpacing.smd),
+                AppCard(
+                  child: Column(
+                    children: [
+                      DetailRow(
+                        label: 'Name',
+                        value: (p.customer!.name?.trim().isNotEmpty ?? false) ? p.customer!.name!.trim() : 'Not provided',
+                      ),
+                      DetailRow(
+                        label: 'Mobile number',
+                        child: p.customer!.mobileNumber == null
+                            ? const Text('—')
+                            : _PhoneLink(mobile: p.customer!.mobileNumber!),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.section),
               const SectionHeader(title: 'Purchase details', icon: Icons.receipt_long_rounded),
               const SizedBox(height: AppSpacing.smd),
@@ -154,6 +176,62 @@ class _BusinessPurchaseDetailScreenState extends ConsumerState<BusinessPurchaseD
         null => '—',
         _ => source.replaceAll('_', ' '),
       };
+}
+
+/// The customer's number as "+91 98765 43210", tappable to call them.
+class _PhoneLink extends StatelessWidget {
+  const _PhoneLink({required this.mobile});
+
+  final String mobile;
+
+  static String _format(String mobile) {
+    final digits = mobile.replaceAll(RegExp(r'[^0-9]'), '');
+    final local = digits.length == 12 && digits.startsWith('91') ? digits.substring(2) : digits;
+    if (local.length != 10) return mobile;
+    return '+91 ${local.substring(0, 5)} ${local.substring(5)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = _format(mobile);
+    final dialable = mobile.replaceAll(RegExp(r'[^0-9+]'), '');
+
+    return Semantics(
+      button: true,
+      label: 'Call $shown',
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        onTap: () => launchUrl(Uri(scheme: 'tel', path: dialable)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.call_rounded, size: AppIconSize.sm, color: AppColors.info),
+              const SizedBox(width: AppSpacing.xs),
+              // A phone number must never be cut or split across lines, so
+              // on a narrow row it shrinks to fit instead.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    shown,
+                    maxLines: 1,
+                    style: AppTypography.numericFinancialInline.copyWith(
+                      color: AppColors.info,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Hero extends StatelessWidget {
