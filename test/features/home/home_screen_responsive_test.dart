@@ -218,6 +218,22 @@ void main() {
         ]) {
           await tester.dragUntilVisible(find.text(heading), page, const Offset(0, -200));
           expect(find.text(heading), findsOneWidget, reason: '$heading should be reachable at $size');
+
+          if (heading == 'Browse by Category') {
+            // One horizontal row: every category (12) plus More, all at the
+            // same height, each long name on a single line.
+            final first = find.text('Category number 1 with a long name');
+            final last = find.text('Category number 12 with a long name');
+            expect(first, findsOneWidget);
+            expect(last, findsOneWidget);
+            expect(find.text('More'), findsOneWidget);
+            expect(tester.getTopLeft(last).dy, tester.getTopLeft(first).dy, reason: 'categories share one row at $size');
+            final label = tester.widget<Text>(first);
+            expect(label.maxLines, 1);
+            expect(label.softWrap, isFalse);
+            final lineHeight = tester.getSize(find.text('More')).height;
+            expect(tester.getSize(first).height, lineHeight, reason: 'a long name stays on one line at $size');
+          }
         }
       },
     );
