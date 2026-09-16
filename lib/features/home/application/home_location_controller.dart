@@ -3,6 +3,7 @@ import 'package:geocoding/geocoding.dart';
 
 import '../../../core/location/location_result.dart';
 import '../../../core/location/location_service.dart';
+import '../../merchants/data/merchants_repository.dart';
 
 /// The Home header's location label — deliberately a *separate* provider
 /// from [nearbyMerchantsControllerProvider], which never auto-requests
@@ -17,7 +18,11 @@ sealed class HomeLocationState {
 }
 
 class HomeLocationUnavailable extends HomeLocationState {
-  const HomeLocationUnavailable();
+  const HomeLocationUnavailable([this.reason]);
+
+  /// Why there is no location -- the header uses it to say whether to allow
+  /// the permission, or to turn location services back on.
+  final LocationResult? reason;
 }
 
 class HomeLocationReady extends HomeLocationState {
@@ -45,22 +50,55 @@ class HomeLocationController extends AsyncNotifier<HomeLocationState> {
   Future<HomeLocationState> _resolve() async {
     final result = await ref.read(locationServiceProvider).getCurrentLocation();
 
-    if (result is! LocationAvailable) return const HomeLocationUnavailable();
+    if (result is! LocationAvailable) return HomeLocationUnavailable(result);
 
+    final label = await _placeName(result.latitude, result.longitude);
+
+    // Whatever the name lookup did, having coordinates is what the nearby
+    // and trending sections actually need -- they never read the label.
+    return HomeLocationReady(
+      latitude: result.latitude,
+      longitude: result.longitude,
+      label: label ?? 'Current location',
+    );
+  }
+
+  /// The OS reverse geocoder first, then the nearest shop's own town.
+  ///
+  /// `geocoding` ships Android and Apple implementations only, so on the
+  /// web build every call throws -- without the second step the header
+  /// would be stuck on the generic "Current location" there forever.
+  Future<String?> _placeName(double latitude, double longitude) async {
     try {
-      final placemarks = await _geocoding.placemarkFromCoordinates(result.latitude, result.longitude);
+      final placemarks = await _geocoding.placemarkFromCoordinates(latitude, longitude);
       final label = placemarks.isEmpty ? null : _labelFor(placemarks.first);
-      return HomeLocationReady(
-        latitude: result.latitude,
-        longitude: result.longitude,
-        label: label ?? 'Current location',
-      );
+      if (label != null) return label;
     } on Object {
-      // Reverse geocoding failing (no network, no OS geocoder) shouldn't
-      // hide that we DO have coordinates -- the trending-offers section
-      // only needs lat/lng, never the label.
-      return HomeLocationReady(latitude: result.latitude, longitude: result.longitude, label: 'Current location');
+      // No OS geocoder here (or it failed) -- fall through to the API.
     }
+
+    return _nearestTownName(latitude, longitude);
+  }
+
+  /// The town of the closest branch Town Shoppy knows about. Not a true
+  /// reverse geocode, but it names the place a customer is shopping in
+  /// using data this app already serves, without a geocoding service.
+  Future<String?> _nearestTownName(double latitude, double longitude) async {
+    try {
+      final page = await ref
+          .read(merchantsRepositoryProvider)
+          .nearby(latitude: latitude, longitude: longitude, radiusKm: _townSearchRadiusKm, perPage: 10);
+
+      for (final nearby in page.items) {
+        final name = _firstNonEmpty([nearby.branch.city, nearby.branch.locality]);
+        if (name != null) return name;
+      }
+    } on Object {
+      // Offline, or nothing nearby -- the caller falls back to the generic
+      // label, exactly as before.
+    }
+
+    return null;
   }
 
   String? _labelFor(Placemark placemark) {
@@ -78,6 +116,10 @@ class HomeLocationController extends AsyncNotifier<HomeLocationState> {
     return null;
   }
 }
+
+/// Wide enough to name the town even when the nearest shop is a few
+/// towns over; well inside the server's own maximum for `radius_km`.
+const _townSearchRadiusKm = 25.0;
 
 final homeLocationControllerProvider = AsyncNotifierProvider<HomeLocationController, HomeLocationState>(
   HomeLocationController.new,

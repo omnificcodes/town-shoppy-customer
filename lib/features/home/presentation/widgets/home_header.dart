@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/location/location_result.dart';
+import '../../../../core/location/location_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_elevation.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -33,11 +36,7 @@ class HomeHeader extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page - AppSpacing.xs, vertical: AppSpacing.xs),
         child: Row(
           children: [
-            _CircleIconButton(
-              icon: Icons.menu_rounded,
-              label: 'Menu',
-              onTap: () => Scaffold.of(context).openDrawer(),
-            ),
+            _CircleIconButton(icon: Icons.menu_rounded, label: 'Menu', onTap: () => Scaffold.of(context).openDrawer()),
             const Flexible(child: _LocationPill()),
             Expanded(
               child: Center(
@@ -93,7 +92,7 @@ class _LocationPill extends ConsumerWidget {
           shape: const StadiumBorder(side: BorderSide(color: AppColors.border)),
           child: InkWell(
             customBorder: const StadiumBorder(),
-            onTap: () => ref.read(homeLocationControllerProvider.notifier).retry(),
+            onTap: () => _refresh(context, ref),
             child: SizedBox(
               height: AppSize.controlSm,
               child: Padding(
@@ -122,6 +121,36 @@ class _LocationPill extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Re-asks for the location, then says what to do when there still isn't
+/// one -- a tap that silently changes nothing reads as a broken button.
+Future<void> _refresh(BuildContext context, WidgetRef ref) async {
+  final messenger = ScaffoldMessenger.of(context);
+  await ref.read(homeLocationControllerProvider.notifier).retry();
+
+  final state = ref.read(homeLocationControllerProvider).value;
+  if (state is! HomeLocationUnavailable) return;
+
+  final service = ref.read(locationServiceProvider);
+  final (message, settings) = switch (state.reason) {
+    LocationServiceDisabled() => (
+      'Location services are off. Turn them on to see your town and nearby shops.',
+      kIsWeb ? null : service.openLocationSettings,
+    ),
+    LocationPermissionDeniedForever() => (
+      'Location is blocked for Town Shoppy. Allow it in settings to see nearby shops.',
+      kIsWeb ? null : service.openAppSettings,
+    ),
+    _ => ('Allow location to see your town and the shops around you.', null),
+  };
+
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(message),
+      action: settings == null ? null : SnackBarAction(label: 'Settings', onPressed: settings),
+    ),
+  );
 }
 
 class _CircleIconButton extends StatelessWidget {
