@@ -71,6 +71,7 @@ class _RequestPurchaseScreenState extends ConsumerState<RequestPurchaseScreen> {
         _ => 'Pay with Town Shoppy',
       },
       padded: false,
+      actions: state.step == CounterStep.waiting ? [CounterStatusActions(state: state)] : null,
       body: switch (state) {
         // A scan that resolved to nothing usable is not something "Try
         // again" can fix from here -- the only recovery is scanning again,
