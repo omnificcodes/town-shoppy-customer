@@ -140,6 +140,27 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
           originalBill: bill,
         ),
         const SizedBox(height: AppSpacing.md),
+        _SavedAndEarned(
+          saved: outcome == _Outcome.declined ? 0 : discount,
+          savedLabel: outcome == _Outcome.sent ? 'You save' : 'You saved',
+          savedCaption: outcome == _Outcome.declined
+              ? 'Nothing redeemed'
+              : discount > 0
+              ? '${redemption?.coinsRequested ?? 0} coins redeemed'
+              : 'No coins used on this bill',
+          coins: switch (outcome) {
+            _Outcome.confirmed => purchase?.coinsAwarded ?? 0,
+            _Outcome.declined => 0,
+            _ => purchase?.expectedCoins,
+          },
+          earnedLabel: outcome == _Outcome.confirmed || outcome == _Outcome.declined ? 'You earned' : "You'll earn",
+          earnedCaption: switch (outcome) {
+            _Outcome.confirmed => 'Added to your wallet',
+            _Outcome.declined => 'Not issued',
+            _ => 'Credited once approved',
+          },
+        ),
+        const SizedBox(height: AppSpacing.md),
         _DetailsCard(
           rows: [
             _Detail(label: 'Business', value: merchantName, subValue: branchLine.isEmpty ? null : branchLine),
@@ -153,15 +174,6 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
                 numeric: true,
               ),
             _Detail(label: 'To pay', value: '₹${payable.toStringAsFixed(2)}', numeric: true, emphasised: true),
-            _Detail(
-              label: 'Coins earned',
-              value: switch (outcome) {
-                _Outcome.confirmed => '+${purchase?.coinsAwarded ?? 0} Town Coins',
-                _Outcome.declined => 'None',
-                _ => 'Added once approved',
-              },
-              valueColor: outcome == _Outcome.confirmed && (purchase?.coinsAwarded ?? 0) > 0 ? AppColors.success : null,
-            ),
             if (outcome == _Outcome.confirmed && (purchase?.couponsIssued ?? 0) > 0)
               _Detail(
                 label: 'Lucky Draw coupons',
@@ -499,6 +511,130 @@ class _AmountHero extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// The two numbers a customer cares about most, side by side: the rupees
+/// their coins took off this bill, and the coins this bill earns them.
+class _SavedAndEarned extends StatelessWidget {
+  const _SavedAndEarned({
+    required this.saved,
+    required this.savedLabel,
+    required this.savedCaption,
+    required this.coins,
+    required this.earnedLabel,
+    required this.earnedCaption,
+  });
+
+  final double saved;
+  final String savedLabel;
+  final String savedCaption;
+
+  /// Null when the server has not said (an older API) -- shown as a dash.
+  final int? coins;
+  final String earnedLabel;
+  final String earnedCaption;
+
+  @override
+  Widget build(BuildContext context) {
+    final shownCoins = coins;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _HighlightTile(
+              icon: Icons.savings_rounded,
+              tint: AppColors.success,
+              background: AppColors.successBg,
+              label: savedLabel,
+              value: '₹${saved.toStringAsFixed(2)}',
+              caption: savedCaption,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.smd),
+          Expanded(
+            child: _HighlightTile(
+              icon: Icons.toll_rounded,
+              tint: AppColors.gold,
+              background: AppColors.goldLight,
+              label: earnedLabel,
+              value: shownCoins == null ? '—' : '$shownCoins coins',
+              caption: earnedCaption,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HighlightTile extends StatelessWidget {
+  const _HighlightTile({
+    required this.icon,
+    required this.tint,
+    required this.background,
+    required this.label,
+    required this.value,
+    required this.caption,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final Color background;
+  final String label;
+  final String value;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$label $value. $caption',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: tint.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: AppIconSize.md, color: tint),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: tint, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: AppTypography.numericFinancialMedium.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            Text(caption, style: AppTypography.caption),
+          ],
+        ),
       ),
     );
   }

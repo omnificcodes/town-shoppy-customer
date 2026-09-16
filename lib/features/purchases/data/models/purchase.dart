@@ -54,6 +54,7 @@ class Purchase {
     this.duplicateFlagNotes,
     this.updatedAt,
     this.customer,
+    this.expectedCoins,
   });
 
   factory Purchase.fromJson(Map<String, dynamic> json) {
@@ -79,6 +80,7 @@ class Purchase {
       customer: json['customer'] is Map
           ? PurchaseCustomerRef.fromJson(json['customer'] as Map<String, dynamic>)
           : null,
+      expectedCoins: json['expected_coins'] as int?,
     );
   }
 
@@ -104,6 +106,10 @@ class Purchase {
 
   /// Merchant-side only: who made this purchase. Null for customers.
   final PurchaseCustomerRef? customer;
+
+  /// Coins this bill earns: what approval will credit while it is still
+  /// pending, otherwise what was awarded. Null from an older API.
+  final int? expectedCoins;
 
   /// Falls back to a stable placeholder when the relation wasn't loaded
   /// (should not happen for any customer-facing call, but a purchase list

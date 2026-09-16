@@ -30,6 +30,8 @@ Purchase _purchase({String status = 'pending', int coins = 0, int? coupons}) => 
   'currency': 'INR',
   'status': status,
   'coins_awarded': coins,
+  // The server's own figure: ₹500 earns 50 coins, pending or approved.
+  'expected_coins': 50,
   'coupons_issued': ?coupons,
   'created_at': '2026-09-16T10:43:00+05:30',
 });
@@ -127,7 +129,13 @@ void main() {
     expect(find.text('Kairaly Bakers'), findsOneWidget);
     expect(find.text('Main Branch · Kakkanad'), findsOneWidget);
     expect(find.text('Amount to pay'), findsOneWidget);
-    expect(find.text('Added once approved'), findsOneWidget);
+    // Nothing was redeemed on this bill; approval will earn 50 coins.
+    expect(find.text('You save'), findsOneWidget);
+    expect(find.text('₹0.00'), findsOneWidget);
+    expect(find.text('No coins used on this bill'), findsOneWidget);
+    expect(find.text("You'll earn"), findsOneWidget);
+    expect(find.text('50 coins'), findsOneWidget);
+    expect(find.text('Credited once approved'), findsOneWidget);
     expect(find.text('#90'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.textContaining('No coins were used on this bill.'), 200);
@@ -147,7 +155,9 @@ void main() {
     expect(repository.showCalls, greaterThan(callsBefore));
     expect(find.text('Confirmed'), findsOneWidget);
     expect(find.text('Purchase confirmed'), findsOneWidget);
-    expect(find.text('+50 Town Coins'), findsOneWidget);
+    expect(find.text('You earned'), findsOneWidget);
+    expect(find.text('50 coins'), findsOneWidget);
+    expect(find.text('Added to your wallet'), findsOneWidget);
     expect(find.text('2 coupons'), findsOneWidget);
   });
 
@@ -161,6 +171,7 @@ void main() {
 
     expect(find.text('Rejected'), findsOneWidget);
     expect(find.text('Bill declined'), findsOneWidget);
-    expect(find.text('Added once approved'), findsNothing);
+    expect(find.text('0 coins'), findsOneWidget);
+    expect(find.text('Not issued'), findsOneWidget);
   });
 }
