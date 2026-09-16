@@ -157,7 +157,7 @@ class _Header extends ConsumerWidget {
             icon: Icons.notifications_outlined,
             tooltip: unread > 0 ? 'Notifications, $unread unread' : 'Notifications',
             onTap: () => context.push(BusinessRoutes.notifications),
-            badge: unread > 0 ? NotificationBadge(count: unread, child: const SizedBox.shrink()) : null,
+            badgeCount: unread,
           ),
         ],
       ),
@@ -166,12 +166,14 @@ class _Header extends ConsumerWidget {
 }
 
 class _HeaderButton extends StatelessWidget {
-  const _HeaderButton({required this.icon, required this.tooltip, required this.onTap, this.badge});
+  const _HeaderButton({required this.icon, required this.tooltip, required this.onTap, this.badgeCount = 0});
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
-  final Widget? badge;
+
+  /// Unread count shown on the icon's top-right; nothing when zero.
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -193,16 +195,43 @@ class _HeaderButton extends StatelessWidget {
             child: SizedBox.square(
               dimension: AppSpacing.touchTarget,
               child: Stack(
-                clipBehavior: Clip.none,
                 alignment: Alignment.center,
                 children: [
                   Icon(icon, color: AppColors.textPrimary, size: AppIconSize.lg),
-                  if (badge != null) Positioned(top: AppSpacing.xs, right: AppSpacing.xs, child: badge!),
+                  // Tucked into the button's top-right corner, fully inside
+                  // it: clear of the screen edge, and only grazing the bell.
+                  if (badgeCount > 0) Positioned(top: 2, right: 2, child: _CountBadge(count: badgeCount)),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The unread count on a header button -- the same crimson pill as
+/// [NotificationBadge], sized to sit inside a 48dp button.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.crimson,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        border: Border.all(color: AppColors.surface, width: 1.5),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        count > 9 ? '9+' : '$count',
+        style: AppTypography.overline.copyWith(color: AppColors.onCrimson, letterSpacing: 0, height: 1.1),
       ),
     );
   }
