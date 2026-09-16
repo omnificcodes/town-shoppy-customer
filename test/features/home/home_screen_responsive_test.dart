@@ -77,6 +77,8 @@ class _FakeWalletRepository implements WalletRepository {
         shopExclusiveBreakdown: [],
         balanceInrEquivalent: 123456.7,
         updatedAt: null,
+        totalRedeemedCoins: 9876545,
+        totalSavedInr: 987654.5,
       );
 
   @override
@@ -197,6 +199,10 @@ void main() {
         expect(find.textContaining('Good '), findsOneWidget);
         expect(find.text('1234567'), findsOneWidget);
         expect(find.text('98765'), findsOneWidget);
+        // The first tile is the lifetime saving, not the balance's rupee value.
+        expect(find.text('Total\nsaved'), findsOneWidget);
+        expect(find.text('₹987654.50'), findsOneWidget);
+        expect(find.text('₹123456.70'), findsNothing);
 
         // The nearest offer leads as the hero, so it isn't repeated below.
         expect(find.text('Weekend feast: flat 25% off across every cafe and bakery counter in town'), findsOneWidget);

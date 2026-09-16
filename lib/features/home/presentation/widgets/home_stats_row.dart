@@ -12,10 +12,9 @@ import '../../../wallet/application/wallet_controller.dart';
 
 /// The three at-a-glance numbers under the greeting.
 ///
-/// Stitch's first tile is "Total Saved", which nothing in the backend
-/// records. Rather than show an invented figure, that slot shows what the
-/// customer's coins are worth in rupees -- real, from the same wallet
-/// response -- and leads to where they can be spent.
+/// "Total saved" is the rupee value of every Town Coin the customer has
+/// ever redeemed (`total_saved_inr`, at 10 coins = ₹1) -- a discount already
+/// received, never cash -- and leads to where more coins can be spent.
 class HomeStatsRow extends ConsumerWidget {
   const HomeStatsRow({super.key});
 
@@ -32,9 +31,9 @@ class HomeStatsRow extends ConsumerWidget {
             child: _StatTile(
               icon: Icons.savings_rounded,
               tint: AppColors.orange,
-              label: 'Coins\nworth',
+              label: 'Total\nsaved',
               value: switch (wallet) {
-                AsyncData(:final value) => '₹${_rupees(value.balanceInrEquivalent)}',
+                AsyncData(:final value) => '₹${_rupees(value.totalSavedInr)}',
                 AsyncError() => '—',
                 _ => null,
               },

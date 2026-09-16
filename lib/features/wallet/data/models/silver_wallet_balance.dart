@@ -48,6 +48,8 @@ class SilverWalletBalance {
     required this.shopExclusiveBreakdown,
     required this.balanceInrEquivalent,
     required this.updatedAt,
+    this.totalRedeemedCoins = 0,
+    this.totalSavedInr = 0,
   });
 
   factory SilverWalletBalance.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,8 @@ class SilverWalletBalance {
           .toList(),
       balanceInrEquivalent: (json['balance_inr_equivalent'] as num?)?.toDouble() ?? 0,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
+      totalRedeemedCoins: json['total_redeemed_coins'] as int? ?? 0,
+      totalSavedInr: (json['total_saved_inr'] as num?)?.toDouble() ?? 0,
     );
   }
 
@@ -69,6 +73,11 @@ class SilverWalletBalance {
   final List<ShopExclusiveBreakdownEntry> shopExclusiveBreakdown;
   final double balanceInrEquivalent;
   final DateTime? updatedAt;
+
+  /// Lifetime coins spent on discounts, and the rupees those discounts
+  /// saved (10 coins = ₹1). A saving already received, never cash.
+  final int totalRedeemedCoins;
+  final double totalSavedInr;
 
   bool get hasShopExclusiveCoins => shopExclusiveBalance > 0;
 }
