@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/app_bottom_navigation.dart';
 import 'business_routes.dart';
+import 'widgets/counter_action_sheet.dart';
 
 const _tabItems = [
   BottomNavItemData(icon: Icons.space_dashboard_outlined, activeIcon: Icons.space_dashboard_rounded, label: 'Home'),
@@ -43,11 +44,11 @@ class BusinessShell extends StatelessWidget {
     return Scaffold(
       body: child,
       floatingActionButton: ScanAndPayFab(
-        semanticLabel: 'Counter — record a bill',
+        semanticLabel: 'Counter — My QR or My POS',
         icon: Icons.point_of_sale_rounded,
         color: AppColors.orange,
         foregroundColor: AppColors.onOrange,
-        onTap: () => context.push(BusinessRoutes.counter),
+        onTap: () => showCounterActionSheet(context),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: AppBottomNavigation(
