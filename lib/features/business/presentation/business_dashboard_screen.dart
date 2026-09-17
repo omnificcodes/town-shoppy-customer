@@ -700,8 +700,16 @@ class _KpiTile extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isLoading;
 
-  /// A word (a plan name) rather than a count, set smaller so it wraps.
+  /// A word (a plan name) rather than a count, set smaller but kept in the
+  /// same band a count occupies.
   final bool compactValue;
+
+  /// The height one line of the large count takes at the current text size.
+  static double _valueBandHeight(BuildContext context) {
+    const style = AppTypography.numericFinancialLarge;
+    final lines = MediaQuery.textScalerOf(context).scale(style.fontSize ?? 28);
+    return lines * (style.height ?? 1.2);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -723,7 +731,7 @@ class _KpiTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.smd),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -760,11 +768,20 @@ class _KpiTile extends StatelessWidget {
                   const LoadingSkeleton(width: 56, height: 26)
                 else
                   compactValue
-                      ? Text(
-                          value,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      // A word sits in the same band as a big count, so the
+                      // caption or status under it lines up with the tile
+                      // beside it.
+                      ? SizedBox(
+                          height: _valueBandHeight(context),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
                         )
                       : FittedBox(
                           fit: BoxFit.scaleDown,
@@ -1407,7 +1424,8 @@ class _EmptyActivity extends StatelessWidget {
 }
 
 /// Two equal columns that fall back to one on a very narrow width -- a
-/// dashboard's tiles must never squeeze their numbers.
+/// dashboard's tiles must never squeeze their numbers. Tiles sharing a row
+/// are stretched to the same height, so their edges and contents line up.
 class _TwoColumnGrid extends StatelessWidget {
   const _TwoColumnGrid({required this.children});
 
@@ -1418,11 +1436,26 @@ class _TwoColumnGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth < 300 ? 1 : 2;
-        final width = (constraints.maxWidth - AppSpacing.smd * (columns - 1)) / columns;
-        return Wrap(
-          spacing: AppSpacing.smd,
-          runSpacing: AppSpacing.smd,
-          children: [for (final child in children) SizedBox(width: width, child: child)],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var start = 0; start < children.length; start += columns) ...[
+              if (start > 0) const SizedBox(height: AppSpacing.smd),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < columns; i++) ...[
+                      if (i > 0) const SizedBox(width: AppSpacing.smd),
+                      Expanded(
+                        child: start + i < children.length ? children[start + i] : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
         );
       },
     );
