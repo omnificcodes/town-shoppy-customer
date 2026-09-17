@@ -59,21 +59,18 @@ class CategoryGrid extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: AppSpacing.section),
-        SectionHeader(
-          title: 'Browse by Category',
-          subtitle: 'Explore local stores near you',
-          actionLabel: 'See all',
-          onAction: () => context.push('/merchants'),
-        ),
-        const SizedBox(height: AppSpacing.smd),
+        // Just the title, as in the reference design -- the row's own "More"
+        // tile is the way to the full list.
+        const SectionHeader(title: 'Browse by category'),
+        const SizedBox(height: AppSpacing.md),
         row,
       ],
     );
   }
 
-  /// A single line of tiles. A plain Row in a scroll view (not a lazy
-  /// list) because there are only ever a couple of dozen categories, and it
-  /// lets each tile size itself to its one-line name with no fixed height.
+  /// A single line of equal-width tiles. A plain Row in a scroll view (not a
+  /// lazy list) because there are only ever a couple of dozen categories,
+  /// and it needs no fixed height at any text size.
   static Widget _row(List<Widget> tiles, {bool scrollable = true}) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -88,8 +85,11 @@ class CategoryGrid extends ConsumerWidget {
   }
 }
 
-/// Stitch's 52dp rounded-square tile.
-const double _tileSize = AppSize.avatarLg - AppSpacing.xs;
+/// The round icon badge.
+const double _circleSize = AppSize.avatarLg - AppSpacing.xxs;
+
+/// Every tile the same width, so four or so show on a phone.
+const double _tileWidth = 80;
 
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({required this.visual, required this.label, required this.onTap});
@@ -107,32 +107,31 @@ class _CategoryTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         onTap: onTap,
-        child: ConstrainedBox(
-          // At least the icon tile wide, so short names ("More") still line
-          // up; a longer name widens its own tile so it reads in full on one
-          // line, never wrapping or cut off.
-          constraints: const BoxConstraints(minWidth: _tileSize + AppSpacing.sm),
+        child: SizedBox(
+          width: _tileWidth,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: AppSpacing.xxs),
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: _tileSize,
-                  height: _tileSize,
-                  decoration: BoxDecoration(
-                    color: visual.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                  ),
-                  child: Icon(visual.icon, color: visual.color, size: AppIconSize.md),
+                  width: _circleSize,
+                  height: _circleSize,
+                  decoration: BoxDecoration(color: visual.color.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: Icon(visual.icon, color: visual.color, size: AppIconSize.lg),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AppSpacing.sm),
+                // One line; a long name ends in "…" (the full name is the
+                // tile's semantics label).
                 Text(
                   label,
                   maxLines: 1,
                   softWrap: false,
+                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textPrimary),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -148,14 +147,14 @@ class _TileSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: AppSpacing.xxs),
+    return const SizedBox(
+      width: _tileWidth,
       child: Column(
         children: [
           LoadingSkeleton(
-            width: _tileSize,
-            height: _tileSize,
-            borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusMd)),
+            width: _circleSize,
+            height: _circleSize,
+            borderRadius: BorderRadius.all(Radius.circular(_circleSize / 2)),
           ),
           SizedBox(height: AppSpacing.xs),
           LoadingSkeleton(width: 40, height: 10),

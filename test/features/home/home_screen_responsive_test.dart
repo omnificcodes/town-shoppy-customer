@@ -211,7 +211,7 @@ void main() {
 
         for (final heading in [
           'Association Partners',
-          'Browse by Category',
+          'Browse by category',
           'Find Stores Near You',
           'Featured Shops',
           'Best Offers Near You',
@@ -219,7 +219,7 @@ void main() {
           await tester.dragUntilVisible(find.text(heading), page, const Offset(0, -200));
           expect(find.text(heading), findsOneWidget, reason: '$heading should be reachable at $size');
 
-          if (heading == 'Browse by Category') {
+          if (heading == 'Browse by category') {
             // One horizontal row: every category (12) plus More, all at the
             // same height, each long name on a single line.
             final first = find.text('Category number 1 with a long name');
