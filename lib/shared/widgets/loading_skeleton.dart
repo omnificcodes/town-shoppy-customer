@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_elevation.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// A single pulsing placeholder block. Compose several of these into a
@@ -82,10 +83,13 @@ class LoadingSkeletonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
+      // Same surface as [AppCard], lift included, so the skeleton -> loaded
+      // swap changes the content and nothing about the card around it.
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         border: Border.all(color: AppColors.border),
+        boxShadow: AppElevation.card,
       ),
       child: Row(
         children: [

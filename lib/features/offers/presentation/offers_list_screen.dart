@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../merchants/application/merchant_categories_provider.dart';
 import '../application/offers_list_controller.dart';
@@ -132,10 +133,7 @@ class _OffersListScreenState extends ConsumerState<OffersListScreen> {
                               separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.lg),
                               itemBuilder: (context, index) {
                                 if (index >= data.items.length) {
-                                  return const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                                    child: Center(child: CircularProgressIndicator(semanticsLabel: 'Loading more offers')),
-                                  );
+                                  return const LoadMoreIndicator(label: 'Loading more offers');
                                 }
                                 return OfferFeedCard(offer: data.items[index]);
                               },

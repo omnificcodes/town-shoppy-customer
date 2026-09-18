@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/merchant_categories_provider.dart';
 import '../application/merchants_list_controller.dart';
@@ -354,10 +355,7 @@ class _AllMerchantsBody extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
             itemBuilder: (context, index) {
               if (index >= data.items.length) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  child: Center(child: CircularProgressIndicator()),
-                );
+                return const LoadMoreIndicator();
               }
 
               final merchant = data.items[index];
@@ -489,10 +487,7 @@ class _NearbyResultsSliver extends ConsumerWidget {
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
         itemBuilder: (context, index) {
           if (index >= data.items.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-              child: Center(child: CircularProgressIndicator()),
-            );
+            return const LoadMoreIndicator();
           }
 
           final result = data.items[index];

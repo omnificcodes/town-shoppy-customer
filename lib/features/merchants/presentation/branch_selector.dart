@@ -98,7 +98,7 @@ class _BranchTile extends StatelessWidget {
                       'Primary',
                       style: Theme.of(
                         context,
-                      ).textTheme.labelSmall?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700),
+                      ).textTheme.labelSmall?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                   ],

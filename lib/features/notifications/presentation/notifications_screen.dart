@@ -9,6 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
@@ -88,10 +89,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               separatorBuilder: (_, _) => const Divider(height: 1, indent: AppSpacing.page + AppSize.avatarMd + AppSpacing.smd),
               itemBuilder: (context, index) {
                 if (index >= data.items.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const LoadMoreIndicator();
                 }
 
                 final notification = data.items[index];

@@ -121,25 +121,32 @@ class _StatTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: AppIconSize.xl,
-                        height: AppIconSize.xl,
-                        decoration: BoxDecoration(color: tint.withValues(alpha: 0.14), shape: BoxShape.circle),
-                        child: Icon(icon, size: AppIconSize.sm, color: tint),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      // Scaled rather than wrapped: a narrow tile would
-                      // otherwise break "Coupons" mid-word.
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(label, maxLines: 2, style: AppTypography.caption),
+                  // A floor tall enough for a two-line label. "Total saved"
+                  // and "Town Coins" wrap, "Coupons" doesn't, so without it
+                  // the third tile's header was a line shorter and its value
+                  // and link sat ~8dp above its neighbours'.
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: AppSpacing.xl),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: AppIconSize.xl,
+                          height: AppIconSize.xl,
+                          decoration: BoxDecoration(color: tint.withValues(alpha: 0.14), shape: BoxShape.circle),
+                          child: Icon(icon, size: AppIconSize.sm, color: tint),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: AppSpacing.sm),
+                        // Scaled rather than wrapped: a narrow tile would
+                        // otherwise break "Coupons" mid-word.
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(label, maxLines: 2, style: AppTypography.caption),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   if (shownValue == null)

@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../../products/data/models/product.dart';
@@ -97,7 +99,7 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
                     separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.smd),
                     itemBuilder: (context, i) {
                       if (i >= data.items.length) {
-                        return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpacing.md), child: Center(child: CircularProgressIndicator()));
+                        return const LoadMoreIndicator();
                       }
                       final product = data.items[i];
                       return _ProductRow(
@@ -186,41 +188,34 @@ class _ProductRow extends StatelessWidget {
     return Semantics(
       button: true,
       label: '${product.name}, ${product.isActive ? 'active' : 'inactive'}',
-      child: Material(
-        color: AppColors.surface,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd), side: const BorderSide(color: AppColors.border)),
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Thumbnail(product: product),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      child: AppCard(
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Thumbnail(product: product),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.name, style: textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text('₹${_trim(product.price)}', style: textTheme.bodyMedium?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
                     children: [
-                      Text(product.name, style: textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text('₹${_trim(product.price)}', style: textTheme.bodyMedium?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: AppSpacing.xs),
-                      Wrap(
-                        spacing: AppSpacing.xs,
-                        children: [
-                          StatusBadge(label: product.isActive ? 'Active' : 'Inactive', tone: product.isActive ? AppTone.success : AppTone.neutral),
-                          if (product.acceptsTownCoin) StatusBadge(label: '${_trim(product.townCoinPercentage!)}% Coin', tone: AppTone.success, icon: Icons.savings_rounded),
-                        ],
-                      ),
+                      StatusBadge(label: product.isActive ? 'Active' : 'Inactive', tone: product.isActive ? AppTone.success : AppTone.neutral),
+                      if (product.acceptsTownCoin) StatusBadge(label: '${_trim(product.townCoinPercentage!)}% Coin', tone: AppTone.success, icon: Icons.savings_rounded),
                     ],
                   ),
-                ),
-                if (onMore != null) IconButton(icon: const Icon(Icons.more_horiz_rounded), tooltip: 'Actions for ${product.name}', onPressed: onMore),
-              ],
+                ],
+              ),
             ),
-          ),
+            if (onMore != null) IconButton(icon: const Icon(Icons.more_horiz_rounded), tooltip: 'Actions for ${product.name}', onPressed: onMore),
+          ],
         ),
       ),
     );

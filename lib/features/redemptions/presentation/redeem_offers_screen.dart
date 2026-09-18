@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../merchants/presentation/merchant_card.dart';
 import '../../purchases/presentation/load_more_threshold.dart';
@@ -96,10 +97,7 @@ class _RedeemOffersScreenState extends ConsumerState<RedeemOffersScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, index) {
                       if (index >= data.items.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                          child: Center(child: CircularProgressIndicator(semanticsLabel: 'Loading more merchants')),
-                        );
+                        return const LoadMoreIndicator(label: 'Loading more merchants');
                       }
 
                       final merchant = data.items[index];

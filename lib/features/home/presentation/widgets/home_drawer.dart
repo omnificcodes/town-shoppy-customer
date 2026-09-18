@@ -46,7 +46,10 @@ class HomeDrawer extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(account?.displayName ?? 'Town Shoppy', style: Theme.of(context).textTheme.titleMedium),
-                        if (account != null) ...[
+                        // `displayName` already falls back to the mobile
+                        // number for an account with no name; printing the
+                        // number under it again just repeats the line above.
+                        if (account != null && account.displayName != account.mobileNumber) ...[
                           const SizedBox(height: AppSpacing.xxs),
                           Text(account.mobileNumber, style: Theme.of(context).textTheme.bodySmall),
                         ],

@@ -10,6 +10,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../../notifications/application/unread_count_provider.dart';
@@ -139,10 +140,7 @@ class _BusinessOffersScreenState extends ConsumerState<BusinessOffersScreen> {
                       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.smd),
                       itemBuilder: (context, i) {
                         if (i >= data.items.length) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
+                          return const LoadMoreIndicator();
                         }
                         final offer = data.items[i];
                         return OfferCard(

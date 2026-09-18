@@ -41,6 +41,15 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 1,
         centerTitle: false,
+        // The page-title style the Stitch-era screens draw by hand in their
+        // own top bars. Left unset, Material fell back to `titleLarge` --
+        // same size, two weights lighter -- so every screen on AppScaffold
+        // titled itself more quietly than Wallet or Merchant Details did.
+        //
+        // A themed title style carries its own colour and does NOT pick up
+        // an AppBar's `foregroundColor`, so any bar on a dark ground
+        // (BusinessScaffold, the two QR scanners) sets its own.
+        titleTextStyle: AppTypography.sectionTitle,
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
@@ -83,6 +92,11 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
+        // Pointer devices only (the hosted web build). Material's default
+        // hover overlay is a flat grey that makes a white field look
+        // disabled the moment the cursor crosses it; the page's own cream is
+        // enough to acknowledge the hover.
+        hoverColor: AppColors.surfaceMuted,
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
@@ -123,6 +137,35 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
         titleTextStyle: AppTypography.textTheme.headlineSmall,
         contentTextStyle: AppTypography.textTheme.bodyMedium,
+      ),
+      // Material 3 tints every surface it isn't told about with the seed
+      // colour: left unthemed, the menu drawer, the date/time pickers and
+      // popup menus all came out a pinkish off-white that matches nothing
+      // else in the app. They are plain white surfaces like the dialogs and
+      // sheets beside them.
+      drawerTheme: const DrawerThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: AppElevation.level4,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: AppElevation.level3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
+          side: const BorderSide(color: AppColors.border),
+        ),
+        textStyle: AppTypography.textTheme.bodyMedium,
+      ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
+      ),
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg)),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: AppColors.surface,

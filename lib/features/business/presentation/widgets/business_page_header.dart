@@ -162,6 +162,9 @@ class BusinessScaffold extends StatelessWidget {
         actions: actions,
         backgroundColor: AppColors.businessInk,
         foregroundColor: AppColors.onBusinessInk,
+        // The themed title style is maroon; on this maroon bar it needs its
+        // own colour (a themed style ignores `foregroundColor`).
+        titleTextStyle: AppTypography.sectionTitle.copyWith(color: AppColors.onBusinessInk),
         surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: AppColors.onBusinessInk),
       ),

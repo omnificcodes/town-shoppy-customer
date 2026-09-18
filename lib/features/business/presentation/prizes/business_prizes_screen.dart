@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../../purchases/presentation/load_more_threshold.dart';
@@ -138,7 +139,7 @@ class _BusinessPrizesScreenState extends ConsumerState<BusinessPrizesScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, i) {
                       if (i >= data.items.length) {
-                        return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpacing.md), child: Center(child: CircularProgressIndicator()));
+                        return const LoadMoreIndicator();
                       }
                       final p = data.items[i];
                       return _PrizeRow(prize: p, onTap: () => context.push('${BusinessRoutes.prizes}/${p.id}'));

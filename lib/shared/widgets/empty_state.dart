@@ -29,7 +29,10 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatePanel(
       icon: icon,
-      iconColor: AppColors.textDisabled,
+      // Secondary, not disabled: `textDisabled` fell to ~2:1 on the cream
+      // page, and its 10% disc (see StatePanel) would all but vanish. An
+      // empty list is a calm state, not a switched-off one.
+      iconColor: AppColors.textSecondary,
       title: title,
       message: message,
       action: action,

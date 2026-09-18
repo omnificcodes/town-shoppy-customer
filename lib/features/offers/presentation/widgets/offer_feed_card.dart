@@ -212,7 +212,7 @@ class _DeadlineChip extends StatelessWidget {
                     offerEndsInLabel(offer.endsAt).toUpperCase().replaceAllMapped(RegExp(r'(\d)D$'), (m) => '${m[1]}d'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.badgeLabel.copyWith(color: AppColors.error, fontWeight: FontWeight.w800),
+                    style: AppTypography.badgeLabel.copyWith(color: AppColors.error, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],

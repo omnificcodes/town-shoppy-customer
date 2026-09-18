@@ -69,7 +69,7 @@ class _ProductDetailBody extends StatelessWidget {
               ],
               Text(product.name, style: textTheme.headlineSmall),
               const SizedBox(height: AppSpacing.xs),
-              Text('₹${_trim(product.price)}', style: textTheme.headlineMedium?.copyWith(color: AppColors.orange)),
+              Text('₹${_trim(product.price)}', style: textTheme.headlineMedium?.copyWith(color: AppColors.orangeDeep)),
               if (product.merchantName.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Row(

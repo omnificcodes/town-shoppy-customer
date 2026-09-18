@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/purchases_list_controller.dart';
 import 'load_more_threshold.dart';
@@ -75,10 +76,7 @@ class _PurchasesListScreenState extends ConsumerState<PurchasesListScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
                 if (index >= data.items.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    child: Center(child: CircularProgressIndicator(semanticsLabel: 'Loading more purchases')),
-                  );
+                  return const LoadMoreIndicator(label: 'Loading more purchases');
                 }
 
                 final purchase = data.items[index];

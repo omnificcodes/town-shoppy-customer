@@ -149,7 +149,15 @@ class _Header extends ConsumerWidget {
               child: Semantics(
                 label: 'Town Shoppy',
                 image: true,
-                child: Image.asset('assets/images/townshoppy_logo.png', height: AppSize.controlMd, fit: BoxFit.contain),
+                // Multiplied into this page's cream ground to dissolve the
+                // logo PNG's opaque white box -- see HomeHeader's same note.
+                child: Image.asset(
+                  'assets/images/townshoppy_logo.png',
+                  height: AppSize.controlMd,
+                  fit: BoxFit.contain,
+                  color: AppColors.surfaceMuted,
+                  colorBlendMode: BlendMode.multiply,
+                ),
               ),
             ),
           ),
@@ -1194,7 +1202,7 @@ class _GrowBanner extends StatelessWidget {
                     children: [
                       Text(
                         'Grow your business with Town Shoppy',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(

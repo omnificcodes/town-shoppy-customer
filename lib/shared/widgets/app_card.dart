@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_elevation.dart';
 import '../../core/theme/app_spacing.dart';
 
-/// The one card shape used across the app — white surface, soft border,
-/// no elevation (design-principles.md's "premium means restrained" —
-/// borders read calmer than shadows at this density).
+/// The one card shape used across the app — white surface, hairline border,
+/// and the same barely-there lift ([AppElevation.card]) the Stitch-era
+/// screens draw by hand. The border still does the separating; the lift
+/// only stops a white card from looking printed onto the cream page.
+/// Without it, the screens built on this widget (purchases, redemptions,
+/// Lucky Draw, billing, customers…) read as a flatter, older product than
+/// Home, Wallet and the dashboard sitting one tap away.
 ///
 /// [compact] tightens the inner padding for dense rows (list tiles);
 /// [tinted] swaps the white surface for the brand's soft orange tint, the
-/// only sanctioned way to give a card a warm accent.
+/// only sanctioned way to give a card a warm accent. A tinted card stays
+/// flat on purpose: it is an informational surface, not a raised one, and a
+/// shadow under a tint muddies the tint.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -39,7 +46,7 @@ class AppCard extends StatelessWidget {
     // The InkWell lives INSIDE the card's Material so the ripple paints on
     // the card surface -- an InkWell wrapped around an opaque Card draws
     // its splash behind the card, where nobody ever sees it.
-    return Material(
+    final card = Material(
       color: tinted ? AppColors.orangeTint : AppColors.surface,
       shape: shape,
       clipBehavior: Clip.antiAlias,
@@ -47,6 +54,19 @@ class AppCard extends StatelessWidget {
         onTap: onTap,
         child: Padding(padding: resolvedPadding, child: child),
       ),
+    );
+
+    if (tinted) return card;
+
+    // The shadow sits on a DecoratedBox OUTSIDE the Material: the Material
+    // clips to its shape (so the ripple stays inside the rounded corners),
+    // and would clip its own shadow away with it.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        boxShadow: AppElevation.card,
+      ),
+      child: card,
     );
   }
 }

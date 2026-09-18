@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/draws_list_controller.dart';
 import 'draw_tile.dart';
@@ -108,10 +109,7 @@ class _DrawsListScreenState extends ConsumerState<DrawsListScreen> {
 
                 final itemIndex = index - 1;
                 if (itemIndex >= data.items.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
+                  return const LoadMoreIndicator();
                 }
 
                 final draw = data.items[itemIndex];

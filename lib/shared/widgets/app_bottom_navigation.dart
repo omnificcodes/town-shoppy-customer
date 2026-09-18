@@ -152,9 +152,7 @@ class ScanAndPayFab extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color,
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6)),
-              ],
+              boxShadow: AppElevation.glow(color),
               border: Border.all(color: AppColors.surface, width: 3),
             ),
             child: Icon(icon, color: foregroundColor, size: AppIconSize.xl),

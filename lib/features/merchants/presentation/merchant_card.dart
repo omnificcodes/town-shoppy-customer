@@ -304,7 +304,7 @@ class _TownCoinBadge extends StatelessWidget {
             Flexible(
               child: Text(
                 '${rate.toStringAsFixed(rate.truncateToDouble() == rate ? 0 : 1)}% off with Town Coin',
-                style: AppTypography.badgeLabel.copyWith(color: AppColors.goldDark, fontWeight: FontWeight.w800),
+                style: AppTypography.badgeLabel.copyWith(color: AppColors.goldDark, fontWeight: FontWeight.w700),
               ),
             ),
           ],

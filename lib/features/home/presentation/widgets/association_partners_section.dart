@@ -108,7 +108,7 @@ class _PartnerTile extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             if (town != null)
               Text(town, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppTypography.caption),
@@ -133,7 +133,7 @@ class _CodeMark extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       code.length > 3 ? code.substring(0, 3) : code,
-      style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w800),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w700),
     );
   }
 }

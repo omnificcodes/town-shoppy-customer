@@ -9,6 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../application/coupons_list_controller.dart';
 import 'coupon_tile.dart';
@@ -122,10 +123,7 @@ class _CouponsListScreenState extends ConsumerState<CouponsListScreen> {
                         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.smd),
                         itemBuilder: (context, index) {
                           if (index >= data.items.length) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                              child: Center(child: CircularProgressIndicator(semanticsLabel: 'Loading more coupons')),
-                            );
+                            return const LoadMoreIndicator(label: 'Loading more coupons');
                           }
 
                           final coupon = data.items[index];
@@ -244,7 +242,7 @@ class _DrawsBanner extends ConsumerWidget {
                     children: [
                       Text(
                         'Every purchase earns a coupon',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       DecoratedBox(
@@ -438,7 +436,7 @@ class _CountBubble extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('$count', style: AppTypography.badgeLabel.copyWith(color: foreground, fontWeight: FontWeight.w800)),
+            Text('$count', style: AppTypography.badgeLabel.copyWith(color: foreground, fontWeight: FontWeight.w700)),
             if (won) ...[
               const SizedBox(width: AppSpacing.xxs),
               Icon(Icons.emoji_events_rounded, size: AppIconSize.xs, color: selected ? AppColors.onCrimson : AppColors.gold),

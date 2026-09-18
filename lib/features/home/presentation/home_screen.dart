@@ -18,7 +18,6 @@ import 'widgets/association_partners_section.dart';
 import 'widgets/best_offers_section.dart';
 import 'widgets/category_grid.dart';
 import 'widgets/featured_shops_section.dart';
-import 'widgets/home_drawer.dart';
 import 'widgets/home_header.dart';
 import 'widgets/home_hero_banner.dart';
 import 'widgets/home_stats_row.dart';
@@ -44,9 +43,10 @@ class HomeScreen extends ConsumerWidget {
     final authState = ref.watch(authControllerProvider);
     final name = authState is AuthAuthenticated ? authState.account.customerProfile?.name : null;
 
+    // No `drawer:` here -- the menu is hosted on AppShell's Scaffold so it
+    // covers the bottom bar; see the note there. HomeHeader opens that one.
     return Scaffold(
       backgroundColor: AppColors.surfaceMuted,
-      drawer: const HomeDrawer(),
       body: SafeArea(
         child: Column(
           children: [

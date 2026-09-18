@@ -12,6 +12,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../purchases/presentation/load_more_threshold.dart';
 import '../../application/business_branches_controller.dart';
@@ -184,7 +185,7 @@ class _BusinessCustomersScreenState extends ConsumerState<BusinessCustomersScree
                     separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                     itemBuilder: (context, i) {
                       if (i >= data.items.length) {
-                        return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpacing.md), child: Center(child: CircularProgressIndicator()));
+                        return const LoadMoreIndicator();
                       }
                       final c = data.items[i];
                       return _CustomerRow(customer: c, onTap: () => context.push('${BusinessRoutes.customers}/${c.id}'));

@@ -36,18 +36,30 @@ class HomeHeader extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page - AppSpacing.xs, vertical: AppSpacing.xs),
         child: Row(
           children: [
-            _CircleIconButton(icon: Icons.menu_rounded, label: 'Menu', onTap: () => Scaffold.of(context).openDrawer()),
-            const Flexible(child: _LocationPill()),
+            _CircleIconButton(icon: Icons.menu_rounded, label: 'Menu', onTap: () => _openMenu(context)),
+            // 3:2 against the logo slot, not an even split. The wordmark
+            // needs ~70dp; the town name needs every dp it can get. Shared
+            // equally, the pill was squeezed to ~127dp and cut its own
+            // resting label down to "Set you…".
+            const Flexible(flex: 3, child: _LocationPill()),
             Expanded(
+              flex: 2,
               child: Center(
                 child: Semantics(
                   label: 'Town Shoppy',
                   image: true,
+                  // The logo PNG has an opaque white ground (no alpha
+                  // channel). Multiplying this header's own cream into it
+                  // dissolves that box (white x cream = cream) and leaves
+                  // the lettering intact -- the same treatment the splash
+                  // and auth screens already give this asset.
                   child: Image.asset(
                     'assets/images/townshoppy_logo.png',
                     height: _logoHeight,
                     fit: BoxFit.contain,
                     excludeFromSemantics: true,
+                    color: AppColors.surfaceMuted,
+                    colorBlendMode: BlendMode.multiply,
                   ),
                 ),
               ),
@@ -65,6 +77,17 @@ class HomeHeader extends ConsumerWidget {
   }
 }
 
+/// Opens the menu, which AppShell hosts on ITS Scaffold (so the drawer covers
+/// the bottom bar) rather than on HomeScreen's. `Scaffold.of` finds the
+/// nearest Scaffold -- HomeScreen's, which has no drawer -- so this walks one
+/// level further out to the one that does. Falls back to the nearest for any
+/// host that gives Home a drawer of its own.
+void _openMenu(BuildContext context) {
+  final nearest = Scaffold.of(context);
+  final shell = nearest.context.findAncestorStateOfType<ScaffoldState>();
+  (shell != null && shell.hasDrawer ? shell : nearest).openDrawer();
+}
+
 class _LocationPill extends ConsumerWidget {
   const _LocationPill();
 
@@ -74,10 +97,12 @@ class _LocationPill extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = ref.watch(homeLocationControllerProvider);
 
+    // "Set location", matching Discover Merchants' own pill -- the two are
+    // the same control and said different things.
     final String label = switch (location) {
       AsyncData(:final value) when value is HomeLocationReady => value.label,
-      AsyncData() => 'Set your location',
-      AsyncError() => 'Set your location',
+      AsyncData() => 'Set location',
+      AsyncError() => 'Set location',
       _ => 'Locating…',
     };
 

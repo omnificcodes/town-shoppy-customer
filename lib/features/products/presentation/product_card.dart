@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -24,49 +25,59 @@ class ProductCard extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       label: '${product.name}, ₹${_trim(product.price)}',
-      child: Material(
-        color: AppColors.surface,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd), side: const BorderSide(color: AppColors.border)),
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (product.primaryImageUrl != null)
-                      Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, product.primaryImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _ProductPlaceholder())
-                    else
-                      const _ProductPlaceholder(),
-                    if (product.acceptsTownCoin)
-                      Positioned(
-                        left: AppSpacing.xs,
-                        top: AppSpacing.xs,
-                        child: StatusBadge(label: '${_trim(product.townCoinPercentage!)}% Coin', tone: AppTone.success, icon: Icons.savings_rounded),
-                      ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.smd),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(product.name, style: textTheme.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if (showMerchantName && product.merchantName.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xxs),
-                      Text(product.merchantName, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // Same surface as AppCard: hairline border plus the shared whisper
+      // lift, drawn outside the Material so its clip doesn't eat the shadow.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          boxShadow: AppElevation.card,
+        ),
+        child: Material(
+          color: AppColors.surface,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd), side: const BorderSide(color: AppColors.border)),
+          child: InkWell(
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (product.primaryImageUrl != null)
+                        Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, product.primaryImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _ProductPlaceholder())
+                      else
+                        const _ProductPlaceholder(),
+                      if (product.acceptsTownCoin)
+                        Positioned(
+                          left: AppSpacing.xs,
+                          top: AppSpacing.xs,
+                          child: StatusBadge(label: '${_trim(product.townCoinPercentage!)}% Coin', tone: AppTone.success, icon: Icons.savings_rounded),
+                        ),
                     ],
-                    const SizedBox(height: AppSpacing.xs),
-                    Text('₹${_trim(product.price)}', style: textTheme.titleMedium?.copyWith(color: AppColors.orange)),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.smd),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(product.name, style: textTheme.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                      if (showMerchantName && product.merchantName.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(product.merchantName, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                      const SizedBox(height: AppSpacing.xs),
+                      // orangeDeep, not orange: brand orange is 2.9:1 as text
+                      // on white (see AppColors.orangeDeep's own note).
+                      Text('₹${_trim(product.price)}', style: AppTypography.numericFinancialSmall.copyWith(color: AppColors.orangeDeep)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

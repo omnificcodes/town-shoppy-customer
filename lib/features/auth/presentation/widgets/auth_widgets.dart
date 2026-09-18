@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_elevation.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 
@@ -227,13 +228,10 @@ class AuthGradientButton extends StatelessWidget {
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.orange.withValues(alpha: 0.28),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            // The shared CTA glow. The wider hand-rolled one this replaced
+            // spilled past the pill and showed up as a hard-edged tinted box
+            // behind the button.
+            boxShadow: AppElevation.glow(AppColors.orange),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(AppSpacing.radiusPill),

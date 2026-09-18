@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/home/presentation/widgets/home_drawer.dart';
 import '../../features/purchases/presentation/scan_and_pay_sheet.dart';
 import '../../shared/widgets/app_bottom_navigation.dart';
 
@@ -42,6 +43,13 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: child,
+      // Home's menu lives HERE, on the shell's Scaffold, not on HomeScreen's
+      // own. A Scaffold lays its drawer over only what that Scaffold owns:
+      // hosted on HomeScreen, the drawer slid in UNDER this shell's bottom
+      // bar, so the nav and the Scan & Pay button painted on top of the open
+      // menu and sat across its "Sign out" row. Home-only, as before --
+      // the other tabs have no menu button to open it.
+      drawer: _currentIndex == 0 ? const HomeDrawer() : null,
       floatingActionButton: ScanAndPayFab(onTap: () => showScanAndPaySheet(context)),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: AppBottomNavigation(

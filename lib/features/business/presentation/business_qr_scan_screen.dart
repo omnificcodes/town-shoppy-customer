@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// What the Business scanner is being asked to read -- shown as the title
 /// and the hint under the viewfinder.
@@ -66,6 +67,7 @@ class _BusinessQrScanScreenState extends State<BusinessQrScanScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: AppColors.onScrim,
+        titleTextStyle: AppTypography.sectionTitle.copyWith(color: AppColors.onScrim),
         title: Text(widget.args.title),
         actions: [
           ValueListenableBuilder<MobileScannerState>(

@@ -193,7 +193,7 @@ class _MerchantRegisterScreenState extends ConsumerState<MerchantRegisterScreen>
                             Text('Already have an account? ', style: Theme.of(context).textTheme.bodySmall),
                             InkWell(
                               onTap: () => context.go('/login'),
-                              child: Text('Sign in', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.orange, fontWeight: FontWeight.w700)),
+                              child: Text('Sign in', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),

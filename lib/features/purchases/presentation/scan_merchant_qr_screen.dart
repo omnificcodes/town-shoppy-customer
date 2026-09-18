@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 
 /// Method 1, step 1 (3-way purchase architecture): full-screen camera scan
 /// of a merchant/branch's permanent Purchase QR. On a successful decode,
@@ -55,6 +56,7 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: AppColors.onScrim,
+        titleTextStyle: AppTypography.sectionTitle.copyWith(color: AppColors.onScrim),
         title: const Text('Scan merchant QR'),
         actions: [
           // Dim counters are the common case for a printed QR -- the torch

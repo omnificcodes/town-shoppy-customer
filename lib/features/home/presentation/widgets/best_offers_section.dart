@@ -167,7 +167,7 @@ class _OfferTile extends StatelessWidget {
                   offer.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(offer.merchantName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.caption),

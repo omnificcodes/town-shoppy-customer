@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/widgets/load_more_indicator.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../purchases/presentation/load_more_threshold.dart';
 import '../application/offer_redemptions_list_controller.dart';
@@ -71,10 +72,7 @@ class _OfferRedemptionsListScreenState extends ConsumerState<OfferRedemptionsLis
               separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
                 if (index >= data.items.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    child: Center(child: CircularProgressIndicator(semanticsLabel: 'Loading more offer redemptions')),
-                  );
+                  return const LoadMoreIndicator(label: 'Loading more offer redemptions');
                 }
 
                 final redemption = data.items[index];

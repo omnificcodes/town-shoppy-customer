@@ -833,7 +833,7 @@ class _ShopLocalBanner extends StatelessWidget {
                           'Shop at local stores',
                           style: Theme.of(
                             context,
-                          ).textTheme.titleSmall?.copyWith(color: AppColors.onScrim, fontWeight: FontWeight.w800),
+                          ).textTheme.titleSmall?.copyWith(color: AppColors.onScrim, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],

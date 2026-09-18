@@ -1018,7 +1018,7 @@ class _StoreLockedRow extends StatelessWidget {
                             '${row.balance} coins',
                             style: Theme.of(
                               context,
-                            ).textTheme.bodySmall?.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w800),
+                            ).textTheme.bodySmall?.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
                           ),
                           Text('≈ ₹${_rupees(row.balanceInrEquivalent)}', style: AppTypography.caption),
                           if (expiresAt != null)

@@ -295,7 +295,7 @@ class CounterStatusActions extends ConsumerWidget {
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   label,
-                  style: AppTypography.badgeLabel.copyWith(color: foreground, fontWeight: FontWeight.w800),
+                  style: AppTypography.badgeLabel.copyWith(color: foreground, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -404,9 +404,7 @@ class _SuccessMarkState extends State<_SuccessMark> with SingleTickerProviderSta
                   decoration: BoxDecoration(
                     color: color,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 10)),
-                    ],
+                    boxShadow: AppElevation.glow(color),
                   ),
                   child: CustomPaint(
                     painter: _MarkPainter(progress: draw.value, declined: widget.declined),

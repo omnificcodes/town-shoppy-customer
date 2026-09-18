@@ -28,12 +28,30 @@ class StatePanel extends StatelessWidget {
   final Widget? secondaryAction;
   final bool compact;
 
+  static const double _maxMeasure = 340;
+
   @override
   Widget build(BuildContext context) {
+    // The glyph sits in a soft disc of its own colour rather than floating
+    // bare on the page. A lone grey icon above two lines of text is what a
+    // framework default looks like; the disc gives the state a deliberate
+    // focal point, and it is the same tinted-icon-badge idiom the rest of the
+    // app already uses for its nav links and stat tiles. Decorative only --
+    // the title and message carry the meaning.
+    final discSize = compact ? AppSize.avatarMd : AppIconSize.hero + AppSpacing.sm;
+    final glyph = ExcludeSemantics(
+      child: Container(
+        width: discSize,
+        height: discSize,
+        decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.10), shape: BoxShape.circle),
+        child: Icon(icon, size: compact ? AppIconSize.md : AppIconSize.xl, color: iconColor),
+      ),
+    );
+
     final column = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: compact ? AppIconSize.xl : AppIconSize.display, color: iconColor),
+        glyph,
         SizedBox(height: compact ? AppSpacing.sm : AppSpacing.md),
         if (title != null) ...[
           Text(title!, style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
@@ -47,9 +65,14 @@ class StatePanel extends StatelessWidget {
 
     if (compact) return Padding(padding: const EdgeInsets.all(AppSpacing.md), child: column);
 
+    // Capped measure: on the hosted web build (and tablets) an uncapped
+    // centred paragraph ran edge to edge as one long line, which is harder
+    // to read than the same copy wrapped to a phone-width column.
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.lg),
-      child: column,
+      child: Center(
+        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: _maxMeasure), child: column),
+      ),
     );
   }
 }

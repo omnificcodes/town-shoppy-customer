@@ -900,7 +900,7 @@ class _OfferRow extends StatelessWidget {
                 child: Text(
                   discount?.replaceAll(' OFF', '\nOFF') ?? 'DEAL',
                   textAlign: TextAlign.center,
-                  style: AppTypography.badgeLabel.copyWith(color: AppColors.onCrimson, fontWeight: FontWeight.w800),
+                  style: AppTypography.badgeLabel.copyWith(color: AppColors.onCrimson, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -913,7 +913,7 @@ class _OfferRow extends StatelessWidget {
                     offer.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   if (detail != null && detail.trim().isNotEmpty)
                     Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.caption),
@@ -1087,7 +1087,7 @@ class _BranchCard extends StatelessWidget {
                         children: [
                           Text(
                             branch.name ?? 'Branch',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           if (showPrimary && branch.isPrimary)
                             DecoratedBox(

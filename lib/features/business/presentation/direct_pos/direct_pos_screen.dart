@@ -548,7 +548,7 @@ class _StepCard extends StatelessWidget {
                   decoration: const BoxDecoration(color: AppColors.businessInk, shape: BoxShape.circle),
                   child: Text(
                     '$number',
-                    style: AppTypography.badgeLabel.copyWith(color: AppColors.yellow, fontWeight: FontWeight.w800),
+                    style: AppTypography.badgeLabel.copyWith(color: AppColors.yellow, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -792,7 +792,7 @@ class _LookupCard extends StatelessWidget {
                   ),
                   child: Text(
                     _initials(result.name, result.mobileNumber),
-                    style: AppTypography.badgeLabel.copyWith(color: AppColors.businessInk, fontWeight: FontWeight.w800),
+                    style: AppTypography.badgeLabel.copyWith(color: AppColors.businessInk, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -805,7 +805,7 @@ class _LookupCard extends StatelessWidget {
                       result.name ?? 'Customer',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     Text(result.mobileNumber, style: AppTypography.caption),
                   ],
@@ -884,7 +884,7 @@ class _CoinDiscountCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Padding(
-                  padding: EdgeInsets.only(top: 2),
+                  padding: EdgeInsets.only(top: AppSpacing.xxs),
                   child: Icon(Icons.auto_awesome_rounded, size: AppIconSize.md, color: AppColors.gold),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -1123,7 +1123,7 @@ class _RecordButton extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(
                             context,
-                          ).textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w800),
+                          ).textTheme.titleSmall?.copyWith(color: foreground, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],

@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/state_panel.dart';
 import '../../../../shared/widgets/status_badge.dart';
@@ -129,7 +130,7 @@ class _BusinessPaymentsScreenState extends ConsumerState<BusinessPaymentsScreen>
                       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
                         if (index >= data.items.length) {
-                          return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpacing.md), child: Center(child: CircularProgressIndicator()));
+                          return const LoadMoreIndicator();
                         }
                         final p = data.items[index];
                         return PaymentRow(payment: p, onTap: () => context.push('${BusinessRoutes.payments}/${p.id}'));

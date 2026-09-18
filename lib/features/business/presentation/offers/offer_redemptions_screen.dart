@@ -13,6 +13,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
 import '../../../../shared/widgets/info_box.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../../offer_redemptions/data/models/offer_redemption.dart';
@@ -154,7 +155,7 @@ class _OfferRedemptionsScreenState extends ConsumerState<OfferRedemptionsScreen>
                       }
                       final index = i - 1;
                       if (index >= data.items.length) {
-                        return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpacing.md), child: Center(child: CircularProgressIndicator()));
+                        return const LoadMoreIndicator();
                       }
                       final r = data.items[index];
                       return _RequestCard(redemption: r, busy: _busyId == r.id, onApprove: () => _approve(r), onReject: () => _reject(r));

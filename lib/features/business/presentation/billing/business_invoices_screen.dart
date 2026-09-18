@@ -11,6 +11,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/state_panel.dart';
 import '../../../purchases/presentation/load_more_threshold.dart';
@@ -139,7 +140,7 @@ class _BusinessInvoicesScreenState extends ConsumerState<BusinessInvoicesScreen>
                       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
                         if (index >= data.items.length) {
-                          return const Padding(padding: EdgeInsets.symmetric(vertical: AppSpacing.md), child: Center(child: CircularProgressIndicator()));
+                          return const LoadMoreIndicator();
                         }
                         final i = data.items[index];
                         return InvoiceRow(invoice: i, onTap: () => context.push('${BusinessRoutes.invoices}/${i.id}'));

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_elevation.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_format.dart';
@@ -99,10 +100,11 @@ class _InvoiceSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final i = invoice;
-    return Material(
+    final radius = BorderRadius.circular(AppSpacing.radiusLg);
+    final sheet = Material(
       color: AppColors.surface,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusLg), side: const BorderSide(color: AppColors.border)),
+      shape: RoundedRectangleBorder(borderRadius: radius, side: const BorderSide(color: AppColors.border)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -155,6 +157,12 @@ class _InvoiceSheet extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    // Same lift as AppCard, outside the Material so its clip keeps the shadow.
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.card),
+      child: sheet,
     );
   }
 }

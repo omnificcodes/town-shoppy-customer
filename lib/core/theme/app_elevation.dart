@@ -61,4 +61,23 @@ class AppElevation {
           offset: const Offset(0, 8),
         ),
       ];
+
+  /// The coloured lift under a saturated primary action — the auth CTA, the
+  /// docked Scan & Pay button, a success mark. Tinted with the surface's own
+  /// [color] so it reads as that surface's glow rather than a grey smudge.
+  ///
+  /// The negative spread is deliberate: it pulls the blur inside the
+  /// surface's own outline, so the glow hugs a pill or circle instead of
+  /// spilling out as a wide haze — which, wherever an ancestor clips, showed
+  /// up as a hard-edged tinted box behind the button. Each screen used to
+  /// hand-roll its own version of this (blur 16/24, offsets 6/8/10); one
+  /// token keeps every primary action lifting by the same amount.
+  static List<BoxShadow> glow(Color color) => [
+        BoxShadow(
+          color: color.withValues(alpha: 0.28),
+          blurRadius: 12,
+          spreadRadius: -4,
+          offset: const Offset(0, 6),
+        ),
+      ];
 }
