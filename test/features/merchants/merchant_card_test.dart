@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/favorites/data/favorites_repository.dart';
 import 'package:customer/features/merchants/data/models/association_ref.dart';
 import 'package:customer/features/merchants/data/models/merchant.dart';
 import 'package:customer/features/merchants/data/models/merchant_category.dart';
 import 'package:customer/features/merchants/data/models/town_ref.dart';
 import 'package:customer/features/merchants/presentation/merchant_card.dart';
 
-Widget _wrap(Widget child) => MaterialApp(
-  theme: AppTheme.light,
-  home: Scaffold(body: child),
+import '../../helpers/fake_favorites_repository.dart';
+
+// MerchantCard renders a FavoriteButton, which reads the saved-id set.
+Widget _wrap(Widget child, {FakeFavoritesRepository? favorites}) => ProviderScope(
+  overrides: [favoritesRepositoryProvider.overrideWithValue(favorites ?? FakeFavoritesRepository())],
+  child: MaterialApp(
+    theme: AppTheme.light,
+    home: Scaffold(body: child),
+  ),
 );
 
 void main() {

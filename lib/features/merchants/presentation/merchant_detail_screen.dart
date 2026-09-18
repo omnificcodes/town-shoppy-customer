@@ -54,7 +54,7 @@ class MerchantDetailScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            _TopBar(merchantName: merchant?.name),
+            _TopBar(merchantId: merchantId, merchantName: merchant?.name),
             Expanded(
               child: detail.when(
                 loading: () => const LoadingSkeletonList(count: 3),
@@ -73,8 +73,9 @@ class MerchantDetailScreen extends ConsumerWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.merchantName});
+  const _TopBar({required this.merchantId, required this.merchantName});
 
+  final int merchantId;
   final String? merchantName;
 
   @override
@@ -110,7 +111,7 @@ class _TopBar extends StatelessWidget {
           ),
           SizedBox.square(
             dimension: AppSpacing.touchTarget,
-            child: name == null ? null : FavoriteButton(merchantName: name),
+            child: name == null ? null : FavoriteButton(merchantId: merchantId, merchantName: name),
           ),
         ],
       ),

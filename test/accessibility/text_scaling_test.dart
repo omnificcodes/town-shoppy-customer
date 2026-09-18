@@ -10,6 +10,7 @@ import 'package:customer/features/auth/data/models/account.dart';
 import 'package:customer/features/auth/data/models/otp_request_result.dart';
 import 'package:customer/features/auth/data/models/customer_profile.dart';
 import 'package:customer/features/auth/presentation/login_screen.dart';
+import 'package:customer/features/favorites/data/favorites_repository.dart';
 import 'package:customer/features/merchants/application/merchant_branches_provider.dart';
 import 'package:customer/features/merchants/application/merchant_detail_provider.dart';
 import 'package:customer/features/merchants/data/models/association_ref.dart';
@@ -33,6 +34,8 @@ import 'package:customer/features/offers/application/merchant_offers_provider.da
 import 'package:customer/features/offers/data/models/offer.dart';
 import 'package:customer/features/products/data/models/product.dart';
 import 'package:customer/features/products/data/products_repository.dart';
+
+import '../helpers/fake_favorites_repository.dart';
 
 /// Merchant detail loads the shop's product catalog; an empty one keeps
 /// its scaling test off the network.
@@ -252,6 +255,7 @@ void main() {
             merchantOffersProvider(1).overrideWith((ref) async => const <Offer>[]),
             productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
             walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+            favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
           ],
           child: MaterialApp(
             theme: AppTheme.light,
@@ -306,6 +310,7 @@ void main() {
           overrides: [
             authControllerProvider.overrideWith(_AuthenticatedController.new),
             walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+            favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
             couponCountsProvider.overrideWith((ref) async => const CouponCounts(active: 98765, won: 3, expired: 12)),
           ],
           child: MaterialApp(

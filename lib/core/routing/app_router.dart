@@ -55,6 +55,7 @@ import '../../features/business/presentation/mode_chooser_screen.dart';
 import '../../features/business/presentation/package_gate.dart';
 import '../../features/coupons/presentation/coupon_detail_screen.dart';
 import '../../features/coupons/presentation/coupons_list_screen.dart';
+import '../../features/favorites/presentation/favorites_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/lucky_draw/presentation/draw_detail_screen.dart';
 import '../../features/lucky_draw/presentation/draws_list_screen.dart';
@@ -106,6 +107,7 @@ const _offerRedemptionsPath = '/offer-redemptions';
 const _referralsPath = '/referrals';
 const _merchantsPath = '/merchants';
 const _shoppingPath = '/shopping';
+const _favoritesPath = '/favorites';
 const _productsPath = '/products';
 
 /// Auth-aware [GoRouter]. Redirect logic — not widget-level checks — is the
@@ -217,6 +219,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '$_merchantsPath/:id',
         builder: (context, state) => MerchantDetailScreen(merchantId: int.parse(state.pathParameters['id']!)),
       ),
+      GoRoute(path: _favoritesPath, builder: (context, state) => const FavoritesScreen()),
       GoRoute(
         path: _shoppingPath,
         // Pushed from the merchant detail page's Products section "See

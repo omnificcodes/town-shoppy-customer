@@ -154,7 +154,7 @@ class MerchantCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      FavoriteButton(merchantName: merchant.name),
+                      FavoriteButton(merchantId: merchant.id, merchantName: merchant.name),
                     ],
                   ),
                   Padding(

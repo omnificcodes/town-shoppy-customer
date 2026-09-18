@@ -73,6 +73,13 @@ class ProfileScreen extends ConsumerWidget {
               _LinkGroup(
                 children: [
                   _LinkRow(
+                    icon: Icons.favorite_rounded,
+                    tint: AppColors.crimson,
+                    title: 'Favorites',
+                    subtitle: 'Shops you have saved',
+                    onTap: () => context.push('/favorites'),
+                  ),
+                  _LinkRow(
                     icon: Icons.receipt_long_rounded,
                     tint: AppColors.orangeDeep,
                     title: 'Purchases',

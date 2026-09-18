@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/favorites/data/favorites_repository.dart';
 import 'package:customer/features/merchants/application/merchant_branches_provider.dart';
 import 'package:customer/features/merchants/application/merchant_detail_provider.dart';
 import 'package:customer/features/merchants/data/models/association_ref.dart';
@@ -20,6 +21,7 @@ import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart'
 import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
 import 'package:customer/features/wallet/data/wallet_repository.dart';
 
+import '../../helpers/fake_favorites_repository.dart';
 import '../../helpers/responsive_test_helper.dart';
 
 const _merchant = Merchant(
@@ -134,6 +136,7 @@ Widget _wrap() {
       merchantOffersProvider(1).overrideWith((ref) async => [_offer]),
       productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
       walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+      favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const MerchantDetailScreen(merchantId: 1)),
   );
@@ -180,6 +183,7 @@ Widget _wrapSingleBranch() {
       merchantOffersProvider(2).overrideWith((ref) async => const <Offer>[]),
       productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
       walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+      favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const MerchantDetailScreen(merchantId: 2)),
   );

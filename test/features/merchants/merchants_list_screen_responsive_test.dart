@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/favorites/data/favorites_repository.dart';
 import 'package:customer/features/home/application/home_location_controller.dart';
 import 'package:customer/features/merchants/application/merchant_categories_provider.dart';
 import 'package:customer/features/merchants/data/merchants_repository.dart';
@@ -14,6 +15,7 @@ import 'package:customer/features/merchants/data/models/nearby_merchant.dart';
 import 'package:customer/features/merchants/data/models/town_ref.dart';
 import 'package:customer/features/merchants/presentation/merchants_list_screen.dart';
 
+import '../../helpers/fake_favorites_repository.dart';
 import '../../helpers/responsive_test_helper.dart';
 
 /// Mirrors the small per-file fake convention already used in
@@ -86,6 +88,7 @@ Widget _wrap() {
         _FakeMerchantsRepository(OffsetPage(items: [_longNameMerchant()], currentPage: 1, lastPage: 1, total: 1)),
       ),
       homeLocationControllerProvider.overrideWith(_FakeHomeLocationController.new),
+      favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const MerchantsListScreen()),
   );
@@ -99,6 +102,7 @@ Widget _wrapEmpty() {
         _FakeMerchantsRepository(const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0)),
       ),
       homeLocationControllerProvider.overrideWith(_FakeHomeLocationController.new),
+      favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const MerchantsListScreen()),
   );

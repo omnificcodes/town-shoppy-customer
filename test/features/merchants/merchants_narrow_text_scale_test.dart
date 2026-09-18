@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/favorites/data/favorites_repository.dart';
 import 'package:customer/features/home/application/home_location_controller.dart';
 import 'package:customer/features/merchants/application/merchant_branches_provider.dart';
 import 'package:customer/features/merchants/application/merchant_categories_provider.dart';
@@ -15,6 +16,7 @@ import 'package:customer/features/merchants/data/models/merchant_branch_ref.dart
 import 'package:customer/features/merchants/data/models/merchant_category.dart';
 import 'package:customer/features/merchants/data/models/nearby_merchant.dart';
 import 'package:customer/features/merchants/data/models/town_ref.dart';
+import 'package:customer/features/merchants/presentation/favorite_button.dart';
 import 'package:customer/features/merchants/presentation/merchant_detail_screen.dart';
 import 'package:customer/features/merchants/presentation/merchants_list_screen.dart';
 import 'package:customer/features/offers/application/merchant_offers_provider.dart';
@@ -25,6 +27,7 @@ import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart'
 import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
 import 'package:customer/features/wallet/data/wallet_repository.dart';
 
+import '../../helpers/fake_favorites_repository.dart';
 import '../../helpers/responsive_test_helper.dart';
 
 /// The narrowest phone the audit mandates, on top of the standard sweep —
@@ -153,6 +156,7 @@ void main() {
           merchantOffersProvider(1).overrideWith((ref) async => const <Offer>[]),
           productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
           walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+          favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
         ],
         child: _app(const MerchantDetailScreen(merchantId: 1)),
       ),
@@ -182,6 +186,7 @@ void main() {
             ],
           ),
           merchantsRepositoryProvider.overrideWithValue(_FakeMerchantsRepository()),
+          favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
           homeLocationControllerProvider.overrideWith(_FakeHomeLocationController.new),
         ],
         child: _app(const MerchantsListScreen()),
@@ -189,7 +194,8 @@ void main() {
       verify: (tester, size) async {
         expect(find.text('Discover Merchants'), findsOneWidget);
         expect(find.text('Bakery'), findsOneWidget);
-        expect(find.byTooltip('Save to favorites', skipOffstage: false), findsWidgets);
+        // The heart's tooltip now names the shop, so match the control itself.
+        expect(find.byType(FavoriteButton, skipOffstage: false), findsWidgets);
       },
     );
   });
