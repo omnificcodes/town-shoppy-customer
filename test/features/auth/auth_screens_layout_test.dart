@@ -17,6 +17,9 @@ import 'package:customer/features/auth/presentation/widgets/auth_widgets.dart';
 /// they all share the one [AuthHeader] back button at a 48dp target.
 class _FakeAuthRepository implements AuthRepository {
   @override
+  Future<AuthResult> exchangeImpersonationCode(String code) async => throw UnimplementedError();
+
+  @override
   Future<AuthResult> login({required String mobileNumber, required String password}) async => throw UnimplementedError();
 
   @override

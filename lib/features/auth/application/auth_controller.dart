@@ -32,6 +32,10 @@ class AuthController extends Notifier<AuthState> {
   late final AuthRepository _repository;
   late final SecureStorageService _storage;
 
+  /// The in-flight cold-start restore, so [signInWithHandoffCode] can wait
+  /// for it instead of racing it for the last write to [state].
+  Future<void>? _restore;
+
   @override
   AuthState build() {
     _repository = ref.watch(authRepositoryProvider);
@@ -42,7 +46,7 @@ class AuthController extends Notifier<AuthState> {
     // provider dependency (see ApiClient's own docblock).
     ref.watch(apiClientProvider).onUnauthorized = _handleSessionExpired;
 
-    _restoreSession();
+    _restore = _restoreSession();
     return const AuthInitial();
   }
 
@@ -88,6 +92,28 @@ class AuthController extends Notifier<AuthState> {
     } on AppException catch (e) {
       state = AuthUnauthenticated(error: e);
     }
+  }
+
+  /// Signs in with a Super Admin's single-use "login as customer" hand-off
+  /// code (`ImpersonationController::exchange`). Replaces whatever session
+  /// this browser already had. Unlike [login], a failure is thrown to the
+  /// caller rather than parked in state, since the hand-off screen — not
+  /// the Login form — is what needs to show it.
+  ///
+  /// Deliberately never registers this device for push: the person at the
+  /// keyboard is support staff, and the customer's notifications must not
+  /// start arriving on their machine.
+  Future<void> signInWithHandoffCode(String code) async {
+    // A fresh web load is still restoring the previous session; let it
+    // finish first so it cannot overwrite the account set below.
+    await _restore;
+
+    final result = await _repository.exchangeImpersonationCode(code);
+
+    await ref.read(pushNotificationServiceProvider.notifier).deregisterCurrentDevice();
+    await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
+    ref.read(sessionEpochProvider.notifier).bump();
+    state = AuthAuthenticated(result.account);
   }
 
   Future<void> register(String mobileNumber, String name, String password, {String? referralCode}) async {

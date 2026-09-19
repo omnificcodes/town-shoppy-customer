@@ -82,6 +82,9 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<void> changePassword({required String currentPassword, required String password}) async {}
   @override
+  Future<AuthResult> exchangeImpersonationCode(String code) async => throw UnimplementedError();
+
+  @override
   Future<AuthResult> login({required String mobileNumber, required String password}) async => throw UnimplementedError();
   @override
   Future<AuthResult> register({

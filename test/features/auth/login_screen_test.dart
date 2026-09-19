@@ -16,6 +16,9 @@ import 'package:customer/features/auth/presentation/widgets/auth_widgets.dart';
 /// token in [_FakeEmptySecureStorage] so `me()` is never actually reached.
 class _FakeAuthRepository implements AuthRepository {
   @override
+  Future<AuthResult> exchangeImpersonationCode(String code) async => throw UnimplementedError();
+
+  @override
   Future<AuthResult> login({required String mobileNumber, required String password}) async => throw UnimplementedError();
 
   @override

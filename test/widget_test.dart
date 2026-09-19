@@ -21,6 +21,9 @@ class FakeAuthRepository implements AuthRepository {
   String? lastPassword;
 
   @override
+  Future<AuthResult> exchangeImpersonationCode(String code) async => throw UnimplementedError();
+
+  @override
   Future<AuthResult> login({required String mobileNumber, required String password}) async {
     loginCallCount++;
     lastMobileNumber = mobileNumber;

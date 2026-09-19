@@ -11,6 +11,7 @@ import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/data/models/account.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
+import '../../features/auth/presentation/handoff_sign_in_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/reset_password_screen.dart';
@@ -89,6 +90,7 @@ import '../widgets/app_shell.dart';
 
 const _splashPath = '/splash';
 const _loginPath = '/login';
+const _impersonatePath = '/impersonate';
 const _registerPath = '/register';
 const _registerMerchantPath = '/register-merchant';
 const _forgotPasswordPath = '/forgot-password';
@@ -130,6 +132,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: _splashPath, builder: (context, state) => const _SplashScreen()),
       GoRoute(path: _loginPath, builder: (context, state) => const LoginScreen()),
+      // A Super Admin's "Login as customer" link. The single-use code rides
+      // in the query string of the hash route, so it never reaches a server
+      // log -- a URL fragment is not sent with the page request.
+      GoRoute(
+        path: _impersonatePath,
+        builder: (context, state) => HandoffSignInScreen(code: state.uri.queryParameters['code']),
+      ),
       GoRoute(path: _registerPath, builder: (context, state) => const RegisterScreen()),
       // Reachable signed-out (from Login) AND signed-in (from the drawer /
       // Profile) -- the screen itself decides whether to ask for a password.
@@ -437,6 +446,11 @@ String? _redirect(AuthState authState, AppModeState modeState, String location) 
   // still in flight -- this check must win over every branch below, not
   // just the Unauthenticated one).
   if (location.startsWith('$_productsPath/')) return null;
+
+  // The hand-off sign-in must run whatever session this browser already
+  // holds (none, the admin's own, or a previous customer's) -- it replaces
+  // it, and then navigates away on its own.
+  if (location == _impersonatePath) return null;
 
   final onSplash = location == _splashPath;
   final onLogin = location == _loginPath;

@@ -27,6 +27,8 @@ Account _newAccount() {
 class FakeAuthRepository implements AuthRepository {
   final List<Object> _loginResponses = [];
   final List<Object> _registerResponses = [];
+  Object? handoffResponse;
+  String? lastHandoffCode;
   int loginCallCount = 0;
   int registerCallCount = 0;
   Map<String, String?>? lastRegisterCall;
@@ -45,6 +47,14 @@ class FakeAuthRepository implements AuthRepository {
     final completer = Completer<AuthResult>();
     _pendingLogin = completer;
     return completer;
+  }
+
+  @override
+  Future<AuthResult> exchangeImpersonationCode(String code) async {
+    lastHandoffCode = code;
+    final next = handoffResponse;
+    if (next is AppException) throw next;
+    return next! as AuthResult;
   }
 
   @override
@@ -178,6 +188,30 @@ void main() {
       await pendingFirst;
 
       expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    });
+  });
+
+  group('signInWithHandoffCode', () {
+    test('exchanges the code and reaches AuthAuthenticated without waiting for a restore tick', () async {
+      fakeRepository.handoffResponse = AuthResult(account: _newAccount(), token: 'support-tok');
+      final notifier = setUpController();
+
+      // No Future.delayed here on purpose: the method itself must wait for
+      // the cold-start restore instead of racing it.
+      await notifier.signInWithHandoffCode('one-time-code');
+
+      expect(fakeRepository.lastHandoffCode, 'one-time-code');
+      expect(container.read(authControllerProvider), isA<AuthAuthenticated>());
+    });
+
+    test('a burned or expired code throws and leaves the session signed out', () async {
+      fakeRepository.handoffResponse = const ValidationAppException('Validation failed.', {
+        'code': ['This sign-in link is invalid or has expired.'],
+      });
+      final notifier = setUpController();
+
+      await expectLater(notifier.signInWithHandoffCode('used-code'), throwsA(isA<ValidationAppException>()));
+      expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
     });
   });
 

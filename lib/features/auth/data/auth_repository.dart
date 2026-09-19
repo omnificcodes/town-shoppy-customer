@@ -31,6 +31,18 @@ class AuthRepository {
     }
   }
 
+  /// `POST /auth/impersonation/exchange` — trades a Super Admin's
+  /// single-use, 60-second hand-off code for a one-hour session. Same
+  /// `{account, token}` shape as [login].
+  Future<AuthResult> exchangeImpersonationCode(String code) async {
+    try {
+      final response = await _dio.post('/auth/impersonation/exchange', data: {'code': code});
+      return _parseAuthResult(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
   Future<AuthResult> register({
     required String mobileNumber,
     required String name,
