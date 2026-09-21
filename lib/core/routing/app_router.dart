@@ -321,7 +321,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '${BusinessRoutes.branches}/:id/edit',
         builder: (context, state) => RequirePackage(
           feature: 'Your branches',
-          child: BranchFormScreen(key: ValueKey('branch-edit-${state.pathParameters['id']}'), branch: state.extra as MerchantBranch?),
+          // Loads by id, so a reloaded /edit URL still edits the right
+          // branch instead of falling back to an empty create form.
+          child: EditBranchScreen(
+            key: ValueKey('branch-edit-${state.pathParameters['id']}'),
+            branchId: int.parse(state.pathParameters['id']!),
+            initial: state.extra as MerchantBranch?,
+          ),
         ),
       ),
       GoRoute(
@@ -347,7 +353,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '${BusinessRoutes.offers}/:id/edit',
         builder: (context, state) => RequirePackage(
           feature: 'Offers',
-          child: OfferFormScreen(key: ValueKey('offer-edit-${state.pathParameters['id']}'), offer: state.extra as BusinessOffer?),
+          // Loads by id, so a reloaded /edit URL still edits the right
+          // offer instead of falling back to an empty create form.
+          child: EditOfferScreen(
+            key: ValueKey('offer-edit-${state.pathParameters['id']}'),
+            offerId: int.parse(state.pathParameters['id']!),
+            initial: state.extra as BusinessOffer?,
+          ),
         ),
       ),
       GoRoute(
@@ -363,7 +375,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '${BusinessRoutes.products}/:id/edit',
         builder: (context, state) => RequirePackage(
           feature: 'Products',
-          child: ProductFormScreen(key: ValueKey('product-edit-${state.pathParameters['id']}'), product: state.extra as Product?),
+          // Loads by id, for the same reason as the branch and offer
+          // edit routes above.
+          child: EditProductScreen(
+            key: ValueKey('product-edit-${state.pathParameters['id']}'),
+            productId: int.parse(state.pathParameters['id']!),
+            initial: state.extra as Product?,
+          ),
         ),
       ),
       GoRoute(

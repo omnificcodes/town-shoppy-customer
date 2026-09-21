@@ -49,7 +49,15 @@ class BusinessOfferDetailScreen extends ConsumerWidget {
                     Expanded(child: AppButton(label: 'Publish', icon: Icons.send_rounded, onPressed: () => runOfferAction(context, ref, offer, 'publish'))),
                   ],
                 )
-              : AppButton(label: 'End offer', variant: AppButtonVariant.destructive, icon: Icons.stop_circle_outlined, onPressed: () => runOfferAction(context, ref, offer, 'end')))
+              // A live offer is editable too, so Edit sits beside the one
+              // destructive action rather than being replaced by it.
+              : Row(
+                  children: [
+                    Expanded(child: AppButton(label: 'Edit', variant: AppButtonVariant.secondary, icon: Icons.edit_outlined, onPressed: () => runOfferAction(context, ref, offer, 'edit'))),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: AppButton(label: 'End offer', variant: AppButtonVariant.destructive, icon: Icons.stop_circle_outlined, onPressed: () => runOfferAction(context, ref, offer, 'end'))),
+                  ],
+                ))
           : null,
       body: async.when(
         loading: () => const LoadingSkeletonList(count: 4),

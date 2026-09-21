@@ -10,8 +10,10 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/date_format.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/error_state.dart';
 import '../../../../shared/widgets/image_picker_field.dart';
 import '../../../../shared/widgets/info_box.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../application/business_branches_controller.dart';
 import '../../application/business_context.dart';
@@ -21,6 +23,44 @@ import '../../data/business_offers_repository.dart';
 import '../../data/models/business_offer.dart';
 import '../business_routes.dart';
 import '../widgets/business_page_header.dart';
+
+/// Loads the offer named in the URL, then hands it to [OfferFormScreen].
+///
+/// The form needs a whole [BusinessOffer], and the route used to pass one
+/// through GoRouter's `extra`. That is in-memory only: on the hosted web
+/// build it does not survive a page reload, so a refreshed `/edit` URL
+/// rendered an empty "New offer" form -- and saving it CREATED a second
+/// offer instead of editing the one the URL named. The id in the path is
+/// the durable half, so it is what this loads from; `extra` is kept only
+/// as a hint that paints the filled form instantly when arriving from the
+/// list, with no flash of skeleton.
+class EditOfferScreen extends ConsumerWidget {
+  const EditOfferScreen({super.key, required this.offerId, this.initial});
+
+  final int offerId;
+  final BusinessOffer? initial;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(businessOfferProvider(offerId));
+    final offer = async.value ?? initial;
+
+    if (offer != null) {
+      return OfferFormScreen(key: ValueKey('offer-form-$offerId'), offer: offer);
+    }
+
+    return BusinessScaffold(
+      title: 'Edit offer',
+      body: async.hasError
+          ? ErrorState(
+              error: async.error is AppException ? async.error! as AppException : const UnknownAppException(),
+              title: 'Could not load this offer',
+              onRetry: () => ref.invalidate(businessOfferProvider(offerId)),
+            )
+          : const LoadingSkeletonList(count: 4),
+    );
+  }
+}
 
 /// Create or edit an offer -- the web form's exact field set, laid out
 /// for a phone: image first (it is what customers see), native date and
@@ -53,6 +93,12 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
   Map<String, List<String>> _fieldErrors = const {};
 
   bool get _isEdit => widget.offer != null;
+
+  /// A live offer has already started, so its start date is a fact rather
+  /// than a setting -- the backend refuses to move it, because both public
+  /// discovery and redemption gate on `starts_at <= now` and pushing it
+  /// forward would hide the offer while it still read as live.
+  bool get _isLive => widget.offer?.isActive ?? false;
 
   static String _trim(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
@@ -154,7 +200,11 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
         children: [
           InfoBox(
             icon: Icons.info_outline_rounded,
-            message: _isEdit ? 'Only a scheduled (unpublished) offer can be edited.' : "Offers start as a draft — publish when you're ready.",
+            message: _isEdit
+                ? (_isLive
+                    ? 'This offer is live — changes reach customers as soon as you save. Its start date is now fixed.'
+                    : 'Changes are saved to the draft. Publish it when you are ready.')
+                : "Offers start as a draft — publish when you're ready.",
           ),
           const SizedBox(height: AppSpacing.section),
           const SectionHeader(title: 'Offer details', subtitle: 'What customers will see.', icon: Icons.campaign_rounded),
@@ -201,7 +251,7 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
           const SizedBox(height: AppSpacing.section),
           const SectionHeader(title: 'Schedule', subtitle: 'When this offer runs.', icon: Icons.schedule_rounded),
           const SizedBox(height: AppSpacing.smd),
-          _DateTimeField(label: 'Starts', value: _startsAt, errorText: server('starts_at') ?? show(_startError), onTap: () => _pickDateTime(initial: _startsAt, onPicked: (d) => setState(() => _startsAt = d))),
+          _DateTimeField(label: 'Starts', enabled: !_isLive, helperText: _isLive ? 'Fixed — this offer has already started.' : null, value: _startsAt, errorText: server('starts_at') ?? show(_startError), onTap: () => _pickDateTime(initial: _startsAt, onPicked: (d) => setState(() => _startsAt = d))),
           const SizedBox(height: AppSpacing.smd),
           _DateTimeField(label: 'Ends', value: _endsAt, errorText: server('ends_at') ?? show(_endError), onTap: () => _pickDateTime(initial: _endsAt ?? _startsAt, onPicked: (d) => setState(() => _endsAt = d))),
           const SizedBox(height: AppSpacing.smd),
@@ -220,20 +270,25 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
 }
 
 class _DateTimeField extends StatelessWidget {
-  const _DateTimeField({required this.label, required this.value, required this.onTap, this.errorText});
+  const _DateTimeField({required this.label, required this.value, required this.onTap, this.errorText, this.enabled = true, this.helperText});
 
   final String label;
   final DateTime? value;
   final VoidCallback onTap;
   final String? errorText;
 
+  /// A disabled field still SHOWS its value -- the merchant needs to read
+  /// when their live offer started, just not change it.
+  final bool enabled;
+  final String? helperText;
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: InputDecorator(
-        decoration: InputDecoration(labelText: label, errorText: errorText, prefixIcon: const Icon(Icons.event_rounded, size: AppIconSize.md), suffixIcon: const Icon(Icons.arrow_drop_down_rounded)),
+        decoration: InputDecoration(labelText: label, errorText: errorText, helperText: helperText, enabled: enabled, prefixIcon: const Icon(Icons.event_rounded, size: AppIconSize.md), suffixIcon: const Icon(Icons.arrow_drop_down_rounded)),
         child: Text(
           value == null ? 'Pick a date and time' : formatDateTime(value!),
           style: value == null ? Theme.of(context).textTheme.bodyLarge?.copyWith(color: Theme.of(context).hintColor) : Theme.of(context).textTheme.bodyLarge,

@@ -12,7 +12,11 @@ import '../widgets/business_dialogs.dart';
 
 /// The Owner's actions on one offer, as a bottom sheet -- the mobile form
 /// of the web's row menu. Mirrors `OfferStatus::allowedNextStates()`:
-/// draft -> edit / publish / withdraw; active -> end; expired -> nothing.
+/// the lifecycle moves (draft -> publish / withdraw; active -> end;
+/// expired -> nothing), plus Edit, which is not a transition at all: a
+/// live offer stays editable so a merchant can fix a typo, a photo or an
+/// end date without ending the promotion and rebuilding it. Only an
+/// expired offer is frozen (OfferLifecycleService::update()).
 Future<void> showOfferActionsSheet(BuildContext context, WidgetRef ref, BusinessOffer offer) async {
   final action = await showModalBottomSheet<String>(
     context: context,
@@ -24,8 +28,8 @@ Future<void> showOfferActionsSheet(BuildContext context, WidgetRef ref, Business
             padding: const EdgeInsets.fromLTRB(AppSpacing.page, 0, AppSpacing.page, AppSpacing.sm),
             child: Align(alignment: Alignment.centerLeft, child: Text(offer.title, style: Theme.of(sheetContext).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
           ),
+          ListTile(leading: const Icon(Icons.edit_outlined), title: const Text('Edit'), onTap: () => Navigator.of(sheetContext).pop('edit')),
           if (offer.isDraft) ...[
-            ListTile(leading: const Icon(Icons.edit_outlined), title: const Text('Edit'), onTap: () => Navigator.of(sheetContext).pop('edit')),
             ListTile(leading: const Icon(Icons.send_rounded, color: AppColors.success), title: const Text('Publish'), subtitle: const Text('Make it visible to customers'), onTap: () => Navigator.of(sheetContext).pop('publish')),
             ListTile(leading: const Icon(Icons.block_rounded, color: AppColors.error), title: const Text('Withdraw', style: TextStyle(color: AppColors.error)), onTap: () => Navigator.of(sheetContext).pop('withdraw')),
           ],

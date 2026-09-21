@@ -9,9 +9,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/error_state.dart';
 import '../../../../shared/widgets/info_box.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/multi_image_picker_field.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../products/application/products_list_controller.dart';
 import '../../../products/data/models/product.dart';
 import '../../application/business_context.dart';
 import '../../application/business_products_controller.dart';
@@ -20,6 +23,44 @@ import '../../data/business_products_repository.dart';
 import '../business_routes.dart';
 import '../widgets/business_page_header.dart';
 
+/// Loads the product named in the URL, then hands it to [ProductFormScreen].
+///
+/// The form needs a whole entity, and the route used to pass one through
+/// GoRouter's `extra`. That is in-memory only: on the hosted web build it
+/// does not survive a page reload, so a refreshed `/edit` URL rendered an
+/// empty create form -- and saving it CREATED a second record instead of
+/// editing the one the URL named. The id in the path is the durable half,
+/// so it is what this loads from; `extra` is kept only as a hint that
+/// paints the filled form instantly when arriving from the list.
+class EditProductScreen extends ConsumerWidget {
+  const EditProductScreen({super.key, required this.productId, this.initial});
+
+  final int productId;
+  final Product? initial;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // GET /products/{id} serves the owner their own product whatever its
+    // status (ProductController::show()), so an inactive one still edits.
+    final async = ref.watch(productDetailProvider(productId));
+    final product = async.value ?? initial;
+
+    if (product != null) {
+      return ProductFormScreen(key: ValueKey('product-form-$productId'), product: product);
+    }
+
+    return BusinessScaffold(
+      title: 'Edit product',
+      body: async.hasError
+          ? ErrorState(
+              error: async.error is AppException ? async.error! as AppException : const UnknownAppException(),
+              title: 'Could not load this product',
+              onRetry: () => ref.invalidate(productDetailProvider(productId)),
+            )
+          : const LoadingSkeletonList(count: 4),
+    );
+  }
+}
 /// Create or edit a product -- images first (what customers see), then the
 /// basics, then the Town Coin toggle revealing its percentage field. Same
 /// plain-`StatefulWidget` + `TextEditingController` shape as

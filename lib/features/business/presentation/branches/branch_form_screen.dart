@@ -10,8 +10,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/error_state.dart';
 import '../../../../shared/widgets/image_picker_field.dart';
 import '../../../../shared/widgets/info_box.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/location_picker.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../application/business_branches_controller.dart';
@@ -19,6 +21,52 @@ import '../../data/business_merchant_repository.dart';
 import '../../data/models/merchant_branch.dart';
 import '../widgets/business_page_header.dart';
 
+/// Loads the branch named in the URL, then hands it to [BranchFormScreen].
+///
+/// The form needs a whole entity, and the route used to pass one through
+/// GoRouter's `extra`. That is in-memory only: on the hosted web build it
+/// does not survive a page reload, so a refreshed `/edit` URL rendered an
+/// empty create form -- and saving it CREATED a second record instead of
+/// editing the one the URL named. The id in the path is the durable half,
+/// so it is what this loads from; `extra` is kept only as a hint that
+/// paints the filled form instantly when arriving from the list.
+class EditBranchScreen extends ConsumerWidget {
+  const EditBranchScreen({super.key, required this.branchId, this.initial});
+
+  final int branchId;
+  final MerchantBranch? initial;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // A merchant's branches load as one complete list, so there is no
+    // per-branch endpoint to call -- the branch is simply the one in it.
+    final async = ref.watch(businessBranchesControllerProvider);
+    final branches = async.value;
+    final branch = branches?.where((b) => b.id == branchId).firstOrNull ?? initial;
+
+    if (branch != null) {
+      return BranchFormScreen(key: ValueKey('branch-form-$branchId'), branch: branch);
+    }
+
+    return BusinessScaffold(
+      title: 'Edit branch',
+      body: async.hasError
+          ? ErrorState(
+              error: async.error is AppException ? async.error! as AppException : const UnknownAppException(),
+              title: 'Could not load this branch',
+              onRetry: () => ref.invalidate(businessBranchesControllerProvider),
+            )
+          : branches != null
+              // Loaded, but this id is not among them: deleted, or never
+              // this merchant's. Never fall through to a create form.
+              ? const ErrorState(
+                  error: NotFoundException('This branch no longer exists, or it is not one of yours.'),
+                  title: 'Branch not found',
+                )
+              : const LoadingSkeletonList(count: 4),
+    );
+  }
+}
 /// Create or edit a branch -- the web's `BranchFormDialog` field for field.
 /// Owner only (`MerchantBranchPolicy::create/update`).
 class BranchFormScreen extends ConsumerStatefulWidget {
