@@ -18,8 +18,17 @@ class BusinessProductsRepository {
 
   Future<OffsetPage<Product>> list({required int merchantId, int page = 1, int perPage = 20}) async {
     try {
-      final response = await _dio.get('/products', queryParameters: {'merchant_id': merchantId, 'page': page, 'per_page': perPage});
-      final items = (ApiEnvelope.data(response) as List<dynamic>).map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+      // `mine=1` asks for the management view: this merchant's catalog
+      // including its inactive rows. Without it `/products` answers with
+      // the public catalog, which is what the customer app's Shopping tab
+      // wants and which would hide anything not yet active.
+      final response = await _dio.get(
+        '/products',
+        queryParameters: {'mine': 1, 'merchant_id': merchantId, 'page': page, 'per_page': perPage},
+      );
+      final items = (ApiEnvelope.data(response) as List<dynamic>)
+          .map((e) => Product.fromJson(e as Map<String, dynamic>))
+          .toList();
       final meta = ApiEnvelope.meta(response) ?? const {};
       return OffsetPage(
         items: items,
@@ -35,7 +44,8 @@ class BusinessProductsRepository {
   Future<Product> create({required int merchantId, required ProductInput input}) =>
       _product(() => _dio.post('/products', data: {'merchant_id': merchantId, ...input.toJson()}));
 
-  Future<Product> update(int id, ProductInput input) => _product(() => _dio.patch('/products/$id', data: input.toJson()));
+  Future<Product> update(int id, ProductInput input) =>
+      _product(() => _dio.patch('/products/$id', data: input.toJson()));
 
   Future<void> delete(int id) async {
     try {
