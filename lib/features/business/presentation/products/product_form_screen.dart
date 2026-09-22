@@ -224,12 +224,25 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       final saved = _isEdit
           ? await repo.update(widget.product!.id, input)
           : await repo.create(merchantId: merchantId!, input: input);
+      // The catalog is reloaded before navigating, never after, so the
+      // list the merchant lands on already holds what they just saved --
+      // no pull-to-refresh, no empty gap where the new row should be.
       await ref.read(businessProductsControllerProvider.notifier).refresh();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_isEdit ? 'Product updated.' : 'Product added.')));
-      context.pushReplacement('${BusinessRoutes.products}/${saved.id}/edit', extra: saved);
+
+      // Held across the navigation: the messenger outlives this route, so
+      // the confirmation rides along to the screen the merchant lands on.
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(SnackBar(content: Text(_isEdit ? 'Product updated.' : 'Product added successfully.')));
+
+      if (_isEdit) {
+        context.pushReplacement('${BusinessRoutes.products}/${saved.id}/edit', extra: saved);
+      } else {
+        // A finished creation belongs back at the catalog, not on the new
+        // product's edit form. `go`, not `pop`: on the hosted web build
+        // /products/new can be opened directly, with nothing to pop to.
+        context.go(BusinessRoutes.products);
+      }
     } on AppException catch (e) {
       if (mounted) {
         setState(() {
