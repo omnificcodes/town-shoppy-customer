@@ -77,15 +77,16 @@ void main() {
       expect(find.textContaining('You save'), findsNothing);
     });
 
-    testWidgets('the detail treatment shows the same three facts, in whole percent when exact', (tester) async {
+    testWidgets('the detail treatment lays the same prices along one row', (tester) async {
       await tester.pumpWidget(_wrap(ProductPrice(product: _product(price: 22, mrp: 30), large: true)));
       await tester.pumpAndSettle();
 
-      // 8 off 30 is 26.7%, so an exact figure keeps its decimal only when needed.
-      expect(find.text('26.7% OFF'), findsOneWidget);
-      expect(find.text('₹30'), findsOneWidget);
       expect(find.text('₹22'), findsOneWidget);
-      expect(find.text('You save ₹8'), findsOneWidget);
+      expect(find.text('₹30'), findsOneWidget);
+      expect(find.text('You Save ₹8'), findsOneWidget);
+      // The percentage belongs to the detail page's discount tag, over the
+      // image -- repeating it beside the prices would say it twice.
+      expect(find.textContaining('% OFF'), findsNothing);
     });
   });
 

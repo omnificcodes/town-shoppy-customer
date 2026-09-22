@@ -17,6 +17,11 @@ String formatPercentOff(double value) =>
 /// What a product costs: the offer price, the price it was before struck
 /// through, and how much that saves -- the same three facts everywhere a
 /// product is shown, so a card and the detail page can never disagree.
+///
+/// The two layouts differ only in shape. A card stacks them and carries the
+/// "% OFF" line itself, since a card has no room for a badge; the detail
+/// page lays them along one baseline, its percentage already shown on the
+/// image as a discount tag.
 class ProductPrice extends StatelessWidget {
   const ProductPrice({super.key, required this.product, this.large = false});
 
@@ -32,11 +37,42 @@ class ProductPrice extends StatelessWidget {
     final percent = product.savingPercentage;
 
     final priceStyle = large
-        ? textTheme.headlineMedium?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w800)
+        ? textTheme.displaySmall?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w800)
         : AppTypography.numericFinancialSmall.copyWith(color: AppColors.orangeDeep);
 
     if (saving == null) {
       return Text(formatRupees(product.price), style: priceStyle);
+    }
+
+    if (large) {
+      return Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpacing.smd,
+        runSpacing: AppSpacing.sm,
+        children: [
+          Text(formatRupees(product.price), style: priceStyle),
+          Text(
+            formatRupees(product.mrp!),
+            style: textTheme.titleLarge?.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.smd, vertical: AppSpacing.xs + 2),
+            decoration: BoxDecoration(
+              color: AppColors.successBg,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.25)),
+            ),
+            child: Text(
+              'You Save ${formatRupees(saving)}',
+              style: AppTypography.badgeLabel.copyWith(color: AppColors.success),
+            ),
+          ),
+        ],
+      );
     }
 
     return Column(
@@ -45,12 +81,9 @@ class ProductPrice extends StatelessWidget {
         if (percent != null) ...[
           Text(
             formatPercentOff(percent),
-            style: (large ? textTheme.titleMedium : textTheme.labelMedium)?.copyWith(
-              color: AppColors.success,
-              fontWeight: FontWeight.w800,
-            ),
+            style: textTheme.labelMedium?.copyWith(color: AppColors.success, fontWeight: FontWeight.w800),
           ),
-          SizedBox(height: large ? AppSpacing.xxs : 2),
+          const SizedBox(height: 2),
         ],
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -58,7 +91,7 @@ class ProductPrice extends StatelessWidget {
           children: [
             Text(
               formatRupees(product.mrp!),
-              style: (large ? textTheme.titleMedium : AppTypography.caption)?.copyWith(
+              style: AppTypography.caption.copyWith(
                 color: AppColors.textSecondary,
                 decoration: TextDecoration.lineThrough,
               ),
@@ -66,13 +99,10 @@ class ProductPrice extends StatelessWidget {
             Text(formatRupees(product.price), style: priceStyle),
           ],
         ),
-        SizedBox(height: large ? AppSpacing.xs : 2),
+        const SizedBox(height: 2),
         Text(
           'You save ${formatRupees(saving)}',
-          style: (large ? textTheme.bodyMedium : AppTypography.caption)?.copyWith(
-            color: AppColors.success,
-            fontWeight: FontWeight.w600,
-          ),
+          style: AppTypography.caption.copyWith(color: AppColors.success, fontWeight: FontWeight.w600),
         ),
       ],
     );
