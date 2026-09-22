@@ -44,6 +44,7 @@ class DirectPosPreview {
     required this.billAmount,
     required this.customerName,
     required this.availableBalance,
+    required this.redeemableBalance,
     required this.maxDiscountAmount,
     required this.maxRedeemableCoins,
     required this.payableAmount,
@@ -54,6 +55,7 @@ class DirectPosPreview {
       billAmount: double.tryParse('${json['bill_amount']}') ?? 0,
       customerName: json['customer_name'] as String? ?? 'Customer',
       availableBalance: json['available_balance'] as int? ?? 0,
+      redeemableBalance: json['redeemable_balance'] as int? ?? json['available_balance'] as int? ?? 0,
       maxDiscountAmount: double.tryParse('${json['max_discount_amount']}') ?? 0,
       maxRedeemableCoins: json['max_redeemable_coins'] as int? ?? 0,
       payableAmount: double.tryParse('${json['payable_amount']}') ?? 0,
@@ -63,6 +65,14 @@ class DirectPosPreview {
   final double billAmount;
   final String customerName;
   final int availableBalance;
+
+  /// The part of [availableBalance] this shop can accept. Smaller when the
+  /// customer holds coins locked to another shop, which are still theirs
+  /// but unspendable here.
+  final int redeemableBalance;
+
+  bool get hasCoinsLockedElsewhere => redeemableBalance < availableBalance;
+
   final double maxDiscountAmount;
   final int maxRedeemableCoins;
   final double payableAmount;

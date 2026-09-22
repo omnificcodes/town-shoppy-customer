@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,13 +40,69 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
   final _amount = TextEditingController();
   final _reference = TextEditingController();
 
+  /// Long enough that typing a number or an amount is one request rather
+  /// than one per keystroke, short enough that the counter never waits.
+  static const _debounce = Duration(milliseconds: 450);
+
+  Timer? _lookupTimer;
+  Timer? _previewTimer;
+
+  /// What each auto-run was last fired for. Both calls can legitimately
+  /// come back empty-handed -- an unknown number, or a business with no
+  /// Town Coin discount -- and without remembering the attempt the screen
+  /// would ask again on the very next rebuild, forever.
+  String? _lookedUpFor;
+  String? _previewedFor;
+
   @override
   void dispose() {
+    _lookupTimer?.cancel();
+    _previewTimer?.cancel();
     _mobile.dispose();
     _name.dispose();
     _amount.dispose();
     _reference.dispose();
     super.dispose();
+  }
+
+  /// Finds the customer as soon as the number is complete. A complete
+  /// number is the only thing the Search button ever waited for.
+  void _autoLookup(DirectPosState state) {
+    if (!state.canSearch || state.isSubmitting || state.isLookingUp) return;
+
+    final key = state.mobile.trim();
+    if (key == _lookedUpFor) return;
+
+    _lookedUpFor = key;
+    _lookupTimer?.cancel();
+    _lookupTimer = Timer(_debounce, () {
+      if (mounted) ref.read(directPosControllerProvider.notifier).lookup();
+    });
+  }
+
+  /// Works out the discount the moment there is a customer and an amount,
+  /// so the counter reads the real figures instead of pressing a button to
+  /// reveal them. The endpoint is read-only, so this commits to nothing.
+  void _autoPreview(DirectPosState state) {
+    if (!state.redeem || !state.hasIdentity || !state.isAmountValid) return;
+    if (state.mustRegister || state.isSubmitting || state.isPreviewing) return;
+    // A half-typed number is not a customer yet: wait for the lookup, so
+    // an incomplete number is never previewed as an unknown one.
+    if (state.method == DirectPosMethod.mobile && !state.canSearch) return;
+
+    final key = state.signature;
+    if (key == _previewedFor) return;
+
+    _previewedFor = key;
+    _previewTimer?.cancel();
+    _previewTimer = Timer(_debounce, () {
+      if (mounted) ref.read(directPosControllerProvider.notifier).previewDiscount();
+    });
+  }
+
+  void _onStateChanged(DirectPosState state) {
+    _autoLookup(state);
+    _autoPreview(state);
   }
 
   Future<void> _scan() async {
@@ -53,6 +111,10 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
   }
 
   void _reset() {
+    _lookupTimer?.cancel();
+    _previewTimer?.cancel();
+    _lookedUpFor = null;
+    _previewedFor = null;
     _mobile.clear();
     _name.clear();
     _amount.clear();
@@ -64,6 +126,11 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(directPosControllerProvider);
     final controller = ref.read(directPosControllerProvider.notifier);
+
+    // Scheduled from the state, not from each field's onChanged: the
+    // discount depends on the customer, the amount and the redeem switch
+    // together, and the lookup result arrives outside any of those.
+    _onStateChanged(state);
     final branches = ref.watch(activeBranchesProvider);
     final merchantName = ref.watch(myMerchantProvider).value?.name;
     final textTheme = Theme.of(context).textTheme;
@@ -149,40 +216,25 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     if (state.method == DirectPosMethod.mobile) ...[
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _FieldBox(
-                              controller: _mobile,
-                              hintText: 'Customer mobile number',
-                              semanticLabel: 'Customer mobile number',
-                              prefix: const Icon(
-                                Icons.smartphone_rounded,
-                                size: AppIconSize.md,
-                                color: AppColors.textSecondary,
-                              ),
-                              keyboardType: TextInputType.phone,
-                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+]'))],
-                              enabled: !state.isSubmitting,
-                              onChanged: controller.setMobile,
-                              onSubmitted: (_) => controller.lookup(),
-                              textInputAction: TextInputAction.search,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          SizedBox(
-                            height: AppSize.field,
-                            child: AppButton(
-                              label: 'Search',
-                              icon: Icons.search_rounded,
-                              variant: AppButtonVariant.secondary,
-                              expand: false,
-                              isLoading: state.isLookingUp,
-                              onPressed: state.canSearch && !state.isSubmitting ? controller.lookup : null,
-                            ),
-                          ),
-                        ],
+                      // No Search button beside the field: a complete
+                      // number is the only thing it ever waited for, so the
+                      // lookup runs itself and reports inside the field.
+                      _FieldBox(
+                        controller: _mobile,
+                        hintText: 'Customer mobile number',
+                        semanticLabel: 'Customer mobile number',
+                        prefix: const Icon(
+                          Icons.smartphone_rounded,
+                          size: AppIconSize.md,
+                          color: AppColors.textSecondary,
+                        ),
+                        suffix: _LookupStatus(state: state),
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+]'))],
+                        enabled: !state.isSubmitting,
+                        onChanged: controller.setMobile,
+                        onSubmitted: (_) => controller.lookup(),
+                        textInputAction: TextInputAction.search,
                       ),
                       if (state.lookedUp?.registered == true) ...[
                         const SizedBox(height: AppSpacing.smd),
@@ -338,7 +390,6 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
                     _CoinDiscountCard(
                       state: state,
                       onRedeemChanged: state.isSubmitting ? null : controller.setRedeem,
-                      onPreview: state.hasIdentity && state.isAmountValid ? controller.previewDiscount : null,
                     ),
                   ],
                 ),
@@ -855,14 +906,14 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// The Town Coin switch and, when on, either the Preview discount prompt
-/// or what the preview said: coins spent and the discount they buy.
+/// The Town Coin switch and, when on, the live discount: what the customer
+/// has, what this bill spends, and what it takes off. It works itself out
+/// as soon as there is a customer and an amount -- nothing to press.
 class _CoinDiscountCard extends StatelessWidget {
-  const _CoinDiscountCard({required this.state, required this.onRedeemChanged, required this.onPreview});
+  const _CoinDiscountCard({required this.state, required this.onRedeemChanged});
 
   final DirectPosState state;
   final ValueChanged<bool>? onRedeemChanged;
-  final VoidCallback? onPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -921,34 +972,25 @@ class _CoinDiscountCard extends StatelessWidget {
             const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: AppSpacing.smd),
             if (preview == null)
-              Column(
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.sell_outlined, size: AppIconSize.sm, color: AppColors.pending),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          'Available Town Coin balance and discount will be shown after entering the customer and amount.',
-                          style: textTheme.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (!state.mustRegister) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    AppButton(
-                      label: state.isPreviewing ? 'Checking…' : 'Preview discount',
-                      icon: Icons.visibility_outlined,
-                      size: AppButtonSize.sm,
-                      expand: false,
-                      variant: AppButtonVariant.secondary,
-                      isLoading: state.isPreviewing,
-                      onPressed: onPreview,
+                  if (state.isPreviewing)
+                    const SizedBox.square(
+                      dimension: AppIconSize.sm,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                    )
+                  else
+                    const Icon(Icons.sell_outlined, size: AppIconSize.sm, color: AppColors.pending),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      state.isPreviewing
+                          ? 'Working out the discount…'
+                          : 'The balance and discount appear here once the customer and amount are in.',
+                      style: textTheme.bodySmall,
                     ),
-                  ],
+                  ),
                 ],
               )
             else ...[
@@ -971,6 +1013,18 @@ class _CoinDiscountCard extends StatelessWidget {
                   ),
                 ],
               ),
+              // Without this the counter sees a big balance and a small
+              // discount and assumes something is broken.
+              if (preview.hasCoinsLockedElsewhere) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Padding(
+                  padding: const EdgeInsets.only(left: AppIconSize.sm + AppSpacing.xs),
+                  child: Text(
+                    '${preview.redeemableBalance} of them can be spent here — the rest are saved for other shops.',
+                    style: AppTypography.caption,
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
@@ -1133,6 +1187,43 @@ class _RecordButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What the number field says about the customer while it looks them up:
+/// a spinner, then a tick for a customer we know, or a nudge to add a name
+/// for one we do not. It replaces the Search button that used to sit
+/// outside the field taking up a third of the row.
+class _LookupStatus extends StatelessWidget {
+  const _LookupStatus({required this.state});
+
+  final DirectPosState state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.isLookingUp) {
+      return const Padding(
+        padding: EdgeInsets.only(right: AppSpacing.smd),
+        child: SizedBox.square(
+          dimension: AppIconSize.sm,
+          child: CircularProgressIndicator(strokeWidth: 2, semanticsLabel: 'Looking up this customer'),
+        ),
+      );
+    }
+
+    if (!state.canSearch) return const SizedBox.shrink();
+
+    final known = state.lookedUp?.registered == true;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.smd),
+      child: Icon(
+        known ? Icons.check_circle_rounded : Icons.person_add_alt_1_rounded,
+        size: AppIconSize.md,
+        color: known ? AppColors.success : AppColors.textSecondary,
+        semanticLabel: known ? 'Customer found' : 'New customer',
       ),
     );
   }

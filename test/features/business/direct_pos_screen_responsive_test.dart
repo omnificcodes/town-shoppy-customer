@@ -89,7 +89,7 @@ Widget _wrap() {
 }
 
 void main() {
-  testWidgets('the counter looks a customer up and previews the discount without overflow at every viewport', (
+  testWidgets('the counter finds the customer and shows the discount by itself, without overflow at every viewport', (
     tester,
   ) async {
     await forEachViewport(
@@ -101,24 +101,33 @@ void main() {
         expect(find.text('Mobile number'), findsOneWidget);
         expect(find.text('Scan customer QR'), findsOneWidget);
 
+        // A complete number is enough -- no Search button to press. Two
+        // pumps: the first builds the frame that schedules the debounce,
+        // the second lets it elapse (pumpAndSettle waits on frames, and a
+        // pending Timer schedules none).
         await tester.enterText(find.byType(TextField).first, '9876543210');
         await tester.pump();
-        await tester.tap(find.text('Search'));
+        await tester.pump(const Duration(milliseconds: 600));
         await tester.pumpAndSettle();
+        expect(find.text('Search'), findsNothing);
         expect(find.text('Rahul Sharma Kuttikkattil Parambil'), findsOneWidget);
         expect(find.text('1234'), findsOneWidget);
 
+        // An amount is enough for the discount -- no Preview button either.
         final amount = find.byType(TextField).at(1);
         await tester.ensureVisible(amount);
         await tester.enterText(amount, '850');
         await tester.pump();
-
-        final previewButton = find.text('Preview discount');
-        await tester.ensureVisible(previewButton);
-        await tester.tap(previewButton);
+        await tester.pump(const Duration(milliseconds: 600));
         await tester.pumpAndSettle();
+
+        expect(find.text('Preview discount'), findsNothing);
         expect(find.text('Redeeming 120 coins'), findsOneWidget);
         expect(find.text('Available balance: 240 coins'), findsOneWidget);
+
+        // The total and the CTA sit below the fold of a lazy ListView, so
+        // they only exist once scrolled to.
+        await tester.scrollUntilVisible(find.text('Customer pays'), 200, scrollable: find.byType(Scrollable).first);
         expect(find.text('Customer pays'), findsOneWidget);
         expect(find.text('Record purchase'), findsOneWidget);
       },
