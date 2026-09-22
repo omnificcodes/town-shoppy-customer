@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../data/models/product.dart';
+import 'product_price.dart';
 
 /// One tile in the 2-column Shopping grid -- this app's first grid layout
 /// (every other list here is a full-width row; see the Products feature's
@@ -24,7 +25,11 @@ class ProductCard extends StatelessWidget {
 
     return Semantics(
       button: onTap != null,
-      label: '${product.name}, ₹${_trim(product.price)}',
+      label: [
+        product.name,
+        formatRupees(product.price),
+        if (product.saving != null) 'was ${formatRupees(product.mrp!)}, you save ${formatRupees(product.saving!)}',
+      ].join(', '),
       // Same surface as AppCard: hairline border plus the shared whisper
       // lift, drawn outside the Material so its clip doesn't eat the shadow.
       child: DecoratedBox(
@@ -35,7 +40,10 @@ class ProductCard extends StatelessWidget {
         child: Material(
           color: AppColors.surface,
           clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpacing.radiusMd), side: const BorderSide(color: AppColors.border)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            side: const BorderSide(color: AppColors.border),
+          ),
           child: InkWell(
             onTap: onTap,
             child: Column(
@@ -47,14 +55,23 @@ class ProductCard extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       if (product.primaryImageUrl != null)
-                        Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, product.primaryImageUrl!, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _ProductPlaceholder())
+                        Image.network(
+                          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                          product.primaryImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const _ProductPlaceholder(),
+                        )
                       else
                         const _ProductPlaceholder(),
                       if (product.acceptsTownCoin)
                         Positioned(
                           left: AppSpacing.xs,
                           top: AppSpacing.xs,
-                          child: StatusBadge(label: '${_trim(product.townCoinPercentage!)}% Coin', tone: AppTone.success, icon: Icons.savings_rounded),
+                          child: StatusBadge(
+                            label: '${_trim(product.townCoinPercentage!)}% Coin',
+                            tone: AppTone.success,
+                            icon: Icons.savings_rounded,
+                          ),
                         ),
                     ],
                   ),
@@ -67,12 +84,17 @@ class ProductCard extends StatelessWidget {
                       Text(product.name, style: textTheme.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
                       if (showMerchantName && product.merchantName.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.xxs),
-                        Text(product.merchantName, style: AppTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(
+                          product.merchantName,
+                          style: AppTypography.caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                       const SizedBox(height: AppSpacing.xs),
                       // orangeDeep, not orange: brand orange is 2.9:1 as text
                       // on white (see AppColors.orangeDeep's own note).
-                      Text('₹${_trim(product.price)}', style: AppTypography.numericFinancialSmall.copyWith(color: AppColors.orangeDeep)),
+                      ProductPrice(product: product),
                     ],
                   ),
                 ),
@@ -94,7 +116,9 @@ class _ProductPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return const DecoratedBox(
       decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.orangeTintStrong, AppColors.orangeTint])),
-      child: Center(child: Icon(Icons.shopping_bag_rounded, color: AppColors.orange, size: AppIconSize.xl)),
+      child: Center(
+        child: Icon(Icons.shopping_bag_rounded, color: AppColors.orange, size: AppIconSize.xl),
+      ),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../application/products_list_controller.dart';
 import '../data/models/product.dart';
+import 'product_price.dart';
 
 /// A single product -- deliberately a TOP-LEVEL, standalone route (not
 /// inside the authenticated shell): its whole purpose is to also work for
@@ -64,19 +65,26 @@ class _ProductDetailBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (product.acceptsTownCoin) ...[
-                StatusBadge(label: '${_trim(product.townCoinPercentage!)}% payable with Town Coin', tone: AppTone.success, icon: Icons.savings_rounded, large: true),
+                StatusBadge(
+                  label: '${_trim(product.townCoinPercentage!)}% payable with Town Coin',
+                  tone: AppTone.success,
+                  icon: Icons.savings_rounded,
+                  large: true,
+                ),
                 const SizedBox(height: AppSpacing.sm),
               ],
               Text(product.name, style: textTheme.headlineSmall),
-              const SizedBox(height: AppSpacing.xs),
-              Text('₹${_trim(product.price)}', style: textTheme.headlineMedium?.copyWith(color: AppColors.orangeDeep)),
+              const SizedBox(height: AppSpacing.sm),
+              ProductPrice(product: product, large: true),
               if (product.merchantName.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
                     const Icon(Icons.storefront_rounded, size: AppIconSize.sm, color: AppColors.textSecondary),
                     const SizedBox(width: AppSpacing.xs),
-                    Flexible(child: Text(product.merchantName, style: textTheme.bodyMedium, overflow: TextOverflow.ellipsis)),
+                    Flexible(
+                      child: Text(product.merchantName, style: textTheme.bodyMedium, overflow: TextOverflow.ellipsis),
+                    ),
                   ],
                 ),
               ],
@@ -120,7 +128,8 @@ class _ImageGallery extends StatelessWidget {
       aspectRatio: 1,
       child: PageView.builder(
         itemCount: product.imageUrls.length,
-        itemBuilder: (context, index) => Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, 
+        itemBuilder: (context, index) => Image.network(
+          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
           product.imageUrls[index],
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => const _ProductHeroPlaceholder(),
@@ -137,7 +146,9 @@ class _ProductHeroPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return const DecoratedBox(
       decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.orangeTintStrong, AppColors.orangeTint])),
-      child: Center(child: Icon(Icons.shopping_bag_rounded, color: AppColors.orange, size: AppIconSize.hero)),
+      child: Center(
+        child: Icon(Icons.shopping_bag_rounded, color: AppColors.orange, size: AppIconSize.hero),
+      ),
     );
   }
 }
@@ -156,7 +167,8 @@ class _WhatsAppOrderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasNumber = product.merchantContactMobileNumber != null && product.merchantContactMobileNumber!.trim().isNotEmpty;
+    final hasNumber =
+        product.merchantContactMobileNumber != null && product.merchantContactMobileNumber!.trim().isNotEmpty;
 
     return AppButton(
       label: 'Order via WhatsApp',
@@ -173,17 +185,21 @@ class _WhatsAppOrderButton extends StatelessWidget {
 
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp on this device.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp on this device.')));
     }
   }
 
   String _buildMessage() {
-    final price = product.price == product.price.roundToDouble() ? product.price.toInt().toString() : product.price.toStringAsFixed(2);
+    final saving = product.saving;
     final lines = [
       "Hi! I'd like to order this product:",
       '',
       product.name,
-      'Price: ₹$price',
+      saving == null
+          ? 'Price: ${formatRupees(product.price)}'
+          : 'Price: ${formatRupees(product.price)} (MRP ${formatRupees(product.mrp!)}, saving ${formatRupees(saving)})',
       if (product.acceptsTownCoin) 'Accepts Town Coin: ${product.townCoinPercentage!.toInt()}%',
       if (product.description != null && product.description!.trim().isNotEmpty) product.description!.trim(),
       if (Env.customerWebUrl.isNotEmpty) ...['', 'View: ${Env.customerWebUrl}/products/${product.id}'],

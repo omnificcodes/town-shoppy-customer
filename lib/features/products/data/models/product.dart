@@ -17,6 +17,9 @@ class Product {
     required this.townCoinPercentage,
     required this.acceptsTownCoin,
     required this.status,
+    this.mrp,
+    this.discountAmount,
+    this.discountPercentage,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -31,9 +34,14 @@ class Product {
       description: json['description'] as String?,
       price: (json['price'] as num).toDouble(),
       imageUrls: (json['image_urls'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-      townCoinPercentage: json['town_coin_percentage'] != null ? (json['town_coin_percentage'] as num).toDouble() : null,
+      townCoinPercentage: json['town_coin_percentage'] != null
+          ? (json['town_coin_percentage'] as num).toDouble()
+          : null,
       acceptsTownCoin: json['accepts_town_coin'] as bool? ?? false,
       status: json['status'] as String? ?? 'active',
+      mrp: (json['mrp'] as num?)?.toDouble(),
+      discountAmount: (json['discount_amount'] as num?)?.toDouble(),
+      discountPercentage: (json['discount_percentage'] as num?)?.toDouble(),
     );
   }
 
@@ -50,6 +58,36 @@ class Product {
   final bool acceptsTownCoin;
   final String status;
 
+  /// The price before the offer, when the merchant set one. [price] is
+  /// always what the customer pays.
+  final double? mrp;
+
+  /// What the offer saves, as the server derived it from the two prices --
+  /// null when there is no MRP or it does not beat the price. Recomputed
+  /// locally only if an older API omits the fields entirely.
+  final double? discountAmount;
+  final double? discountPercentage;
+
+  double? get saving {
+    final shown = discountAmount;
+    if (shown != null) return shown > 0 ? shown : null;
+    final original = mrp;
+    if (original == null) return null;
+    final diff = double.parse((original - price).toStringAsFixed(2));
+    return diff > 0 ? diff : null;
+  }
+
+  double? get savingPercentage {
+    final shown = discountPercentage;
+    if (shown != null) return shown > 0 ? shown : null;
+    final amount = saving;
+    final original = mrp;
+    if (amount == null || original == null || original <= 0) return null;
+    return double.parse((amount / original * 100).toStringAsFixed(1));
+  }
+
+  bool get hasDiscount => saving != null;
+
   String? get primaryImageUrl => imageUrls.isEmpty ? null : imageUrls.first;
 
   bool get isActive => status == 'active';
@@ -61,6 +99,7 @@ class ProductInput {
   const ProductInput({
     required this.name,
     required this.price,
+    this.mrp,
     this.description,
     this.imageUrls = const [],
     this.townCoinPercentage,
@@ -68,7 +107,12 @@ class ProductInput {
   });
 
   final String name;
+
+  /// What the customer pays.
   final double price;
+
+  /// The price before the offer; `null` clears it (no discount shown).
+  final double? mrp;
   final String? description;
   final List<String> imageUrls;
 
@@ -82,6 +126,7 @@ class ProductInput {
       'name': name.trim(),
       'description': orNull(description),
       'price': price,
+      'mrp': mrp,
       'image_urls': imageUrls.isEmpty ? null : imageUrls,
       'town_coin_percentage': townCoinPercentage,
       'status': status,
