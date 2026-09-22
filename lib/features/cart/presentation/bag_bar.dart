@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/indian_mobile.dart';
 import '../../products/presentation/add_to_bag_button.dart';
 import '../../products/presentation/product_price.dart';
 import '../application/cart_controller.dart';
@@ -91,8 +92,8 @@ class BagBar extends ConsumerWidget {
 
   Future<void> _order(BuildContext context, WidgetRef ref) async {
     final cart = ref.read(cartControllerProvider);
-    final digits = cart.contactMobileNumber!.replaceAll(RegExp(r'\D'), '');
-    final uri = Uri.parse('https://wa.me/91$digits?text=${Uri.encodeComponent(buildCartOrderMessage(cart))}');
+    // Already the bare ten digits -- `whatsappUri` is what writes the 91.
+    final uri = whatsappUri(cart.contactMobileNumber!, text: buildCartOrderMessage(cart));
 
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
@@ -114,7 +115,7 @@ class _OrderButton extends StatelessWidget {
     final foreground = enabled ? AppColors.onCrimson : AppColors.textDisabled;
 
     return Tooltip(
-      message: enabled ? 'Order via WhatsApp' : 'This shop has not published a contact number yet',
+      message: enabled ? 'Order via WhatsApp' : 'This shop has not published a WhatsApp number yet',
       child: Material(
         color: Colors.transparent,
         child: Ink(

@@ -87,14 +87,25 @@ void main() {
     expect(find.text('3'), findsOneWidget);
   });
 
-  testWidgets('a shop with no published number cannot be ordered from, and says why', (tester) async {
-    await pumpPage(tester, _product(contact: null));
+  testWidgets('a shop with no usable number cannot be ordered from, and says why', (tester) async {
+    for (final contact in [null, '044 2345 6789']) {
+      await pumpPage(tester, _product(contact: contact));
 
-    expect(find.text('This shop has not published a contact number yet.'), findsOneWidget);
+      expect(find.text('This shop has not published a WhatsApp number yet.'), findsOneWidget);
+      final button = tester.widget<InkWell>(
+        find.ancestor(of: find.text('Order via WhatsApp'), matching: find.byType(InkWell)).first,
+      );
+      expect(button.onTap, isNull, reason: 'contact was $contact');
+    }
+  });
+
+  testWidgets('a number already stored with its country code still orders', (tester) async {
+    await pumpPage(tester, _product(contact: '+91 98765 43210'));
+
     final button = tester.widget<InkWell>(
       find.ancestor(of: find.text('Order via WhatsApp'), matching: find.byType(InkWell)).first,
     );
-    expect(button.onTap, isNull);
+    expect(button.onTap, isNotNull);
   });
 
   testWidgets('lays out without overflow at every supported width', (tester) async {

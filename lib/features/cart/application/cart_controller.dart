@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/indian_mobile.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../products/data/models/product.dart';
 import '../../products/presentation/product_price.dart';
@@ -46,13 +47,11 @@ class CartState {
 
   String get merchantName => lines.isEmpty ? '' : lines.first.product.merchantName;
 
-  /// The number that checkout would message; null when the shop has not
-  /// published one, in which case the bag cannot be ordered.
-  String? get contactMobileNumber {
-    if (lines.isEmpty) return null;
-    final number = lines.first.product.merchantContactMobileNumber?.trim();
-    return number == null || number.isEmpty ? null : number;
-  }
+  /// The number checkout messages, as the ten local digits with no country
+  /// code -- [whatsappUri] adds that, exactly once. Null when the shop
+  /// published nothing dialable, in which case the bag cannot be ordered.
+  String? get contactMobileNumber =>
+      lines.isEmpty ? null : dialableIndianMobile(lines.first.product.merchantContactMobileNumber);
 
   int get itemCount => lines.fold(0, (sum, line) => sum + line.quantity);
 

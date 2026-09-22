@@ -101,10 +101,22 @@ void main() {
       expect(cart().itemCount, 3);
     });
 
-    test('is not orderable when the shop has published no number', () {
+    test('is not orderable when the shop has published no usable number', () {
       controller().add(_product(contact: null));
-
       expect(cart().contactMobileNumber, isNull);
+
+      controller()
+        ..clear()
+        ..add(_product(contact: '044 2345 6789'));
+      expect(cart().contactMobileNumber, isNull, reason: 'a landline cannot take a WhatsApp order');
+    });
+
+    test('hands checkout the bare local number, whether or not the shop stored a country code', () {
+      controller().add(_product(contact: '+91 98765 43210'));
+
+      // Checkout adds the 91 itself; a normalized number here is what stops
+      // it arriving as +9191...
+      expect(cart().contactMobileNumber, '9876543210');
     });
   });
 

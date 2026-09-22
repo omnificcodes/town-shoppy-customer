@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/indian_mobile.dart';
 import '../data/models/merchant.dart';
 import 'category_visual.dart';
 import 'favorite_button.dart';
@@ -183,7 +184,7 @@ class MerchantCard extends StatelessWidget {
                                   foreground: AppColors.orangeDeep,
                                   border: AppColors.orangeBorder,
                                   semanticsLabel: 'Call ${merchant.name}',
-                                  onTap: () => _launch(context, Uri.parse('tel:+91$phone')),
+                                  onTap: () => _launch(context, telUri(phone)),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
@@ -194,7 +195,7 @@ class MerchantCard extends StatelessWidget {
                                   background: AppColors.success,
                                   foreground: AppColors.onCrimson,
                                   semanticsLabel: 'WhatsApp ${merchant.name}',
-                                  onTap: () => _launch(context, Uri.parse('https://wa.me/91$phone')),
+                                  onTap: () => _launch(context, whatsappUri(phone)),
                                 ),
                               ),
                             ],
@@ -217,22 +218,6 @@ class MerchantCard extends StatelessWidget {
       ).showSnackBar(const SnackBar(content: Text('Could not open this action on your device.')));
     }
   }
-}
-
-/// The 10-digit local part of an Indian mobile number stored as
-/// "9876543210", "+91 98765 43210" or "09876543210", or null for anything
-/// that isn't one (so the card never dials a malformed number).
-String? dialableIndianMobile(String? raw) {
-  if (raw == null) return null;
-  final digits = raw.replaceAll(RegExp(r'\D'), '');
-  final local = switch (digits.length) {
-    10 => digits,
-    11 when digits.startsWith('0') => digits.substring(1),
-    12 when digits.startsWith('91') => digits.substring(2),
-    _ => null,
-  };
-  if (local == null || !RegExp(r'^[6-9]').hasMatch(local)) return null;
-  return local;
 }
 
 String _distanceLabel(double km) => km < 1 ? '${(km * 1000).round()} m' : '${km.toStringAsFixed(1)} km';

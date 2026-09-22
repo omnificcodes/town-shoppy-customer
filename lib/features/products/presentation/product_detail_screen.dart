@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/indian_mobile.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -542,8 +543,9 @@ class _OrderBarState extends State<_OrderBar> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
-    final hasNumber =
-        product.merchantContactMobileNumber != null && product.merchantContactMobileNumber!.trim().isNotEmpty;
+    // The shop's number normalized once, here: a stored "+91 98765 43210"
+    // and a stored "9876543210" must both reach WhatsApp as one 91.
+    final number = dialableIndianMobile(product.merchantContactMobileNumber);
 
     return Container(
       decoration: BoxDecoration(
@@ -566,14 +568,16 @@ class _OrderBarState extends State<_OrderBar> {
                     onChanged: (value) => setState(() => _quantity = value),
                   ),
                   const SizedBox(width: AppSpacing.smd),
-                  Expanded(child: _WhatsAppOrderButton(onPressed: hasNumber ? () => _order(context) : null)),
+                  Expanded(
+                    child: _WhatsAppOrderButton(onPressed: number == null ? null : () => _order(context, number)),
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                hasNumber
+                number != null
                     ? 'Opens WhatsApp with your order details, addressed to the seller.'
-                    : 'This shop has not published a contact number yet.',
+                    : 'This shop has not published a WhatsApp number yet.',
                 style: AppTypography.caption,
                 textAlign: TextAlign.center,
               ),
@@ -584,11 +588,9 @@ class _OrderBarState extends State<_OrderBar> {
     );
   }
 
-  Future<void> _order(BuildContext context) async {
-    final product = widget.product;
-    final digits = product.merchantContactMobileNumber!.replaceAll(RegExp(r'\D'), '');
-    final message = buildProductOrderMessage(product, quantity: _quantity);
-    final uri = Uri.parse('https://wa.me/91$digits?text=${Uri.encodeComponent(message)}');
+  Future<void> _order(BuildContext context, String number) async {
+    final message = buildProductOrderMessage(widget.product, quantity: _quantity);
+    final uri = whatsappUri(number, text: message);
 
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {

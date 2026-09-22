@@ -9,6 +9,7 @@ import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/indian_mobile.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
@@ -25,7 +26,6 @@ import '../data/models/merchant.dart';
 import '../data/models/merchant_branch_ref.dart';
 import 'category_visual.dart';
 import 'favorite_button.dart';
-import 'merchant_card.dart';
 import 'merchant_logo.dart';
 
 /// One merchant's page, following the Google Stitch redesign: a cover with
@@ -606,7 +606,7 @@ class _QuickActions extends ConsumerWidget {
               tint: AppColors.orangeDeep,
               label: 'Call store',
               hint: phone == null ? 'No number listed' : 'Tap to call',
-              onTap: phone == null ? null : () => _launch(context, Uri.parse('tel:+91$phone')),
+              onTap: phone == null ? null : () => _launch(context, telUri(phone)),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -616,7 +616,7 @@ class _QuickActions extends ConsumerWidget {
               tint: AppColors.success,
               label: 'WhatsApp',
               hint: phone == null ? 'No number listed' : 'Message the shop',
-              onTap: phone == null ? null : () => _launch(context, Uri.parse('https://wa.me/91$phone')),
+              onTap: phone == null ? null : () => _launch(context, whatsappUri(phone)),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
