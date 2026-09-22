@@ -228,6 +228,10 @@ class _HeroGalleryState extends State<_HeroGallery> {
                             itemCount: images.length,
                             onPageChanged: (page) => setState(() => _page = page),
                             itemBuilder: (context, index) => Image.network(
+                              // One key per URL, so a gallery that swaps to
+                              // another product's photos cannot show the
+                              // page it was already holding.
+                              key: ValueKey(images[index]),
                               webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                               images[index],
                               fit: BoxFit.cover,

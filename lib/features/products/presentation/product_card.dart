@@ -63,6 +63,10 @@ class ProductCard extends ConsumerWidget {
                     children: [
                       if (product.primaryImageUrl != null)
                         Image.network(
+                          // The URL identifies the image, so a tile that
+                          // comes to hold a different product builds a new
+                          // Image instead of keeping the old one's frame.
+                          key: ValueKey(product.primaryImageUrl),
                           webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                           product.primaryImageUrl!,
                           fit: BoxFit.cover,

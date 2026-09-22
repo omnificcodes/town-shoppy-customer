@@ -81,13 +81,19 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
           Expanded(
             child: state.when(
               loading: () => const LoadingSkeletonList(count: 3),
-              error: (e, _) => ErrorState(error: e is AppException ? e : const UnknownAppException(), title: 'Could not load products.', onRetry: () => ref.read(businessProductsControllerProvider.notifier).refresh()),
+              error: (e, _) => ErrorState(
+                error: e is AppException ? e : const UnknownAppException(),
+                title: 'Could not load products.',
+                onRetry: () => ref.read(businessProductsControllerProvider.notifier).refresh(),
+              ),
               data: (data) {
                 if (data.items.isEmpty) {
                   return EmptyState(
                     icon: Icons.shopping_bag_outlined,
                     title: 'No products yet',
-                    message: isOwner ? 'Add your first product for customers to browse and order via WhatsApp.' : 'Your business has no products yet.',
+                    message: isOwner
+                        ? 'Add your first product for customers to browse and order via WhatsApp.'
+                        : 'Your business has no products yet.',
                   );
                 }
                 return RefreshIndicator(
@@ -103,6 +109,13 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
                       }
                       final product = data.items[i];
                       return _ProductRow(
+                        // Keyed by product, not by position: adding a
+                        // product puts a new row at the top and shifts
+                        // every other one down, and without this Flutter
+                        // reuses each row's Image element at its old index
+                        // -- which keeps painting the previous occupant's
+                        // photo until the new one finishes loading.
+                        key: ValueKey(product.id),
                         product: product,
                         onTap: () => context.push('${BusinessRoutes.products}/${product.id}/edit', extra: product),
                         onMore: isOwner ? () => _showActions(context, product) : null,
@@ -127,15 +140,31 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.page, AppSpacing.sm, AppSpacing.page, AppSpacing.sm),
-              child: Align(alignment: Alignment.centerLeft, child: Text(product.name, style: Theme.of(sheetContext).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  product.name,
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
-            ListTile(leading: const Icon(Icons.edit_outlined), title: const Text('Edit'), onTap: () => Navigator.of(sheetContext).pop('edit')),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () => Navigator.of(sheetContext).pop('edit'),
+            ),
             ListTile(
               leading: Icon(product.isActive ? Icons.visibility_off_outlined : Icons.visibility_outlined),
               title: Text(product.isActive ? 'Mark inactive' : 'Mark active'),
               onTap: () => Navigator.of(sheetContext).pop('toggle'),
             ),
-            ListTile(leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error), title: const Text('Delete', style: TextStyle(color: AppColors.error)), onTap: () => Navigator.of(sheetContext).pop('delete')),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+              title: const Text('Delete', style: TextStyle(color: AppColors.error)),
+              onTap: () => Navigator.of(sheetContext).pop('delete'),
+            ),
             const SizedBox(height: AppSpacing.sm),
           ],
         ),
@@ -163,7 +192,13 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
           await ref.read(businessProductsControllerProvider.notifier).refresh();
           messenger.showSnackBar(SnackBar(content: Text(product.isActive ? 'Marked inactive.' : 'Marked active.')));
         case 'delete':
-          final ok = await showBusinessConfirmDialog(context, title: 'Delete this product?', message: 'This cannot be undone.', confirmLabel: 'Delete', destructive: true);
+          final ok = await showBusinessConfirmDialog(
+            context,
+            title: 'Delete this product?',
+            message: 'This cannot be undone.',
+            confirmLabel: 'Delete',
+            destructive: true,
+          );
           if (!ok) return;
           await ref.read(businessProductsControllerProvider.notifier).delete(product.id);
           messenger.showSnackBar(const SnackBar(content: Text('Product deleted.')));
@@ -175,7 +210,7 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
 }
 
 class _ProductRow extends StatelessWidget {
-  const _ProductRow({required this.product, required this.onTap, this.onMore});
+  const _ProductRow({super.key, required this.product, required this.onTap, this.onMore});
 
   final Product product;
   final VoidCallback onTap;
@@ -201,20 +236,36 @@ class _ProductRow extends StatelessWidget {
                 children: [
                   Text(product.name, style: textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: AppSpacing.xxs),
-                  Text('₹${_trim(product.price)}', style: textTheme.bodyMedium?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w600)),
+                  Text(
+                    '₹${_trim(product.price)}',
+                    style: textTheme.bodyMedium?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
                     children: [
-                      StatusBadge(label: product.isActive ? 'Active' : 'Inactive', tone: product.isActive ? AppTone.success : AppTone.neutral),
-                      if (product.acceptsTownCoin) StatusBadge(label: '${_trim(product.townCoinPercentage!)}% Coin', tone: AppTone.success, icon: Icons.savings_rounded),
+                      StatusBadge(
+                        label: product.isActive ? 'Active' : 'Inactive',
+                        tone: product.isActive ? AppTone.success : AppTone.neutral,
+                      ),
+                      if (product.acceptsTownCoin)
+                        StatusBadge(
+                          label: '${_trim(product.townCoinPercentage!)}% Coin',
+                          tone: AppTone.success,
+                          icon: Icons.savings_rounded,
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
-            if (onMore != null) IconButton(icon: const Icon(Icons.more_horiz_rounded), tooltip: 'Actions for ${product.name}', onPressed: onMore),
+            if (onMore != null)
+              IconButton(
+                icon: const Icon(Icons.more_horiz_rounded),
+                tooltip: 'Actions for ${product.name}',
+                onPressed: onMore,
+              ),
           ],
         ),
       ),
@@ -236,7 +287,17 @@ class _Thumbnail extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
       child: hasImage
-          ? Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, product.primaryImageUrl!, width: AppSize.avatarLg, height: AppSize.avatarLg, fit: BoxFit.cover)
+          ? Image.network(
+              // The URL is the image's identity: a different one must
+              // build a fresh Image rather than update the old one, which
+              // holds its last frame while the new URL loads.
+              key: ValueKey(product.primaryImageUrl),
+              webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+              product.primaryImageUrl!,
+              width: AppSize.avatarLg,
+              height: AppSize.avatarLg,
+              fit: BoxFit.cover,
+            )
           : Container(
               width: AppSize.avatarLg,
               height: AppSize.avatarLg,

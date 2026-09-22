@@ -322,6 +322,10 @@ class _CatalogBody extends StatelessWidget {
             delegate: SliverChildBuilderDelegate((context, index) {
               final product = rest[index];
               return ProductCard(
+                // Same reason as the merchant catalog's rows: a new
+                // product shifts every tile along, and unkeyed tiles would
+                // each keep the previous occupant's photo.
+                key: ValueKey(product.id),
                 product: product,
                 showMerchantName: showMerchantName,
                 onTap: () => context.push('/products/${product.id}'),
@@ -444,6 +448,7 @@ class _FeaturedProductCard extends StatelessWidget {
                           child: product.primaryImageUrl == null
                               ? const _FeaturedPlaceholder()
                               : Image.network(
+                                  key: ValueKey(product.primaryImageUrl),
                                   webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                                   product.primaryImageUrl!,
                                   fit: BoxFit.cover,

@@ -76,7 +76,9 @@ class _MultiImagePickerFieldState extends State<MultiImagePickerField> {
       return;
     }
     if (await file.length() > _maxBytes) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image must be 5MB or smaller.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image must be 5MB or smaller.')));
+      }
       return;
     }
 
@@ -85,7 +87,9 @@ class _MultiImagePickerFieldState extends State<MultiImagePickerField> {
       final url = await widget.onUpload(file);
       widget.onChanged([...widget.urls, url]);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not upload that image.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not upload that image.')));
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -107,7 +111,15 @@ class _MultiImagePickerFieldState extends State<MultiImagePickerField> {
           spacing: AppSpacing.smd,
           runSpacing: AppSpacing.smd,
           children: [
-            for (var i = 0; i < widget.urls.length; i++) _ImageThumb(url: widget.urls[i], onRemove: _uploading ? null : () => _remove(i)),
+            for (var i = 0; i < widget.urls.length; i++)
+              _ImageThumb(
+                // Keyed by URL: removing the first of three shifts the
+                // rest down, and positional reuse would leave each thumb
+                // showing the image that used to sit at its index.
+                key: ValueKey(widget.urls[i]),
+                url: widget.urls[i],
+                onRemove: _uploading ? null : () => _remove(i),
+              ),
             if (canAddMore) _AddTile(isBusy: _uploading, onTap: _pick),
           ],
         ),
@@ -119,7 +131,7 @@ class _MultiImagePickerFieldState extends State<MultiImagePickerField> {
 }
 
 class _ImageThumb extends StatelessWidget {
-  const _ImageThumb({required this.url, required this.onRemove});
+  const _ImageThumb({super.key, required this.url, required this.onRemove});
 
   final String url;
   final VoidCallback? onRemove;
@@ -135,12 +147,17 @@ class _ImageThumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-            child: Image.network(webHtmlElementStrategy: WebHtmlElementStrategy.fallback, 
+            child: Image.network(
+              key: ValueKey(url),
+              webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
               url,
               width: _size,
               height: _size,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.surfaceMuted, child: Icon(Icons.broken_image_outlined, color: AppColors.textDisabled)),
+              errorBuilder: (_, _, _) => const ColoredBox(
+                color: AppColors.surfaceMuted,
+                child: Icon(Icons.broken_image_outlined, color: AppColors.textDisabled),
+              ),
             ),
           ),
           Positioned(
@@ -185,10 +202,17 @@ class _AddTile extends StatelessWidget {
         child: Container(
           width: _size,
           height: _size,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppSpacing.radiusSm), border: Border.all(color: AppColors.border)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            border: Border.all(color: AppColors.border),
+          ),
           alignment: Alignment.center,
           child: isBusy
-              ? const SizedBox(width: AppIconSize.md, height: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: AppIconSize.md,
+                  height: AppIconSize.md,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Icon(Icons.add_photo_alternate_outlined, color: AppColors.orange, size: AppIconSize.lg),
         ),
       ),

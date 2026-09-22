@@ -224,6 +224,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       final saved = _isEdit
           ? await repo.update(widget.product!.id, input)
           : await repo.create(merchantId: merchantId!, input: input);
+      // Every cached copy of this product goes, so nothing downstream can
+      // paint the version that existed before this save -- most visibly
+      // its old images. `productDetailProvider` backs both the customer's
+      // product page and this form's own loader, and the customer catalog
+      // is cached per query, so neither would notice a change made here.
+      ref.invalidate(productDetailProvider(saved.id));
+      ref.invalidate(productsListControllerProvider);
+
       // The catalog is reloaded before navigating, never after, so the
       // list the merchant lands on already holds what they just saved --
       // no pull-to-refresh, no empty gap where the new row should be.

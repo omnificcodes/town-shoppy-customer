@@ -1184,6 +1184,7 @@ class _ProductsSection extends ConsumerWidget {
           itemBuilder: (context, index) {
             final product = preview[index];
             return ProductCard(
+              key: ValueKey(product.id),
               product: product,
               showMerchantName: false,
               onTap: () => context.push('/products/${product.id}'),
