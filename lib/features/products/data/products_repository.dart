@@ -18,13 +18,28 @@ class ProductsRepository {
 
   final Dio _dio;
 
-  Future<OffsetPage<Product>> list({int? merchantId, int page = 1, int perPage = 20}) async {
+  /// [filters] carries the catalog's search and pill parameters
+  /// (`search`, `discounted`, `accepts_town_coin`, `max_price`) —
+  /// see [ProductsQuery], which is what builds them.
+  Future<OffsetPage<Product>> list({
+    int? merchantId,
+    int page = 1,
+    int perPage = 20,
+    Map<String, dynamic> filters = const {},
+  }) async {
     try {
       final response = await _dio.get(
         '/products',
-        queryParameters: {'page': page, 'per_page': perPage, if (merchantId != null) 'merchant_id': merchantId},
+        queryParameters: {
+          'page': page,
+          'per_page': perPage,
+          if (merchantId != null) 'merchant_id': merchantId,
+          ...filters,
+        },
       );
-      final items = (ApiEnvelope.data(response) as List<dynamic>).map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+      final items = (ApiEnvelope.data(response) as List<dynamic>)
+          .map((e) => Product.fromJson(e as Map<String, dynamic>))
+          .toList();
       final meta = ApiEnvelope.meta(response) ?? const {};
       return OffsetPage(
         items: items,

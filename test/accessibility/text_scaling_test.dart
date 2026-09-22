@@ -41,7 +41,7 @@ import '../helpers/fake_favorites_repository.dart';
 /// its scaling test off the network.
 class _EmptyProductsRepository implements ProductsRepository {
   @override
-  Future<OffsetPage<Product>> list({int? merchantId, int page = 1, int perPage = 20}) async =>
+  Future<OffsetPage<Product>> list({int? merchantId, int page = 1, int perPage = 20, Map<String, dynamic> filters = const {}}) async =>
       const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0);
 
   @override

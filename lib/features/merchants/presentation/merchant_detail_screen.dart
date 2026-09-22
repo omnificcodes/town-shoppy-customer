@@ -16,6 +16,7 @@ import '../../offers/application/merchant_offers_provider.dart';
 import '../../offers/data/models/offer.dart';
 import '../../offers/presentation/offer_labels.dart';
 import '../../products/application/products_list_controller.dart';
+import '../../products/application/products_query.dart';
 import '../../products/presentation/product_card.dart';
 import '../../wallet/application/wallet_controller.dart';
 import '../application/merchant_branches_provider.dart';
@@ -1149,7 +1150,7 @@ class _ProductsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final products = ref.watch(productsListControllerProvider(merchant.id)).value;
+    final products = ref.watch(productsListControllerProvider(ProductsQuery(merchantId: merchant.id))).value;
     if (products == null || products.items.isEmpty) return const SizedBox.shrink();
 
     final preview = products.items.take(4).toList();

@@ -59,10 +59,12 @@ void main() {
       await tester.pumpWidget(_wrap(SizedBox(width: 200, child: ProductCard(product: _product(mrp: 1000)))));
       await tester.pumpAndSettle();
 
+      // The percentage is the flag over the photo; the price line carries
+      // the two prices and leaves room for the bag control.
       expect(find.text('20.1% OFF'), findsOneWidget);
       expect(find.text('₹1000'), findsOneWidget);
       expect(find.text('₹799'), findsOneWidget);
-      expect(find.text('You save ₹201'), findsOneWidget);
+      expect(find.text('You save ₹201'), findsNothing);
 
       final old = tester.widget<Text>(find.text('₹1000'));
       expect(old.style?.decoration, TextDecoration.lineThrough);

@@ -18,10 +18,11 @@ String formatPercentOff(double value) =>
 /// through, and how much that saves -- the same three facts everywhere a
 /// product is shown, so a card and the detail page can never disagree.
 ///
-/// The two layouts differ only in shape. A card stacks them and carries the
-/// "% OFF" line itself, since a card has no room for a badge; the detail
-/// page lays them along one baseline, its percentage already shown on the
-/// image as a discount tag.
+/// The two layouts differ only in shape: a card stacks them, the detail
+/// page lays them along one baseline. Neither repeats the percentage --
+/// both surfaces already fly it over the product's photo as a discount
+/// flag, and printing it twice within one card reads as two separate
+/// offers.
 class ProductPrice extends StatelessWidget {
   const ProductPrice({super.key, required this.product, this.large = false});
 
@@ -34,7 +35,6 @@ class ProductPrice extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final saving = product.saving;
-    final percent = product.savingPercentage;
 
     final priceStyle = large
         ? textTheme.displaySmall?.copyWith(color: AppColors.orangeDeep, fontWeight: FontWeight.w800)
@@ -75,35 +75,18 @@ class ProductPrice extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // A tile states the two prices and nothing else: the flag on its photo
+    // already gives the percentage, and a third line of "You save ..."
+    // crowds out the Add control beside it.
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AppSpacing.xs,
       children: [
-        if (percent != null) ...[
-          Text(
-            formatPercentOff(percent),
-            style: textTheme.labelMedium?.copyWith(color: AppColors.success, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 2),
-        ],
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpacing.xs,
-          children: [
-            Text(
-              formatRupees(product.mrp!),
-              style: AppTypography.caption.copyWith(
-                color: AppColors.textSecondary,
-                decoration: TextDecoration.lineThrough,
-              ),
-            ),
-            Text(formatRupees(product.price), style: priceStyle),
-          ],
-        ),
-        const SizedBox(height: 2),
         Text(
-          'You save ${formatRupees(saving)}',
-          style: AppTypography.caption.copyWith(color: AppColors.success, fontWeight: FontWeight.w600),
+          formatRupees(product.mrp!),
+          style: AppTypography.caption.copyWith(color: AppColors.textSecondary, decoration: TextDecoration.lineThrough),
         ),
+        Text(formatRupees(product.price), style: priceStyle),
       ],
     );
   }
