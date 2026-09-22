@@ -67,18 +67,19 @@ class _BusinessOffersScreenState extends ConsumerState<BusinessOffersScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceMuted,
+      // In the corner, where a floating action belongs. It used to be
+      // lifted a whole FAB's height to "sit above the shell's docked
+      // Counter button" -- but that button is centre-docked and this one
+      // is at the end, so they never met: the lift only pushed this one
+      // into the middle of the list, across the first card.
       floatingActionButton: isOwner && !showsEmptyCta
-          ? Padding(
-              // Sits above the shell's docked Counter button.
-              padding: const EdgeInsets.only(bottom: AppSize.fab),
-              child: FloatingActionButton.extended(
-                heroTag: 'new-offer',
-                backgroundColor: AppColors.orangeDeep,
-                foregroundColor: AppColors.onCrimson,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('New offer'),
-                onPressed: () => context.push(BusinessRoutes.offerNew),
-              ),
+          ? FloatingActionButton.extended(
+              heroTag: 'new-offer',
+              backgroundColor: AppColors.orangeDeep,
+              foregroundColor: AppColors.onCrimson,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New offer'),
+              onPressed: () => context.push(BusinessRoutes.offerNew),
             )
           : null,
       body: RefreshIndicator(
@@ -732,11 +733,21 @@ class OfferCard extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       if (offer.imageUrl != null && offer.imageUrl!.isNotEmpty)
-                        Image.network(
-                          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-                          offer.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const _OfferPlaceholder(),
+                        ColoredBox(
+                          color: AppColors.surfaceMuted,
+                          // Contained, not cropped: a merchant uploads
+                          // whatever they have -- a tall poster, a phone
+                          // screenshot -- and `cover` on this wide banner
+                          // cut those down to an unreadable middle band.
+                          // The whole image now shows, on the card's own
+                          // ground rather than against black.
+                          child: Image.network(
+                            key: ValueKey(offer.imageUrl),
+                            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                            offer.imageUrl!,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const _OfferPlaceholder(),
+                          ),
                         )
                       else
                         const _OfferPlaceholder(),

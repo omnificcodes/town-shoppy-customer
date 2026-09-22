@@ -58,17 +58,17 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
     final isOwner = ref.watch(isBusinessOwnerProvider);
 
     return Scaffold(
+      // Same corner as every other screen's: the shell's docked Counter
+      // is centre-docked, so an end-aligned action needs no clearance
+      // above it (see business_offers_screen.dart).
       floatingActionButton: isOwner
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: AppSize.fab),
-              child: FloatingActionButton.extended(
-                heroTag: 'new-product',
-                backgroundColor: AppColors.businessInk,
-                foregroundColor: AppColors.onBusinessInk,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('New product'),
-                onPressed: () => context.push(BusinessRoutes.productNew),
-              ),
+          ? FloatingActionButton.extended(
+              heroTag: 'new-product',
+              backgroundColor: AppColors.businessInk,
+              foregroundColor: AppColors.onBusinessInk,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New product'),
+              onPressed: () => context.push(BusinessRoutes.productNew),
             )
           : null,
       body: Column(
