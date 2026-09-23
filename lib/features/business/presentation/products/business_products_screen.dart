@@ -8,6 +8,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/error_state.dart';
+import '../../../../shared/widgets/info_box.dart';
 import '../../../../shared/widgets/load_more_indicator.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/widgets/status_badge.dart';
@@ -17,6 +18,7 @@ import '../../application/business_context.dart';
 import '../../application/business_products_controller.dart';
 import '../../data/business_products_repository.dart';
 import '../business_routes.dart';
+import '../business_status.dart';
 import '../widgets/business_dialogs.dart';
 import '../widgets/business_page_header.dart';
 
@@ -56,6 +58,10 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(businessProductsControllerProvider);
     final isOwner = ref.watch(isBusinessOwnerProvider);
+    // Only the status is needed, and only once it is known: while the shop
+    // is still loading (or failed to) the list simply shows without the
+    // notice rather than waiting on a second request.
+    final merchantStatus = ref.watch(myMerchantProvider).value?.status;
 
     return Scaffold(
       // Same corner as every other screen's: the shell's docked Counter
@@ -78,6 +84,13 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
             subtitle: isOwner ? 'Your catalog, ordered via WhatsApp' : 'Your business catalog · read only',
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (merchantStatus != null && merchantStatus != 'active') ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
+              child: _CatalogHiddenNotice(status: merchantStatus),
+            ),
+            const SizedBox(height: AppSpacing.smd),
+          ],
           Expanded(
             child: state.when(
               loading: () => const LoadingSkeletonList(count: 3),
@@ -206,6 +219,38 @@ class _BusinessProductsScreenState extends ConsumerState<BusinessProductsScreen>
     } on AppException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     }
+  }
+}
+
+/// Why the catalog below is not in the customer app's Shopping tab. A
+/// merchant can add products from the day they register, but the public
+/// catalog only lists shops that are `active` -- so until an admin approves
+/// the shop, everything here is saved and invisible. Without saying so, the
+/// merchant sees a full list on this tab and one missing from Shopping and
+/// reports the catalog as broken (which is exactly what happened).
+class _CatalogHiddenNotice extends StatelessWidget {
+  const _CatalogHiddenNotice({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (status) {
+      'pending' => const InfoBox(
+        icon: Icons.hourglass_top_rounded,
+        tone: AppTone.pending,
+        title: 'Awaiting approval',
+        message:
+            'Your shop is under review. Products you add are saved, but customers will only '
+            'see them in Shopping once an admin approves your shop.',
+      ),
+      _ => InfoBox(
+        icon: Icons.visibility_off_rounded,
+        tone: merchantStatusTone(status),
+        title: merchantStatusLabel(status),
+        message: 'Your shop is not visible to customers right now, so your products are hidden from Shopping.',
+      ),
+    };
   }
 }
 
