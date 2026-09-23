@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -14,7 +15,25 @@ import 'shared/widgets/web_phone_frame.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await _initializeFirebase();
+  _configureWebScanner();
   runApp(const ProviderScope(child: TownShoppyApp()));
+}
+
+/// mobile_scanner's web "auto" default prefers the browser's native
+/// BarcodeDetector API when it reports support, which is Safari 17+ as
+/// well as Chrome/Edge. Safari's implementation is real but unreliable in
+/// practice -- it silently returns zero results against a live camera feed
+/// far more often than it should, which reads as "the camera opens but
+/// never detects the code" (reported against Direct POS's "Scan customer
+/// QR" on iPhone Safari; every non-camera part of the pipeline -- route,
+/// button, onDetect -- checked out fine). Forcing zxing-wasm sidesteps the
+/// native API everywhere on web, trading a one-time ~600KB CDN fetch
+/// (cached after) for the same decoder on every browser, including the
+/// Chrome/Edge path that already worked -- never a regression there, only
+/// removes the Safari-specific failure mode.
+void _configureWebScanner() {
+  if (!kIsWeb) return;
+  MobileScannerPlatform.instance.setWebBarcodeReader(WebBarcodeReader.zxingWasm);
 }
 
 /// Wrapped in its own try/catch, deliberately: this repo has no
