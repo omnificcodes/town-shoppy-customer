@@ -38,7 +38,7 @@ class _AuthenticatedController extends AuthController {
   AuthState build() => AuthAuthenticated(_account);
 
   @override
-  Future<void> refreshAccount() async {}
+  Future<bool> refreshAccount() async => true;
 }
 
 /// Records exactly what Save sends; never touches the network.

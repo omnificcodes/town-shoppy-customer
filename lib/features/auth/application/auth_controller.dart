@@ -135,17 +135,25 @@ class AuthController extends Notifier<AuthState> {
   /// successful profile edit so the greeting/profile screen reflect the new
   /// name immediately, without the heavier session-epoch bump (which would
   /// also force-refetch every unrelated customer-scoped provider).
-  Future<void> refreshAccount() async {
-    if (state is! AuthAuthenticated) return;
+  ///
+  /// Returns whether the refetch actually landed. Most callers can ignore
+  /// it (a failed refresh here is a stale greeting at worst, corrected on
+  /// the next natural one). The one caller that cannot ignore it is
+  /// merchant registration: its whole "land in Business mode straight
+  /// away" depends on this specific call picking up the merchant profile
+  /// the account did not have a moment ago, and a network hiccup right
+  /// after filling out a long form is not rare on a phone. See
+  /// MerchantRegisterScreen's `_SuccessView`, which retries on this return
+  /// value rather than navigating on a stale account.
+  Future<bool> refreshAccount() async {
+    if (state is! AuthAuthenticated) return false;
 
     try {
       final account = await _repository.me();
       state = AuthAuthenticated(account);
+      return true;
     } on AppException {
-      // Best-effort -- the edit itself already succeeded and its own
-      // caller already has the fresh data; a failed refresh here just
-      // means the greeting/profile screen keep showing the pre-edit
-      // values until the next natural session refresh.
+      return false;
     }
   }
 

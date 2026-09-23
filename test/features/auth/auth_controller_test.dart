@@ -79,8 +79,19 @@ class FakeAuthRepository implements AuthRepository {
     return next as AuthResult;
   }
 
+  final List<Object> _meResponses = [];
+  int meCallCount = 0;
+
+  void queueMeSuccess(Account account) => _meResponses.add(account);
+  void queueMeError(AppException error) => _meResponses.add(error);
+
   @override
-  Future<Account> me() async => throw UnimplementedError();
+  Future<Account> me() async {
+    meCallCount++;
+    final next = _meResponses.removeAt(0);
+    if (next is AppException) throw next;
+    return next as Account;
+  }
 
   @override
   Future<void> logout() async {}
@@ -268,6 +279,67 @@ void main() {
       final state = container.read(authControllerProvider);
       expect(state, isA<AuthUnauthenticated>());
       expect((state as AuthUnauthenticated).error, isNull);
+    });
+  });
+
+  group('refreshAccount', () {
+    test('re-fetches /auth/me, swaps it into state, and reports success', () async {
+      fakeRepository.queueLoginSuccess(AuthResult(account: _newAccount(), token: 'tok'));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+      await notifier.login('9999900002', 'a-real-password');
+
+      // What a merchant registration's own refresh call is picking up: the
+      // same account, now with the merchant owner profile it did not have
+      // a moment ago.
+      final withMerchantAccess = Account.fromJson({
+        'id': 1,
+        'mobile_number': '+919999900002',
+        'status': 'active',
+        'is_super_admin': false,
+        'roles': ['customer', 'merchant_owner'],
+        'customer_profile': {'id': 1, 'name': 'Jane Doe', 'referral_code': 'JANE001', 'status': 'active'},
+        'merchant_owner_profiles': [
+          {'id': 1, 'merchant_id': 5, 'status': 'active'},
+        ],
+      });
+      fakeRepository.queueMeSuccess(withMerchantAccess);
+
+      final ok = await notifier.refreshAccount();
+
+      expect(ok, isTrue);
+      final state = container.read(authControllerProvider) as AuthAuthenticated;
+      expect(state.account.hasMerchantAccess, isTrue);
+      expect(fakeRepository.meCallCount, 1);
+    });
+
+    test('returns false and leaves the account untouched on a network failure', () async {
+      fakeRepository.queueLoginSuccess(AuthResult(account: _newAccount(), token: 'tok'));
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+      await notifier.login('9999900002', 'a-real-password');
+
+      fakeRepository.queueMeError(const NetworkException("We couldn't reach Town Shoppy. Check your connection and try again."));
+
+      final ok = await notifier.refreshAccount();
+
+      expect(ok, isFalse);
+      // Same account object the request went out for -- a failed refresh
+      // never overwrites good state with nothing, it just reports that it
+      // could not confirm anything new.
+      final state = container.read(authControllerProvider) as AuthAuthenticated;
+      expect(state.account.hasMerchantAccess, isFalse);
+    });
+
+    test('is a no-op when not signed in', () async {
+      final notifier = setUpController();
+      await Future<void>.delayed(Duration.zero);
+
+      final ok = await notifier.refreshAccount();
+
+      expect(ok, isFalse);
+      expect(fakeRepository.meCallCount, 0);
+      expect(container.read(authControllerProvider), isA<AuthUnauthenticated>());
     });
   });
 }

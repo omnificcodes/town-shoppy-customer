@@ -466,10 +466,59 @@ class _StepIndicator extends StatelessWidget {
   }
 }
 
-class _SuccessView extends StatelessWidget {
+class _SuccessView extends ConsumerStatefulWidget {
   const _SuccessView({required this.imageUploadFailed});
 
   final bool imageUploadFailed;
+
+  @override
+  ConsumerState<_SuccessView> createState() => _SuccessViewState();
+}
+
+class _SuccessViewState extends ConsumerState<_SuccessView> {
+  bool _isConfirming = false;
+  bool _confirmFailed = false;
+
+  /// [MerchantRegistrationController.submit] already refreshed the account
+  /// once, right after `POST /merchants` succeeded -- this is usually a
+  /// no-op that confirms what is already fresh. It exists for when that
+  /// first refresh silently lost a flaky mobile connection: without it,
+  /// `hasMerchantAccess` on the account still in memory reads false, and
+  /// the router (which has no way to know "this account just became a
+  /// merchant, wait") sends "Go to dashboard" straight back to the
+  /// Customer Home it would show any other non-merchant account -- no
+  /// error, no explanation, just the wrong screen. Retried a couple of
+  /// times before giving up and saying so, rather than letting one bad
+  /// request silently strand a brand-new merchant outside their own shop.
+  Future<void> _goToDashboard() async {
+    final auth = ref.read(authControllerProvider);
+    if (auth is AuthAuthenticated && auth.account.hasMerchantAccess) {
+      if (mounted) context.go(BusinessRoutes.root);
+      return;
+    }
+
+    setState(() {
+      _isConfirming = true;
+      _confirmFailed = false;
+    });
+
+    var confirmed = false;
+    for (var attempt = 0; attempt < 3 && !confirmed; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(const Duration(milliseconds: 600));
+      confirmed = await ref.read(authControllerProvider.notifier).refreshAccount();
+    }
+
+    if (!mounted) return;
+
+    if (confirmed) {
+      context.go(BusinessRoutes.root);
+    } else {
+      setState(() {
+        _isConfirming = false;
+        _confirmFailed = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -501,7 +550,7 @@ class _SuccessView extends StatelessWidget {
                     style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
                     textAlign: TextAlign.center,
                   ),
-                  if (imageUploadFailed) ...[
+                  if (widget.imageUploadFailed) ...[
                     const SizedBox(height: AppSpacing.md),
                     const InfoBox(
                       icon: Icons.image_not_supported_outlined,
@@ -509,8 +558,16 @@ class _SuccessView extends StatelessWidget {
                       message: 'Your business was submitted, but an image could not be uploaded. You can add it from your profile.',
                     ),
                   ],
+                  if (_confirmFailed) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    const InfoBox(
+                      icon: Icons.wifi_off_rounded,
+                      tone: AppTone.pending,
+                      message: "Your business was submitted, but we couldn't confirm your dashboard access. Check your connection and try again.",
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
-                  AuthGradientButton(label: 'Go to dashboard', onPressed: () => context.go(BusinessRoutes.root)),
+                  AuthGradientButton(label: 'Go to dashboard', isLoading: _isConfirming, onPressed: _isConfirming ? null : _goToDashboard),
                 ],
               ),
             ),
