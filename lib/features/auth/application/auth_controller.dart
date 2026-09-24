@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/app_mode/app_mode_controller.dart';
@@ -9,6 +10,7 @@ import '../../../core/networking/api_client.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../notifications/application/push_notification_service.dart';
 import '../data/auth_repository.dart';
+import '../data/models/account.dart';
 import 'auth_state.dart';
 
 /// Bumped on every login and logout/session-expiry. Every customer-scoped
@@ -36,6 +38,15 @@ class AuthController extends Notifier<AuthState> {
   /// for it instead of racing it for the last write to [state].
   Future<void>? _restore;
 
+  /// When the account in [state] was last read from the backend, and the
+  /// re-read currently in flight, if any -- see [syncAccount].
+  DateTime? _lastSyncedAt;
+  Future<void>? _sync;
+
+  /// How stale the account may be before an app-resume re-reads it. A
+  /// mode switch never waits on this (see [build]).
+  static const syncInterval = Duration(seconds: 30);
+
   @override
   AuthState build() {
     _repository = ref.watch(authRepositoryProvider);
@@ -46,8 +57,59 @@ class AuthController extends Notifier<AuthState> {
     // provider dependency (see ApiClient's own docblock).
     ref.watch(apiClientProvider).onUnauthorized = _handleSessionExpired;
 
+    // Switching Business <-> Customer is exactly when "does this account
+    // run a business?" decides what is on screen, so it is re-asked of the
+    // backend every time, from here rather than at each of the half-dozen
+    // switch buttons -- a new one cannot forget. `clear()` on sign-out sets
+    // the mode to null, which is not a switch and syncs nothing.
+    ref.listen(appModeControllerProvider.select((s) => s.mode), (previous, next) {
+      if (next != null && previous != next) unawaited(syncAccount(force: true));
+    });
+
     _restore = _restoreSession();
     return const AuthInitial();
+  }
+
+  /// Re-reads `/auth/me` so the account in memory matches the backend.
+  ///
+  /// The account used to be read once per session -- at sign-in, or cold
+  /// start -- plus a refresh after this app's OWN merchant registration.
+  /// A business that came into being any other way (the merchant web
+  /// portal's own sign-up, another tab or device, or that one refresh
+  /// losing a flaky connection) stayed invisible until the next sign-in:
+  /// the Customer menu kept offering "Register your business" to an owner.
+  /// This is called on every mode switch and whenever the app returns to
+  /// the foreground (see `AccountSyncOnResume`).
+  ///
+  /// Concurrent calls share one request. Unless [force]d, a call within
+  /// [syncInterval] of the last successful read is skipped, so switching
+  /// back to a tab repeatedly does not hammer the API. Failures are
+  /// silent: the account already in memory stays, and the next trigger
+  /// tries again.
+  Future<void> syncAccount({bool force = false}) {
+    final current = state;
+    if (current is! AuthAuthenticated || current.isLoggingOut) return Future.value();
+
+    final inFlight = _sync;
+    if (inFlight != null) return inFlight;
+
+    final last = _lastSyncedAt;
+    if (!force && last != null && DateTime.now().difference(last) < syncInterval) return Future.value();
+
+    final sync = refreshAccount().then((_) {});
+    _sync = sync;
+    return sync.whenComplete(() => _sync = null);
+  }
+
+  /// Pretends the last read happened [age] ago, so a test can exercise the
+  /// throttle without waiting it out.
+  @visibleForTesting
+  void debugBackdateLastSync(Duration age) => _lastSyncedAt = DateTime.now().subtract(age);
+
+  /// Puts a freshly read [account] into [state] and notes when it was read.
+  void _signedIn(Account account) {
+    _lastSyncedAt = DateTime.now();
+    state = AuthAuthenticated(account);
   }
 
   Future<void> _restoreSession() async {
@@ -59,7 +121,7 @@ class AuthController extends Notifier<AuthState> {
 
     try {
       final account = await _repository.me();
-      state = AuthAuthenticated(account);
+      _signedIn(account);
       unawaited(ref.read(pushNotificationServiceProvider.notifier).registerForCurrentAccount());
     } on UnauthenticatedException {
       await _storage.delete(AppConstants.secureStorageAuthTokenKey);
@@ -68,7 +130,9 @@ class AuthController extends Notifier<AuthState> {
       // Network/server failure while validating a stored token is not the
       // same as an invalid token — keep it and let the user retry rather
       // than forcing a fresh login over a flaky connection (section 37).
-      state = const AuthUnauthenticated(error: NetworkException("We couldn't reach Town Shoppy. Check your connection and try again."));
+      state = const AuthUnauthenticated(
+        error: NetworkException("We couldn't reach Town Shoppy. Check your connection and try again."),
+      );
     }
   }
 
@@ -85,7 +149,7 @@ class AuthController extends Notifier<AuthState> {
       final result = await _repository.login(mobileNumber: mobileNumber, password: password);
       await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
       ref.read(sessionEpochProvider.notifier).bump();
-      state = AuthAuthenticated(result.account);
+      _signedIn(result.account);
       // Never awaited: a slow or declined permission prompt must not hold
       // up sign-in.
       unawaited(ref.read(pushNotificationServiceProvider.notifier).registerForCurrentAccount());
@@ -113,7 +177,7 @@ class AuthController extends Notifier<AuthState> {
     await ref.read(pushNotificationServiceProvider.notifier).deregisterCurrentDevice();
     await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
     ref.read(sessionEpochProvider.notifier).bump();
-    state = AuthAuthenticated(result.account);
+    _signedIn(result.account);
   }
 
   Future<void> register(String mobileNumber, String name, String password, {String? referralCode}) async {
@@ -121,10 +185,15 @@ class AuthController extends Notifier<AuthState> {
 
     state = const AuthUnauthenticated(isSubmitting: true);
     try {
-      final result = await _repository.register(mobileNumber: mobileNumber, name: name, password: password, referralCode: referralCode);
+      final result = await _repository.register(
+        mobileNumber: mobileNumber,
+        name: name,
+        password: password,
+        referralCode: referralCode,
+      );
       await _storage.write(AppConstants.secureStorageAuthTokenKey, result.token);
       ref.read(sessionEpochProvider.notifier).bump();
-      state = AuthAuthenticated(result.account);
+      _signedIn(result.account);
       unawaited(ref.read(pushNotificationServiceProvider.notifier).registerForCurrentAccount());
     } on AppException catch (e) {
       state = AuthUnauthenticated(error: e);
@@ -146,11 +215,20 @@ class AuthController extends Notifier<AuthState> {
   /// MerchantRegisterScreen's `_SuccessView`, which retries on this return
   /// value rather than navigating on a stale account.
   Future<bool> refreshAccount() async {
-    if (state is! AuthAuthenticated) return false;
+    final before = state;
+    if (before is! AuthAuthenticated) return false;
 
     try {
       final account = await _repository.me();
-      state = AuthAuthenticated(account);
+
+      // The session may have moved on while the request was out: signed
+      // out, started signing out, or been replaced by another account (an
+      // admin hand-off). A late answer about the old session must not be
+      // written over whatever is current now.
+      final now = state;
+      if (now is! AuthAuthenticated || now.isLoggingOut || now.account.id != account.id) return false;
+
+      _signedIn(account);
       return true;
     } on AppException {
       return false;

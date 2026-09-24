@@ -9,6 +9,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/auth/presentation/account_sync_on_resume.dart';
 import 'features/notifications/application/push_notification_service.dart';
 import 'shared/widgets/web_phone_frame.dart';
 
@@ -92,7 +93,9 @@ class _TownShoppyAppState extends ConsumerState<TownShoppyApp> {
       routerConfig: router,
       // Web-only: letterboxes a wide browser window into a phone-width
       // frame. A no-op on Android/iOS -- see WebPhoneFrame's doc comment.
-      builder: (context, child) => WebPhoneFrame(child: child),
+      // AccountSyncOnResume re-reads the account whenever the app comes
+      // back to the foreground (see its doc comment).
+      builder: (context, child) => AccountSyncOnResume(child: WebPhoneFrame(child: child)),
     );
   }
 }
