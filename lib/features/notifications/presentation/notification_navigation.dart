@@ -49,9 +49,11 @@ NotificationTarget? notificationTarget(String type) {
       const NotificationTarget('/redemptions', AppMode.customer),
     // Both fired for the merchant, never the customer: a customer is
     // waiting to be verified at the counter, or a redemption they already
-    // verified has now settled (Coin Economy V2 §8).
+    // verified has now settled (Coin Economy V2 §8). A customer's coins
+    // always ride on a purchase now -- scanned either way, or entered by
+    // phone at Direct POS -- so Purchases is where the merchant acts.
     'redemption.awaiting_verification' || 'redemption.merchant_settled' =>
-      const NotificationTarget(BusinessRoutes.redemptions, AppMode.business),
+      const NotificationTarget(BusinessRoutes.purchases, AppMode.business),
     'referral.qualified' || 'referral.reward_received' || 'referral.milestone_reached' =>
       const NotificationTarget('/referrals', AppMode.customer),
     'subscription.activated' ||

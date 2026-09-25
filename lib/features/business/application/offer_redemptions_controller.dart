@@ -6,6 +6,7 @@ import '../../../core/errors/app_exception.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../offer_redemptions/data/models/offer_redemption.dart';
 import '../data/business_offers_repository.dart';
+import 'business_context.dart';
 
 /// `pending | approved | rejected | all` -- defaults to the review queue.
 class OfferRedemptionFilterController extends Notifier<String> {
@@ -107,6 +108,8 @@ class OfferRedemptionsController extends AsyncNotifier<OfferRedemptionsState> {
         ].whereType<OfferRedemption>().toList(),
       ));
     }
+    // So the dashboard's count and feed agree with what was just done.
+    ref.invalidate(dashboardPendingOfferRedemptionsProvider);
     return updated;
   }
 

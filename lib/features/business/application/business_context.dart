@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
+import '../../../core/networking/cursor_page.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
+import '../../offer_redemptions/data/models/offer_redemption.dart';
 import '../../purchases/data/models/purchase.dart';
 import '../data/business_activity_repository.dart';
 import '../data/business_merchant_repository.dart';
+import '../data/business_offers_repository.dart';
 import '../data/models/business_merchant.dart';
 import '../data/models/merchant_entitlement.dart';
 import '../data/models/merchant_subscription.dart';
@@ -80,4 +83,14 @@ final dashboardRecentPurchasesProvider = FutureProvider<List<Purchase>>((ref) as
 final dashboardPendingPurchasesCountProvider = FutureProvider<int>((ref) async {
   ref.watch(sessionEpochProvider);
   return (await ref.watch(businessActivityRepositoryProvider).purchases(perPage: 1, status: 'pending')).total;
+});
+
+/// Customers asking to spend coins on one of this shop's offers -- the one
+/// coin request that is NOT a purchase (a purchase's coins settle when the
+/// purchase is approved), so it needs its own place on the dashboard.
+/// `/offer-redemptions` is cursor-paginated with no total, so the count is
+/// this page's length, shown as "N+" when there are more.
+final dashboardPendingOfferRedemptionsProvider = FutureProvider<CursorPage<OfferRedemption>>((ref) {
+  ref.watch(sessionEpochProvider);
+  return ref.watch(businessOffersRepositoryProvider).offerRedemptions(status: 'pending', perPage: 20);
 });

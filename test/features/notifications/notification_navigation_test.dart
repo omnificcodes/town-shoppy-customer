@@ -26,8 +26,8 @@ void main() {
     });
 
     test('merchant-facing types switch to Business mode and land on the right screen', () {
-      expect(notificationTarget('redemption.awaiting_verification'), const NotificationTarget(BusinessRoutes.redemptions, AppMode.business));
-      expect(notificationTarget('redemption.merchant_settled'), const NotificationTarget(BusinessRoutes.redemptions, AppMode.business));
+      expect(notificationTarget('redemption.awaiting_verification'), const NotificationTarget(BusinessRoutes.purchases, AppMode.business));
+      expect(notificationTarget('redemption.merchant_settled'), const NotificationTarget(BusinessRoutes.purchases, AppMode.business));
       expect(notificationTarget('payment.successful'), const NotificationTarget(BusinessRoutes.payments, AppMode.business));
       expect(notificationTarget('payment.invoice_available'), const NotificationTarget(BusinessRoutes.invoices, AppMode.business));
       expect(notificationTarget('subscription.activated'), const NotificationTarget(BusinessRoutes.subscriptions, AppMode.business));

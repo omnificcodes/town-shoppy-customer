@@ -31,6 +31,9 @@ class BusinessMoreScreen extends ConsumerWidget {
     final isOwner = ref.watch(isBusinessOwnerProvider);
     final hasPackage = ref.watch(merchantEntitlementProvider).value?.hasPackage ?? true;
     final pendingPurchases = ref.watch(dashboardPendingPurchasesCountProvider).value ?? 0;
+    final offerPage = ref.watch(dashboardPendingOfferRedemptionsProvider).value;
+    final pendingOffers = offerPage?.items.length ?? 0;
+    final morePendingOffers = offerPage?.hasMore ?? false;
 
     final visible = BusinessDestination.all.where((d) => d.path != BusinessRoutes.root && (isOwner || !d.ownerOnly));
 
@@ -66,9 +69,12 @@ class BusinessMoreScreen extends ConsumerWidget {
                             title: d.label,
                             subtitle: d.subtitle,
                             locked: d.gated && !hasPackage,
-                            badge:
-                                d.path == BusinessRoutes.purchases && pendingPurchases > 0 && !(d.gated && !hasPackage)
+                            badge: d.gated && !hasPackage
+                                ? null
+                                : d.path == BusinessRoutes.purchases && pendingPurchases > 0
                                 ? '$pendingPurchases pending'
+                                : d.path == BusinessRoutes.offerRedemptions && pendingOffers > 0
+                                ? '$pendingOffers${morePendingOffers ? '+' : ''} pending'
                                 : null,
                             onTap: () =>
                                 BusinessRoutes.tabs.contains(d.path) ? context.go(d.path) : context.push(d.path),

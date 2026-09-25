@@ -19,7 +19,10 @@ import '../../merchants/presentation/category_visual.dart';
 import '../../merchants/presentation/merchant_logo.dart';
 import '../../notifications/application/unread_count_provider.dart';
 import '../../purchases/presentation/purchase_status.dart';
+import '../../offer_redemptions/data/models/offer_redemption.dart';
+import '../../offer_redemptions/presentation/offer_redemption_status.dart';
 import '../application/business_context.dart';
+import '../application/offer_redemptions_controller.dart';
 import '../data/models/business_merchant.dart';
 import '../data/models/purchase_stats.dart';
 import 'business_routes.dart';
@@ -33,8 +36,8 @@ import 'widgets/purchase_trend_chart.dart';
 /// else, and one recent-activity feed.
 ///
 /// Every figure is live: `myMerchantProvider`, the entitlement and
-/// subscription, the pending-purchase count, the redemptions awaiting
-/// verification, unread notifications and purchase stats. Stitch's script
+/// subscription, the pending-purchase count, the offer redemptions awaiting
+/// review, unread notifications and purchase stats. Stitch's script
 /// slogan and bakery illustration are replaced by the brand tagline and the
 /// shop's own category icon, so the card suits any kind of shop.
 class BusinessDashboardScreen extends ConsumerStatefulWidget {
@@ -52,6 +55,7 @@ class _BusinessDashboardScreenState extends ConsumerState<BusinessDashboardScree
       ..invalidate(myMerchantProvider)
       ..invalidate(merchantEntitlementProvider)
       ..invalidate(dashboardPendingPurchasesCountProvider)
+      ..invalidate(dashboardPendingOfferRedemptionsProvider)
       ..invalidate(dashboardRecentPurchasesProvider)
       ..invalidate(unreadNotificationCountProvider)
       ..invalidate(mySubscriptionProvider)
@@ -547,6 +551,13 @@ class _RejectionBanner extends StatelessWidget {
   }
 }
 
+/// Lands on the review queue even if the merchant last left that screen on
+/// another filter -- the dashboard's count is of pending claims only.
+void _openOfferRedemptions(BuildContext context, WidgetRef ref) {
+  ref.read(offerRedemptionFilterProvider.notifier).set('pending');
+  context.push(BusinessRoutes.offerRedemptions);
+}
+
 class _KpiGrid extends ConsumerWidget {
   const _KpiGrid({required this.isOwner});
 
@@ -555,10 +566,13 @@ class _KpiGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pendingPurchases = ref.watch(dashboardPendingPurchasesCountProvider);
+    final offerRedemptions = ref.watch(dashboardPendingOfferRedemptionsProvider);
     final unread = ref.watch(unreadNotificationCountProvider);
     final subscription = ref.watch(mySubscriptionProvider);
 
     final pendingCount = pendingPurchases.value ?? 0;
+    final offerCount = offerRedemptions.value?.items.length ?? 0;
+    final offerMore = offerRedemptions.value?.hasMore ?? false;
     final unreadCount = unread.value ?? 0;
 
     final tiles = <Widget>[
@@ -576,9 +590,24 @@ class _KpiGrid extends ConsumerWidget {
             : 'purchases need your approval',
         onTap: () => context.go(BusinessRoutes.purchases),
       ),
-      // No separate "awaiting verification" count: a coin bill's redemption
-      // is settled by approving its purchase, so it is already counted in
-      // Pending purchases above.
+      // Coins paid on a purchase (either QR, or the phone number) settle
+      // when that purchase is approved, so they are already in Pending
+      // purchases above. Coins claimed on an OFFER are their own request,
+      // approved on their own, so they get their own count.
+      _KpiTile(
+        title: 'Offer redemptions',
+        value: offerRedemptions.hasError ? '—' : '$offerCount${offerMore ? '+' : ''}',
+        isLoading: offerRedemptions.isLoading,
+        icon: Icons.redeem_rounded,
+        color: AppColors.success,
+        background: AppColors.successBg,
+        description: offerRedemptions.hasError
+            ? 'Could not load'
+            : offerCount == 1 && !offerMore
+            ? 'offer redemption needs your approval'
+            : 'offer redemptions need your approval',
+        onTap: () => _openOfferRedemptions(context, ref),
+      ),
       _KpiTile(
         title: 'Notifications',
         value: '$unreadCount',
@@ -868,14 +897,14 @@ class _Panel extends StatelessWidget {
   }
 }
 
-class _QuickActions extends StatelessWidget {
+class _QuickActions extends ConsumerWidget {
   const _QuickActions({required this.isOwner, required this.hasPackage});
 
   final bool isOwner;
   final bool hasPackage;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final locked = !hasPackage;
 
     final actions = <Widget>[
@@ -900,6 +929,16 @@ class _QuickActions extends StatelessWidget {
           color: AppColors.info,
           locked: locked,
           onTap: () => context.push(BusinessRoutes.prizes),
+        )
+      else
+        // Staff approve offer claims at the counter; the owner's slot here
+        // is prizes, and they reach claims from the tile above.
+        _ActionTile(
+          label: 'Offer redemptions',
+          icon: Icons.redeem_rounded,
+          color: AppColors.info,
+          locked: locked,
+          onTap: () => _openOfferRedemptions(context, ref),
         ),
       // Staff can see offers but never create them, same split the backend
       // policy enforces.
@@ -1209,7 +1248,7 @@ class _GrowBanner extends StatelessWidget {
   }
 }
 
-/// One feed of the latest purchases and the redemptions waiting on this
+/// One feed of the latest purchases and the offer claims waiting on this
 /// shop, newest first.
 class _RecentActivity extends ConsumerWidget {
   const _RecentActivity();
@@ -1218,13 +1257,15 @@ class _RecentActivity extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Purchases only. A coin bill used to appear twice here -- once as its
-    // purchase and once as the redemption riding on it -- for what is one
-    // thing the merchant approves once.
+    // No Town Coin redemption rows: a coin bill used to appear twice here --
+    // once as its purchase and once as the redemption riding on it -- for
+    // what is one thing the merchant approves once. Offer claims are not
+    // purchases, so they do appear.
     final purchases = ref.watch(dashboardRecentPurchasesProvider);
+    final offerRedemptions = ref.watch(dashboardPendingOfferRedemptionsProvider);
 
     final Widget body;
-    if (purchases.isLoading) {
+    if (purchases.isLoading || offerRedemptions.isLoading) {
       body = const Column(
         children: [
           LoadingSkeletonCard(),
@@ -1232,12 +1273,14 @@ class _RecentActivity extends ConsumerWidget {
           LoadingSkeletonCard(),
         ],
       );
-    } else if (purchases.hasError) {
+    } else if (purchases.hasError && offerRedemptions.hasError) {
       final error = purchases.error;
       body = ErrorState(
         compact: true,
         error: error is AppException ? error : const UnknownAppException(),
-        onRetry: () => ref.invalidate(dashboardRecentPurchasesProvider),
+        onRetry: () => ref
+          ..invalidate(dashboardRecentPurchasesProvider)
+          ..invalidate(dashboardPendingOfferRedemptionsProvider),
       );
     } else {
       final entries = <_ActivityEntry>[
@@ -1249,6 +1292,20 @@ class _RecentActivity extends ConsumerWidget {
             createdAt: p.createdAt,
             badge: StatusBadge(label: purchaseStatusLabel(p.status), tone: purchaseStatusTone(p.status)),
             path: '${BusinessRoutes.purchases}/${p.id}',
+          ),
+        for (final r in offerRedemptions.value?.items ?? const <OfferRedemption>[])
+          _ActivityEntry(
+            icon: Icons.redeem_rounded,
+            color: AppColors.success,
+            title: 'Offer redemption ₹${r.billAmount.toStringAsFixed(2)}',
+            createdAt: r.createdAt,
+            // The customer-facing label reads "Awaiting merchant approval";
+            // here the merchant IS the one approving.
+            badge: StatusBadge(
+              label: r.status == 'pending' ? 'Needs approval' : offerRedemptionStatusLabel(r.status),
+              tone: offerRedemptionStatusTone(r.status),
+            ),
+            path: BusinessRoutes.offerRedemptions,
           ),
       ]..sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
 

@@ -1,3 +1,4 @@
+import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
@@ -9,6 +10,7 @@ import 'package:customer/features/business/data/models/merchant_entitlement.dart
 import 'package:customer/features/business/data/models/purchase_stats.dart';
 import 'package:customer/features/business/presentation/business_dashboard_screen.dart';
 import 'package:customer/features/notifications/application/unread_count_provider.dart';
+import 'package:customer/features/offer_redemptions/data/models/offer_redemption.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,6 +57,16 @@ final _purchase = Purchase.fromJson({
   'created_at': DateTime.now().toIso8601String(),
 });
 
+final _offerRedemption = OfferRedemption.fromJson({
+  'id': 30,
+  'offer_id': 4,
+  'merchant_id': 5,
+  'bill_amount': 800,
+  'max_discount_amount': 80,
+  'status': 'pending',
+  'created_at': DateTime.now().toIso8601String(),
+});
+
 Widget _wrap({required bool hasPackage, String status = 'active', bool empty = false, bool owner = true}) {
   return ProviderScope(
     overrides: [
@@ -71,6 +83,9 @@ Widget _wrap({required bool hasPackage, String status = 'active', bool empty = f
       mySubscriptionProvider.overrideWith((ref) async => null),
       unreadNotificationCountProvider.overrideWith((ref) async => 3),
       dashboardPendingPurchasesCountProvider.overrideWith((ref) async => 2),
+      dashboardPendingOfferRedemptionsProvider.overrideWith(
+        (ref) async => CursorPage(items: empty ? const <OfferRedemption>[] : [_offerRedemption], nextCursor: null),
+      ),
       isBusinessOwnerProvider.overrideWithValue(owner),
       dashboardRecentPurchasesProvider.overrideWith((ref) async => empty ? const <Purchase>[] : [_purchase]),
       purchaseStatsProvider.overrideWith(
@@ -115,7 +130,7 @@ void main() {
     );
   });
 
-  group('Purchases is the one queue: no separate Redemptions option anywhere on the dashboard', () {
+  group('Purchase coins stay on the purchase; offer redemptions get their own box', () {
     for (final owner in [true, false]) {
       testWidgets(owner ? 'for an owner' : 'for staff', (tester) async {
         // Tall enough to build the whole dashboard, so "not found" means
@@ -130,14 +145,24 @@ void main() {
         await tester.pumpWidget(_wrap(hasPackage: true, owner: owner));
         await tester.pumpAndSettle();
 
+        // No Town Coin redemption queue: a purchase's coins settle when the
+        // purchase is approved.
         expect(find.text('Pending purchases'), findsOneWidget);
         expect(find.text('Awaiting verification'), findsNothing);
         expect(find.text('Verify redemptions'), findsNothing);
-        expect(find.textContaining('Redemption'), findsNothing);
         expect(find.textContaining('1234.50'), findsOneWidget, reason: 'the purchase still shows');
+
+        // Offer redemptions: the tile with its count, the pending claim in
+        // Recent activity, and -- for staff, whose fourth action it is -- a
+        // quick action.
+        expect(find.text('Offer redemptions'), findsNWidgets(owner ? 1 : 2));
+        expect(find.text('offer redemption needs your approval'), findsOneWidget);
+        expect(find.text('Offer redemption ₹800.00'), findsOneWidget);
+        expect(find.text('Needs approval'), findsOneWidget);
       });
     }
   });
+
 
   testWidgets('shows the select-a-package banner when the shop has no package', (tester) async {
     await tester.pumpWidget(_wrap(hasPackage: false));

@@ -1,3 +1,4 @@
+import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
@@ -8,6 +9,7 @@ import 'package:customer/features/business/data/models/business_merchant.dart';
 import 'package:customer/features/business/data/models/merchant_entitlement.dart';
 import 'package:customer/features/business/presentation/business_more_screen.dart';
 import 'package:customer/features/notifications/application/unread_count_provider.dart';
+import 'package:customer/features/offer_redemptions/data/models/offer_redemption.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +25,15 @@ const _account = Account(
   customerProfile: null,
   merchantOwnerProfiles: [MerchantProfileRef(id: 1, merchantId: 5, status: 'active')],
 );
+
+final _offerRedemption = OfferRedemption.fromJson({
+  'id': 30,
+  'offer_id': 4,
+  'merchant_id': 5,
+  'bill_amount': 800,
+  'max_discount_amount': 80,
+  'status': 'pending',
+});
 
 class _AuthenticatedController extends AuthController {
   @override
@@ -50,6 +61,9 @@ Widget _wrap({bool isOwner = true, bool hasPackage = true}) {
         ),
       ),
       dashboardPendingPurchasesCountProvider.overrideWith((ref) async => 2),
+      dashboardPendingOfferRedemptionsProvider.overrideWith(
+        (ref) async => CursorPage(items: [_offerRedemption], nextCursor: null),
+      ),
       unreadNotificationCountProvider.overrideWith((ref) async => 3),
     ],
     child: MaterialApp(theme: AppTheme.light, home: const BusinessMoreScreen()),
@@ -71,6 +85,8 @@ void main() {
         // Offer redemptions -- no separate Redemptions any more.
         expect(find.text('7 services'), findsOneWidget);
         expect(find.text('2 pending'), findsOneWidget);
+        // Offer claims are not purchases: they have their own count.
+        expect(find.text('1 pending'), findsOneWidget);
 
         final page = find.byType(CustomScrollView);
         await tester.dragUntilVisible(find.text('Sign out'), page, const Offset(0, -300));
@@ -90,6 +106,7 @@ void main() {
         expect(find.text('Branches'), findsOneWidget);
         expect(find.byIcon(Icons.lock_outline_rounded), findsWidgets);
         expect(find.text('2 pending'), findsNothing);
+        expect(find.text('1 pending'), findsNothing);
         expect(find.textContaining('Staff'), findsOneWidget);
 
         final page = find.byType(CustomScrollView);
