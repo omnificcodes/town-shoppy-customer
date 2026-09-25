@@ -25,6 +25,7 @@ import '../../application/business_purchases_controller.dart';
 import '../../application/list_range.dart';
 import '../business_routes.dart';
 import '../widgets/business_dialogs.dart';
+import 'purchase_review_copy.dart';
 import '../widgets/business_page_header.dart';
 
 /// The "Sales" tab, following the Google Stitch redesign: a deep header
@@ -65,9 +66,8 @@ class _BusinessPurchasesScreenState extends ConsumerState<BusinessPurchasesScree
   Future<void> _approve(Purchase purchase) async {
     final ok = await showBusinessConfirmDialog(
       context,
-      title: 'Approve this purchase?',
-      message:
-          "Approving this purchase will record the transaction and issue the customer's applicable Town Coins and Lucky Draw coupons.",
+      title: approveTitle(purchase),
+      message: approveMessage(purchase),
       confirmLabel: 'Approve',
     );
     if (!ok || !mounted) return;
@@ -93,7 +93,7 @@ class _BusinessPurchasesScreenState extends ConsumerState<BusinessPurchasesScree
     final reason = await showBusinessReasonDialog(
       context,
       title: 'Reject this purchase',
-      message: 'The customer will be notified. No Town Coins or coupons are issued for a rejected purchase.',
+      message: rejectMessage,
       confirmLabel: 'Reject purchase',
       placeholder: 'Why is this purchase being rejected?',
     );
@@ -911,7 +911,7 @@ class _PurchaseRow extends StatelessWidget {
                             const SizedBox(height: AppSpacing.xxs),
                             Text(
                               [
-                                '#${purchase.id}',
+                                purchase.reference,
                                 if (purchase.billReference != null && purchase.billReference!.isNotEmpty)
                                   'Ref. ${purchase.billReference}',
                                 if (purchase.branch != null) purchase.branch!.name,
@@ -930,6 +930,15 @@ class _PurchaseRow extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             StatusBadge(label: label, tone: purchaseStatusTone(purchase.status)),
+                            // A pending Town Coin payment: what approval
+                            // deducts, visible before opening the bill.
+                            if (purchase.isPending && purchase.coinPayment?.isWaiting == true) ...[
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                '${purchase.coinPayment!.coins} coins to deduct',
+                                style: AppTypography.numericFinancialInline.copyWith(color: AppColors.pending),
+                              ),
+                            ],
                             if (purchase.coinsAwarded > 0) ...[
                               const SizedBox(height: AppSpacing.xs),
                               Text(

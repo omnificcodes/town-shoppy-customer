@@ -19,6 +19,7 @@ import '../../../purchases/data/models/purchase.dart';
 import '../../../purchases/presentation/purchase_status.dart';
 import '../../application/business_purchases_controller.dart';
 import '../widgets/business_dialogs.dart';
+import 'purchase_review_copy.dart';
 import '../widgets/business_page_header.dart';
 
 /// One purchase as the merchant sees it -- every `PurchaseResource` field
@@ -36,10 +37,12 @@ class _BusinessPurchaseDetailScreenState extends ConsumerState<BusinessPurchaseD
   bool _busy = false;
 
   Future<void> _approve() async {
+    final purchase = ref.read(businessPurchaseProvider(widget.purchaseId)).value;
+    if (purchase == null) return;
     final ok = await showBusinessConfirmDialog(
       context,
-      title: 'Approve this purchase?',
-      message: "Approving this purchase will record the transaction and issue the customer's applicable Town Coins and Lucky Draw coupons.",
+      title: approveTitle(purchase),
+      message: approveMessage(purchase),
       confirmLabel: 'Approve',
     );
     if (!ok || !mounted) return;
@@ -59,7 +62,7 @@ class _BusinessPurchaseDetailScreenState extends ConsumerState<BusinessPurchaseD
     final reason = await showBusinessReasonDialog(
       context,
       title: 'Reject this purchase',
-      message: 'The customer will be notified. No Town Coins or coupons are issued for a rejected purchase.',
+      message: rejectMessage,
       confirmLabel: 'Reject purchase',
       placeholder: 'Why is this purchase being rejected?',
     );
@@ -125,12 +128,19 @@ class _BusinessPurchaseDetailScreenState extends ConsumerState<BusinessPurchaseD
                   ),
                 ),
               ],
+              if (p.coinPayment != null) ...[
+                const SizedBox(height: AppSpacing.section),
+                const SectionHeader(title: 'Town Coin payment', icon: Icons.savings_rounded),
+                const SizedBox(height: AppSpacing.smd),
+                _CoinPaymentCard(payment: p.coinPayment!, pending: p.isPending),
+              ],
               const SizedBox(height: AppSpacing.section),
               const SectionHeader(title: 'Purchase details', icon: Icons.receipt_long_rounded),
               const SizedBox(height: AppSpacing.smd),
               AppCard(
                 child: Column(
                   children: [
+                    if (p.transactionId != null) DetailRow(label: 'Transaction ID', value: p.transactionId!),
                     DetailRow(label: 'Bill amount', value: formatMoney(p.billAmount), emphasize: true),
                     DetailRow(label: 'Bill reference', value: p.billReference ?? '—'),
                     if (p.branch != null) DetailRow(label: 'Branch', value: p.branch!.name),
@@ -229,6 +239,54 @@ class _PhoneLink extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What the customer's Town Coins do on this bill: what approval deducts
+/// and what to collect while it is pending, what was deducted once
+/// settled, and a plain "not deducted" for a payment that never went
+/// through -- never a silent blank.
+class _CoinPaymentCard extends StatelessWidget {
+  const _CoinPaymentCard({required this.payment, required this.pending});
+
+  final CoinPayment payment;
+  final bool pending;
+
+  @override
+  Widget build(BuildContext context) {
+    final (statusLabel, tone) = switch (payment.status) {
+      'settled' => ('Deducted', AppTone.success),
+      'initiated' => ('Deducted on approval', AppTone.pending),
+      _ => ('Not deducted', AppTone.neutral),
+    };
+
+    // Only a payment that is live or went through changes what is paid at
+    // the counter; a cancelled one changes nothing, so it shows nothing.
+    final applies = payment.settled || payment.isWaiting;
+
+    return AppCard(
+      child: Column(
+        children: [
+          DetailRow(label: 'Status', child: StatusBadge(label: statusLabel, tone: tone)),
+          DetailRow(
+            label: payment.settled
+                ? 'Coins deducted'
+                : applies
+                ? 'Coins to deduct'
+                : 'Coins requested',
+            value: '${payment.coins} Town Coins',
+            emphasize: applies,
+          ),
+          if (applies) ...[
+            DetailRow(label: 'Coin discount', value: '− ${formatMoney(payment.discountAmount)}'),
+            DetailRow(
+              label: pending ? 'Collect at the counter' : 'Collected at the counter',
+              value: formatMoney(payment.amountPayable),
+            ),
+          ],
+        ],
       ),
     );
   }

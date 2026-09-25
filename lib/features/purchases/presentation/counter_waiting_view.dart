@@ -12,7 +12,6 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/date_format.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/info_box.dart';
-import '../../redemptions/application/redemption_detail_provider.dart';
 import '../../wallet/application/wallet_controller.dart';
 import '../application/customer_purchase_request_controller.dart';
 import '../application/purchase_detail_provider.dart';
@@ -47,12 +46,12 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
 
   Timer? _pollTimer;
 
-  int? get _redemptionId => widget.state.redemption?.id;
+  int? get _purchaseId => widget.state.result?.id;
 
   @override
   void initState() {
     super.initState();
-    if (_redemptionId != null) _startPolling();
+    if (_purchaseId != null) _startPolling();
   }
 
   @override
@@ -61,13 +60,14 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
     super.dispose();
   }
 
+  /// The customer is standing at a counter waiting for someone to tap
+  /// Approve, so the screen checks the bill itself every few seconds and
+  /// updates the moment the business decides -- no refresh needed. Stopped
+  /// as soon as the bill is approved or rejected.
   void _startPolling() {
-    // Same interval and mechanism as RedemptionVerificationScreen -- the
-    // customer is standing at a counter waiting for someone to tap a
-    // button, so this is a short-lived poll, stopped the moment it settles.
     _pollTimer = Timer.periodic(_pollInterval, (_) {
-      final id = _redemptionId;
-      if (id != null) ref.invalidate(redemptionDetailProvider(id));
+      final id = _purchaseId;
+      if (id != null) ref.invalidate(purchaseDetailProvider(id));
     });
   }
 
@@ -84,23 +84,46 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
     final purchaseId = submitted?.id;
     final textTheme = Theme.of(context).textTheme;
 
-    // The refreshed purchase when the customer has checked its status,
-    // otherwise the one the submit returned.
+    if (purchaseId != null) {
+      ref.listen(purchaseDetailProvider(purchaseId), (previous, next) {
+        final status = next.value?.status;
+        if (status == null || status == 'pending') return;
+        _stopPolling();
+        // Coins may have left the wallet, and the bill's reward arrived.
+        if (status == 'recorded') ref.invalidate(walletControllerProvider);
+      });
+    }
+
+    // The latest the server has said about this bill, or the submit's own
+    // answer until the first check comes back.
     final purchase = purchaseId == null ? null : ref.watch(purchaseDetailProvider(purchaseId)).value ?? submitted;
     final status = purchase?.status ?? 'pending';
 
     final bill = state.billAmount ?? 0;
-    // Once the request exists, the server's own figures replace the
-    // estimate this screen was showing a moment ago.
-    final discount = redemption?.applied == true ? (redemption?.discountAmount ?? 0) : 0.0;
-    final payable = redemption?.applied == true ? (redemption?.amountPayable ?? bill) : bill;
+    // The server's own coin figures, never the estimate this flow showed
+    // before sending. `coin_payment` on the bill is the source; the submit's
+    // redemption block covers an API too old to send it.
+    final coinPayment = purchase?.coinPayment;
+    final coinsRequested = coinPayment?.coins ?? (redemption?.applied == true ? redemption?.coinsRequested : null);
+    final coinsSettled = coinPayment?.settled ?? false;
+    final requestedDiscount = coinPayment?.discountAmount ?? (redemption?.applied == true ? redemption?.discountAmount ?? 0 : 0.0);
 
-    final settled = _watchSettled();
     final outcome = switch (status) {
       'recorded' => _Outcome.confirmed,
       'rejected' || 'voided' => _Outcome.declined,
-      _ => settled ? _Outcome.coinsApplied : _Outcome.sent,
+      _ => coinsSettled ? _Outcome.coinsApplied : _Outcome.sent,
     };
+
+    // Only coins that were actually deducted count as saved. An approved
+    // bill whose coins did not settle saved nothing, and says so.
+    final coinsUsed = outcome == _Outcome.declined
+        ? false
+        : outcome == _Outcome.confirmed || outcome == _Outcome.coinsApplied
+        ? coinsSettled
+        : (coinsRequested ?? 0) > 0;
+    final discount = coinsUsed ? requestedDiscount : 0.0;
+    final payable = bill - discount;
+    final coinsNotDeducted = outcome == _Outcome.confirmed && coinPayment != null && !coinsSettled;
 
     final resolution = state.resolution;
     final merchantName = resolution?.merchantName ?? purchase?.merchant?.name ?? 'the merchant';
@@ -124,10 +147,13 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
         const SizedBox(height: AppSpacing.xs),
         Text(
           switch (outcome) {
-            _Outcome.sent => 'Waiting for $merchantName to confirm. Nothing is deducted until they do.',
+            _Outcome.sent => 'Waiting for $merchantName to approve. Nothing is deducted until they do.',
             _Outcome.coinsApplied => 'Your coins have been applied. Pay the amount below at the counter.',
             _Outcome.confirmed => 'Your Town Coins and any Lucky Draw coupons have been added.',
-            _Outcome.declined => purchase?.rejectionReason ?? 'No coins or coupons were issued for this bill.',
+            _Outcome.declined => [
+              'Your Town Coins were not deducted.',
+              if (purchase?.rejectionReason case final reason? when reason.trim().isNotEmpty) reason.trim(),
+            ].join(' '),
           },
           textAlign: TextAlign.center,
           style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
@@ -137,20 +163,25 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
         // pay, so the hero states the bill itself; the saving has its own
         // tile below.
         _AmountHero(
-          label: outcome.isFinal ? 'Bill amount' : 'Amount to pay',
+          label: switch (outcome) {
+            _Outcome.confirmed => 'Bill paid',
+            _Outcome.declined => 'Bill amount',
+            _ => 'Amount to pay',
+          },
           amount: outcome.isFinal ? bill : payable,
           discounted: discount > 0 && !outcome.isFinal,
           originalBill: bill,
         ),
         const SizedBox(height: AppSpacing.md),
         _SavedAndEarned(
-          saved: outcome == _Outcome.declined ? 0 : discount,
+          saved: discount,
           savedLabel: outcome == _Outcome.sent ? 'You save' : 'You saved',
-          savedCaption: outcome == _Outcome.declined
-              ? 'Nothing redeemed'
-              : discount > 0
-              ? '${redemption?.coinsRequested ?? 0} coins redeemed'
-              : 'No coins used on this bill',
+          savedCaption: switch (outcome) {
+            _Outcome.declined => 'No coins deducted',
+            _Outcome.sent when coinsUsed => '${coinsRequested ?? 0} Town Coins to be used',
+            _ when coinsUsed => '${coinsRequested ?? 0} Town Coins used',
+            _ => 'No coins used on this bill',
+          },
           coins: switch (outcome) {
             _Outcome.confirmed => purchase?.coinsAwarded ?? 0,
             _Outcome.declined => 0,
@@ -172,21 +203,26 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
               _Detail(
                 label: 'Town Coin discount',
                 value: '− ₹${discount.toStringAsFixed(2)}',
-                subValue: redemption?.coinsRequested != null ? '${redemption!.coinsRequested} Town Coins' : null,
+                subValue: coinsRequested != null ? '$coinsRequested Town Coins' : null,
                 valueColor: AppColors.success,
                 numeric: true,
               ),
-            _Detail(label: 'To pay', value: '₹${payable.toStringAsFixed(2)}', numeric: true, emphasised: true),
+            _Detail(
+              label: outcome == _Outcome.confirmed ? 'Paid at the counter' : 'To pay',
+              value: '₹${payable.toStringAsFixed(2)}',
+              numeric: true,
+              emphasised: true,
+            ),
             if (outcome == _Outcome.confirmed && (purchase?.couponsIssued ?? 0) > 0)
               _Detail(
                 label: 'Lucky Draw coupons',
                 value: '${purchase!.couponsIssued} coupon${purchase.couponsIssued == 1 ? '' : 's'}',
               ),
-            if (purchaseId != null)
+            if (purchase != null)
               _Detail(
-                label: 'Reference',
-                value: '#$purchaseId',
-                subValue: purchase?.createdAt != null ? formatDateTime(purchase!.createdAt!) : null,
+                label: 'Transaction ID',
+                value: purchase.reference,
+                subValue: purchase.createdAt != null ? formatDateTime(purchase.createdAt!) : null,
               ),
           ],
         ),
@@ -198,6 +234,16 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
             message: 'No coins were used on this bill. ${redemption.reason!}',
           ),
         ],
+        // Approved, but the coins never left the wallet -- say so plainly
+        // rather than let the bill read as a coin payment.
+        if (coinsNotDeducted) ...[
+          const SizedBox(height: AppSpacing.md),
+          const InfoBox(
+            tone: AppTone.pending,
+            icon: Icons.info_outline_rounded,
+            message: 'No Town Coins were deducted for this bill.',
+          ),
+        ],
         const SizedBox(height: AppSpacing.section),
         if (outcome == _Outcome.confirmed)
           // Approved: the journey is over, so back to the app itself rather
@@ -205,47 +251,25 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
           AppButton(label: 'Continue', onPressed: () => context.go('/home'))
         else if (purchaseId != null)
           AppButton(
-            label: settled || outcome != _Outcome.sent ? 'Done' : 'View this purchase',
-            variant: settled || outcome != _Outcome.sent ? AppButtonVariant.primary : AppButtonVariant.secondary,
+            label: outcome != _Outcome.sent ? 'Done' : 'View this purchase',
+            variant: outcome != _Outcome.sent ? AppButtonVariant.primary : AppButtonVariant.secondary,
             onPressed: () => context.pushReplacement('/purchases/$purchaseId'),
           ),
         const SizedBox(height: AppSpacing.section),
       ],
     );
   }
-
-  /// True once the merchant has settled the coin half. Without a
-  /// redemption there is nothing to watch, and the purchase stays pending
-  /// until the merchant approves it from their own queue.
-  ///
-  /// Reads only. Everything that REACTS to settling -- stopping the poll,
-  /// refreshing the wallet -- happens in the listener below, because
-  /// touching a provider from inside build() is exactly what Riverpod
-  /// refuses to allow.
-  bool _watchSettled() {
-    final id = _redemptionId;
-    if (id == null) return false;
-
-    ref.listen(redemptionDetailProvider(id), (previous, next) {
-      if (next.value?.status != 'settled') return;
-
-      _stopPolling();
-      // The coins have actually left the wallet now.
-      ref.invalidate(walletControllerProvider);
-    });
-
-    return ref.watch(redemptionDetailProvider(id)).value?.status == 'settled';
-  }
 }
 
 enum _Outcome {
-  sent('Bill sent successfully'),
+  // "Request sent", never "paid": the business has not approved it yet.
+  sent('Payment Request Sent'),
   coinsApplied('Coins applied'),
   // Only ever shown once the shop has approved the bill -- the app never
   // sees the money change hands, so the shop's approval is what confirms
-  // it. Until then the screen says "Bill sent", never "successful".
+  // it.
   confirmed('Payment Successful'),
-  declined('Bill declined');
+  declined('Payment Rejected');
 
   const _Outcome(this.title);
 
@@ -308,13 +332,10 @@ class CounterStatusActions extends ConsumerWidget {
         ),
         IconButton(
           tooltip: 'Refresh status',
-          onPressed: checking
-              ? null
-              : () {
-                  ref.invalidate(purchaseDetailProvider(purchaseId));
-                  final redemptionId = state.redemption?.id;
-                  if (redemptionId != null) ref.invalidate(redemptionDetailProvider(redemptionId));
-                },
+          // The screen already checks every few seconds; this is for a
+          // customer who would rather not wait for the next check. The bill
+          // carries its coin payment, so it is the one thing to re-read.
+          onPressed: checking ? null : () => ref.invalidate(purchaseDetailProvider(purchaseId)),
           icon: checking
               ? const SizedBox.square(dimension: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.refresh_rounded),

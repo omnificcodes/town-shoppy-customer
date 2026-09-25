@@ -7,7 +7,6 @@ import 'package:customer/features/redemptions/application/pending_otp_codes_prov
 import 'package:customer/features/redemptions/application/redemption_detail_provider.dart';
 import 'package:customer/features/redemptions/application/redemptions_list_controller.dart';
 import 'package:customer/features/redemptions/data/models/redemption.dart';
-import 'package:customer/features/redemptions/data/models/redemption_initiation_result.dart';
 import 'package:customer/features/redemptions/data/redemptions_repository.dart';
 import 'package:customer/features/redemptions/presentation/redemption_verification_screen.dart';
 
@@ -28,15 +27,6 @@ class _FakeRedemptionsRepository implements RedemptionsRepository {
 
   @override
   Future<Redemption> show(int id) async => throw UnimplementedError();
-
-  @override
-  Future<RedemptionInitiationResult> initiate({
-    required int merchantId,
-    required int branchId,
-    required double billAmount,
-    required String idempotencyKey,
-  }) async =>
-      throw UnimplementedError();
 }
 
 Redemption _redemption({required String status}) {

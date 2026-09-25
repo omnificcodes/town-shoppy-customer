@@ -4,7 +4,6 @@ import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/features/redemptions/application/redemption_detail_provider.dart';
 import 'package:customer/features/redemptions/data/models/redemption.dart';
-import 'package:customer/features/redemptions/data/models/redemption_initiation_result.dart';
 import 'package:customer/features/redemptions/data/redemptions_repository.dart';
 
 class FakeRedemptionsRepository implements RedemptionsRepository {
@@ -21,15 +20,6 @@ class FakeRedemptionsRepository implements RedemptionsRepository {
 
   @override
   Future<OffsetPage<Redemption>> list({int page = 1, int perPage = 20}) async => throw UnimplementedError();
-
-  @override
-  Future<RedemptionInitiationResult> initiate({
-    required int merchantId,
-    required int branchId,
-    required double billAmount,
-    required String idempotencyKey,
-  }) async =>
-      throw UnimplementedError();
 }
 
 void main() {

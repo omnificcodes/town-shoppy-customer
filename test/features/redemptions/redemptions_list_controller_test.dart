@@ -4,7 +4,6 @@ import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/features/redemptions/application/redemptions_list_controller.dart';
 import 'package:customer/features/redemptions/data/models/redemption.dart';
-import 'package:customer/features/redemptions/data/models/redemption_initiation_result.dart';
 import 'package:customer/features/redemptions/data/redemptions_repository.dart';
 
 Redemption _redemption(int id) {
@@ -46,15 +45,6 @@ class FakeRedemptionsRepository implements RedemptionsRepository {
 
   @override
   Future<Redemption> show(int id) async => throw UnimplementedError();
-
-  @override
-  Future<RedemptionInitiationResult> initiate({
-    required int merchantId,
-    required int branchId,
-    required double billAmount,
-    required String idempotencyKey,
-  }) async =>
-      throw UnimplementedError();
 }
 
 /// Polls until the controller's [AsyncValue] reports an error — see the

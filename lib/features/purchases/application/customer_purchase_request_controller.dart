@@ -88,6 +88,20 @@ class CustomerPurchaseRequestState {
   /// over at the counter.
   double get estimatedPayable => math.max((billAmount ?? 0) - estimatedDiscount, 0);
 
+  /// The customer's Town Coins, when the wallet has loaded.
+  int? get availableCoins => walletBalance?.balance;
+
+  /// The coins [estimatedDiscount] would use, at the wallet's own
+  /// coin-to-rupee rate (never a rate hardcoded here). An estimate, like
+  /// the discount: the server's figure replaces it once the request exists.
+  int get estimatedCoins {
+    final wallet = walletBalance;
+    final discount = estimatedDiscount;
+    if (wallet == null || discount <= 0 || wallet.balanceInrEquivalent <= 0) return 0;
+    final coinsPerRupee = wallet.balance / wallet.balanceInrEquivalent;
+    return math.min((discount * coinsPerRupee).round(), wallet.balance);
+  }
+
   bool get canContinue => resolution != null && billAmount != null && !isSubmitting;
 
   bool get canSubmit => canContinue && step == CounterStep.review;

@@ -31,6 +31,41 @@ class PurchaseCustomerRef {
   final String? mobileNumber;
 }
 
+/// The Town Coin payment riding on a bill -- `PurchaseResource`'s
+/// `coin_payment`, present when the customer spent coins on it at the
+/// counter. While the bill is pending, [coins] is what approval WILL
+/// deduct; once [settled], what was. [settled] is the only honest basis for
+/// telling anyone their coins were spent.
+class CoinPayment {
+  const CoinPayment({
+    required this.status,
+    required this.settled,
+    required this.coins,
+    required this.discountAmount,
+    required this.amountPayable,
+  });
+
+  factory CoinPayment.fromJson(Map<String, dynamic> json) {
+    return CoinPayment(
+      status: json['status'] as String,
+      settled: json['settled'] as bool? ?? false,
+      coins: json['coins'] as int? ?? 0,
+      // Money crosses the wire as a string, like the rest of this app.
+      discountAmount: double.tryParse('${json['discount_amount']}') ?? 0,
+      amountPayable: double.tryParse('${json['amount_payable']}') ?? 0,
+    );
+  }
+
+  /// The redemption's own status: `initiated`, `settled`, `cancelled`, ...
+  final String status;
+  final bool settled;
+  final int coins;
+  final double discountAmount;
+  final double amountPayable;
+
+  bool get isWaiting => status == 'initiated';
+}
+
 /// Mirrors `App\Domain\Purchase\Http\Resources\PurchaseResource` — only the
 /// fields a customer can usefully see about their own purchase (never the
 /// merchant-facing `duplicate_flag_notes`/`coupon_rule_snapshot` internals,
@@ -55,6 +90,8 @@ class Purchase {
     this.updatedAt,
     this.customer,
     this.expectedCoins,
+    this.transactionId,
+    this.coinPayment,
   });
 
   factory Purchase.fromJson(Map<String, dynamic> json) {
@@ -81,6 +118,10 @@ class Purchase {
           ? PurchaseCustomerRef.fromJson(json['customer'] as Map<String, dynamic>)
           : null,
       expectedCoins: json['expected_coins'] as int?,
+      transactionId: json['transaction_id'] as String?,
+      coinPayment: json['coin_payment'] is Map
+          ? CoinPayment.fromJson(json['coin_payment'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -110,6 +151,17 @@ class Purchase {
   /// Coins this bill earns: what approval will credit while it is still
   /// pending, otherwise what was awarded. Null from an older API.
   final int? expectedCoins;
+
+  /// The reference both the customer and the business quote ("TC000090"),
+  /// issued by the server. Null from an older API.
+  final String? transactionId;
+
+  /// The Town Coin payment on this bill, if any.
+  final CoinPayment? coinPayment;
+
+  /// What this bill's reference reads as: the server's transaction ID, or
+  /// the plain id from an API too old to send one.
+  String get reference => transactionId ?? '#$id';
 
   /// Falls back to a stable placeholder when the relation wasn't loaded
   /// (should not happen for any customer-facing call, but a purchase list

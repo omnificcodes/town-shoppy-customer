@@ -37,8 +37,14 @@ jobs:
           # This app's own hosted origin -- used to build the shareable
           # product link sent in a "Order via WhatsApp" message.
           CUSTOMER_WEB_URL: https://customer.townshoppy.com
+        # --pwa-strategy=none: no caching service worker. With one, a
+        # browser that had opened the app before kept serving that old copy
+        # after every deploy -- until it was reloaded, often twice -- so
+        # fixes looked as if they had not shipped. The app needs the API on
+        # every screen, so the offline cache bought nothing in return.
         run: >
           flutter build web --release
+          --pwa-strategy=none
           --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
           --dart-define=MERCHANT_WEB_URL=${{ env.MERCHANT_WEB_URL }}
           --dart-define=CUSTOMER_WEB_URL=${{ env.CUSTOMER_WEB_URL }}

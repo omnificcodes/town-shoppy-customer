@@ -82,7 +82,6 @@ import '../../features/purchases/presentation/request_purchase_screen.dart';
 import '../../features/purchases/presentation/scan_merchant_qr_screen.dart';
 import '../../features/redemptions/presentation/redeem_offers_screen.dart';
 import '../../features/redemptions/presentation/redemption_detail_screen.dart';
-import '../../features/redemptions/presentation/redemption_initiation_screen.dart';
 import '../../features/redemptions/presentation/redemption_verification_screen.dart';
 import '../../features/redemptions/presentation/redemptions_list_screen.dart';
 import '../../features/referrals/presentation/referral_screen.dart';
@@ -249,10 +248,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '$_productsPath/:id',
         builder: (context, state) => ProductDetailScreen(productId: int.parse(state.pathParameters['id']!)),
       ),
-      GoRoute(
-        path: '$_merchantsPath/:id/redeem',
-        builder: (context, state) => RedemptionInitiationScreen(merchantId: int.parse(state.pathParameters['id']!)),
-      ),
+      // The old "enter an amount, read a code to the merchant" flow is gone;
+      // paying with coins is the counter-QR flow. Kept as a redirect so a
+      // bookmark, a history entry or an old link lands on the scanner rather
+      // than a dead page.
+      GoRoute(path: '$_merchantsPath/:id/redeem', redirect: (context, state) => '/purchases/scan'),
       GoRoute(path: '$_profilePath/edit', builder: (context, state) => const EditProfileScreen()),
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.matchedLocation, child: child),

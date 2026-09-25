@@ -5,12 +5,15 @@ import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
 import '../../../core/networking/offset_page.dart';
 import 'models/redemption.dart';
-import 'models/redemption_initiation_result.dart';
 
 /// `GET /redemptions` / `GET /redemptions/{id}` — `RedemptionController`
 /// scopes both to the caller's own `customer_profile_id` server-side for a
 /// customer account (see the controller's own docblock); this client never
 /// adds an equivalent filter itself.
+///
+/// Read-only now: the customer no longer starts a code-based redemption.
+/// Paying with coins goes through the counter QR (`PurchasesRepository.
+/// requestPurchase` with `redeem`), which the business approves.
 class RedemptionsRepository {
   RedemptionsRepository(this._dio);
 
@@ -38,31 +41,6 @@ class RedemptionsRepository {
     try {
       final response = await _dio.get('/redemptions/$id');
       return Redemption.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
-    } on DioException catch (e) {
-      ApiEnvelope.rethrowAsAppException(e);
-    }
-  }
-
-  /// `POST /redemptions` — always sends an explicit `branch_id`, chosen by
-  /// the customer (or auto-selected when the merchant has exactly one),
-  /// rather than relying on the backend's own primary-branch fallback.
-  /// `Idempotency-Key` is required by `InitiateRedemptionRequest`; the
-  /// caller is responsible for keeping it stable across a retry of the same
-  /// (merchant, branch, amount) and generating a fresh one for a genuinely
-  /// different request (see `RedemptionInitiationController`).
-  Future<RedemptionInitiationResult> initiate({
-    required int merchantId,
-    required int branchId,
-    required double billAmount,
-    required String idempotencyKey,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '/redemptions',
-        data: {'merchant_id': merchantId, 'branch_id': branchId, 'bill_amount': billAmount},
-        options: Options(headers: {'Idempotency-Key': idempotencyKey}),
-      );
-      return RedemptionInitiationResult.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }

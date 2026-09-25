@@ -217,11 +217,11 @@ class _AmountStep extends StatelessWidget {
         ),
         if (discount > 0) ...[
           const SizedBox(height: AppSpacing.md),
-          Center(child: _SavingsChip(amount: discount)),
+          Center(child: _SavingsChip(amount: discount, coins: state.estimatedCoins)),
         ],
         if (resolution.canDiscount) ...[
           const SizedBox(height: AppSpacing.md),
-          _RedeemToggle(state: state, controller: controller),
+          _RedeemToggle(state: state, controller: controller, discountRate: resolution.discountRate!),
         ],
         const SizedBox(height: AppSpacing.section),
         AppButton(
@@ -238,9 +238,12 @@ class _AmountStep extends StatelessWidget {
 /// The "You save ₹350" pill from the reference flow. Green, quiet, and
 /// only ever shown when there is a real figure behind it.
 class _SavingsChip extends StatelessWidget {
-  const _SavingsChip({required this.amount});
+  const _SavingsChip({required this.amount, this.coins = 0});
 
   final double amount;
+
+  /// The coins that saving uses; left off the chip when unknown.
+  final int coins;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +259,7 @@ class _SavingsChip extends StatelessWidget {
           const Icon(Icons.savings_outlined, size: AppIconSize.sm, color: AppColors.success),
           const SizedBox(width: AppSpacing.xs),
           Text(
-            'You save ₹${amount.toStringAsFixed(2)}',
+            coins > 0 ? 'You save ₹${amount.toStringAsFixed(2)} · $coins coins' : 'You save ₹${amount.toStringAsFixed(2)}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.success,
                   fontWeight: FontWeight.w600,
@@ -268,31 +271,52 @@ class _SavingsChip extends StatelessWidget {
   }
 }
 
+/// Pay with Town Coins, on or off -- with the balance to pay from and the
+/// rule that decides how much of this bill coins can cover.
 class _RedeemToggle extends StatelessWidget {
-  const _RedeemToggle({required this.state, required this.controller});
+  const _RedeemToggle({required this.state, required this.controller, required this.discountRate});
 
   final CustomerPurchaseRequestState state;
   final CustomerPurchaseRequestController controller;
+  final double discountRate;
 
   @override
   Widget build(BuildContext context) {
+    final available = state.availableCoins;
+    final rate = discountRate == discountRate.roundToDouble()
+        ? discountRate.toInt().toString()
+        : discountRate.toStringAsFixed(1);
+
     return AppCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Use my Town Coins', style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Spend coins to lower this bill.',
-                  style: Theme.of(context).textTheme.bodySmall,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Pay with Town Coins', style: Theme.of(context).textTheme.titleSmall),
+                    if (available != null) ...[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        'You have $available Town Coins',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Switch(value: state.redeem, onChanged: controller.setRedeem),
+            ],
           ),
-          Switch(value: state.redeem, onChanged: controller.setRedeem),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Coins can cover up to $rate% of this bill, limited by your balance. '
+            'Nothing is deducted until the business approves.',
+            style: AppTypography.caption,
+          ),
         ],
       ),
     );
@@ -357,6 +381,10 @@ class _ReviewStep extends StatelessWidget {
                   value: '− ₹${discount.toStringAsFixed(2)}',
                   valueColor: AppColors.success,
                 ),
+                if (state.estimatedCoins > 0) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _AmountRow(label: 'Town Coins to use', value: '${state.estimatedCoins}'),
+                ],
               ],
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -390,7 +418,9 @@ class _ReviewStep extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
         ],
         AppButton(
-          label: 'Pay ₹${payable.toStringAsFixed(2)}',
+          // Sends a request the business approves -- nothing is paid or
+          // deducted by this tap alone.
+          label: hasDiscount ? 'Pay with Town Coins' : 'Send payment request',
           icon: Icons.lock_outline_rounded,
           isLoading: state.isSubmitting,
           onPressed: state.canSubmit ? controller.submit : null,

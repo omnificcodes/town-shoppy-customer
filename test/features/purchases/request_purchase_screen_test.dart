@@ -176,11 +176,18 @@ void main() {
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 
+      // The balance to pay from, and the rule that caps it, before any typing.
+      expect(find.text('Pay with Town Coins'), findsOneWidget);
+      expect(find.text('You have 800 Town Coins'), findsOneWidget);
+      expect(find.textContaining('up to 7% of this bill'), findsOneWidget);
+      expect(find.textContaining('Nothing is deducted until the business approves'), findsOneWidget);
+
       // 7% of ₹5000 is ₹350, but 800 coins are only worth ₹80, so the
-      // wallet is the cap -- the same rule the server applies.
+      // wallet is the cap -- the same rule the server applies -- and that
+      // ₹80 is all 800 coins.
       await tester.enterText(find.widgetWithText(TextField, 'Bill amount'), '5000');
       await tester.pumpAndSettle();
-      expect(find.text('You save ₹80.00'), findsOneWidget);
+      expect(find.text('You save ₹80.00 · 800 coins'), findsOneWidget);
 
       final continueFinder = find.widgetWithText(ElevatedButton, 'Continue');
       await tester.ensureVisible(continueFinder);
@@ -188,9 +195,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('− ₹80.00'), findsOneWidget);
+      expect(find.text('Town Coins to use'), findsOneWidget);
+      expect(find.text('800'), findsOneWidget);
 
-      // The Pay button sits below the breakdown, past the fold on a test-sized screen.
-      final payFinder = find.widgetWithText(ElevatedButton, 'Pay ₹4920.00');
+      // The button sits below the breakdown, past the fold on a test-sized screen.
+      final payFinder = find.widgetWithText(ElevatedButton, 'Pay with Town Coins');
       await tester.dragUntilVisible(payFinder, find.byType(ListView).first, const Offset(0, -200));
       expect(tester.widget<ElevatedButton>(payFinder).onPressed, isNotNull);
     });
