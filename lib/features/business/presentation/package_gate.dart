@@ -49,7 +49,7 @@ class PackageGateScreen extends ConsumerWidget {
     'Publish offers to your town',
     'Manage branches and counter QR',
     'See your customer directory',
-    'Verify Town Coin redemptions',
+    'Accept Town Coin at your counter',
   ];
 
   @override

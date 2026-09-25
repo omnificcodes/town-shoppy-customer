@@ -71,7 +71,10 @@ class BusinessDestination {
     BusinessDestination(label: 'Customers', icon: Icons.people_alt_rounded, path: BusinessRoutes.customers, group: 'Business', subtitle: 'Everyone who shopped with you', gated: true),
     BusinessDestination(label: 'Purchases', icon: Icons.shopping_bag_rounded, path: BusinessRoutes.purchases, group: 'Business', subtitle: 'Bills recorded and awaiting approval', gated: true),
     BusinessDestination(label: 'Direct POS', icon: Icons.point_of_sale_rounded, path: BusinessRoutes.counter, group: 'Business', subtitle: 'Record a bill at the counter', gated: true),
-    BusinessDestination(label: 'Redemptions', icon: Icons.qr_code_2_rounded, path: BusinessRoutes.redemptions, group: 'Business', subtitle: 'Verify Town Coin spent here', gated: true),
+    // No "Redemptions" entry: a coin redemption always rides on a purchase
+    // now, and approving the purchase settles it in the same call
+    // (PurchaseController::approve()), so Purchases is the one queue. The
+    // route stays for the history links on a customer's page.
     BusinessDestination(label: 'Offers', icon: Icons.campaign_rounded, path: BusinessRoutes.offers, group: 'Business', subtitle: 'Promotions shown to your town', gated: true),
     BusinessDestination(label: 'Products', icon: Icons.shopping_bag_rounded, path: BusinessRoutes.products, group: 'Business', subtitle: 'Your catalog, ordered via WhatsApp', gated: true),
     BusinessDestination(label: 'Offer redemptions', icon: Icons.redeem_rounded, path: BusinessRoutes.offerRedemptions, group: 'Business', subtitle: 'Customers claiming your offers', gated: true),

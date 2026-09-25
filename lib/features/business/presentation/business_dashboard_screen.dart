@@ -19,7 +19,6 @@ import '../../merchants/presentation/category_visual.dart';
 import '../../merchants/presentation/merchant_logo.dart';
 import '../../notifications/application/unread_count_provider.dart';
 import '../../purchases/presentation/purchase_status.dart';
-import '../../redemptions/presentation/redemption_status.dart';
 import '../application/business_context.dart';
 import '../data/models/business_merchant.dart';
 import '../data/models/purchase_stats.dart';
@@ -53,7 +52,6 @@ class _BusinessDashboardScreenState extends ConsumerState<BusinessDashboardScree
       ..invalidate(myMerchantProvider)
       ..invalidate(merchantEntitlementProvider)
       ..invalidate(dashboardPendingPurchasesCountProvider)
-      ..invalidate(dashboardAwaitingRedemptionsProvider)
       ..invalidate(dashboardRecentPurchasesProvider)
       ..invalidate(unreadNotificationCountProvider)
       ..invalidate(mySubscriptionProvider)
@@ -557,12 +555,10 @@ class _KpiGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pendingPurchases = ref.watch(dashboardPendingPurchasesCountProvider);
-    final awaiting = ref.watch(dashboardAwaitingRedemptionsProvider);
     final unread = ref.watch(unreadNotificationCountProvider);
     final subscription = ref.watch(mySubscriptionProvider);
 
     final pendingCount = pendingPurchases.value ?? 0;
-    final awaitingCount = awaiting.value?.total ?? 0;
     final unreadCount = unread.value ?? 0;
 
     final tiles = <Widget>[
@@ -580,20 +576,9 @@ class _KpiGrid extends ConsumerWidget {
             : 'purchases need your approval',
         onTap: () => context.go(BusinessRoutes.purchases),
       ),
-      _KpiTile(
-        title: 'Awaiting verification',
-        value: awaiting.hasError ? '—' : '$awaitingCount',
-        isLoading: awaiting.isLoading,
-        icon: Icons.qr_code_2_rounded,
-        color: AppColors.success,
-        background: AppColors.successBg,
-        description: awaiting.hasError
-            ? 'Could not load'
-            : awaitingCount == 1
-            ? 'redemption needs your attention'
-            : 'redemptions need your attention',
-        onTap: () => context.push(BusinessRoutes.redemptions),
-      ),
+      // No separate "awaiting verification" count: a coin bill's redemption
+      // is settled by approving its purchase, so it is already counted in
+      // Pending purchases above.
       _KpiTile(
         title: 'Notifications',
         value: '$unreadCount',
@@ -915,14 +900,6 @@ class _QuickActions extends StatelessWidget {
           color: AppColors.info,
           locked: locked,
           onTap: () => context.push(BusinessRoutes.prizes),
-        )
-      else
-        _ActionTile(
-          label: 'Verify redemptions',
-          icon: Icons.qr_code_2_rounded,
-          color: AppColors.info,
-          locked: locked,
-          onTap: () => context.push(BusinessRoutes.redemptions),
         ),
       // Staff can see offers but never create them, same split the backend
       // policy enforces.
@@ -1241,11 +1218,13 @@ class _RecentActivity extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Purchases only. A coin bill used to appear twice here -- once as its
+    // purchase and once as the redemption riding on it -- for what is one
+    // thing the merchant approves once.
     final purchases = ref.watch(dashboardRecentPurchasesProvider);
-    final redemptions = ref.watch(dashboardAwaitingRedemptionsProvider);
 
     final Widget body;
-    if (purchases.isLoading || redemptions.isLoading) {
+    if (purchases.isLoading) {
       body = const Column(
         children: [
           LoadingSkeletonCard(),
@@ -1253,14 +1232,12 @@ class _RecentActivity extends ConsumerWidget {
           LoadingSkeletonCard(),
         ],
       );
-    } else if (purchases.hasError && redemptions.hasError) {
+    } else if (purchases.hasError) {
       final error = purchases.error;
       body = ErrorState(
         compact: true,
         error: error is AppException ? error : const UnknownAppException(),
-        onRetry: () => ref
-          ..invalidate(dashboardRecentPurchasesProvider)
-          ..invalidate(dashboardAwaitingRedemptionsProvider),
+        onRetry: () => ref.invalidate(dashboardRecentPurchasesProvider),
       );
     } else {
       final entries = <_ActivityEntry>[
@@ -1272,15 +1249,6 @@ class _RecentActivity extends ConsumerWidget {
             createdAt: p.createdAt,
             badge: StatusBadge(label: purchaseStatusLabel(p.status), tone: purchaseStatusTone(p.status)),
             path: '${BusinessRoutes.purchases}/${p.id}',
-          ),
-        for (final r in redemptions.value?.items ?? const [])
-          _ActivityEntry(
-            icon: Icons.qr_code_2_rounded,
-            color: AppColors.success,
-            title: 'Redemption ₹${r.billAmount.toStringAsFixed(2)}',
-            createdAt: r.createdAt,
-            badge: StatusBadge(label: redemptionStatusLabel(r.status), tone: redemptionStatusTone(r.status)),
-            path: '${BusinessRoutes.redemptions}/${r.id}',
           ),
       ]..sort((a, b) => (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
 

@@ -1,4 +1,3 @@
-import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/auth/application/auth_controller.dart';
 import 'package:customer/features/auth/application/auth_state.dart';
@@ -11,7 +10,6 @@ import 'package:customer/features/business/data/models/purchase_stats.dart';
 import 'package:customer/features/business/presentation/business_dashboard_screen.dart';
 import 'package:customer/features/notifications/application/unread_count_provider.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
-import 'package:customer/features/redemptions/data/models/redemption.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,15 +55,7 @@ final _purchase = Purchase.fromJson({
   'created_at': DateTime.now().toIso8601String(),
 });
 
-final _redemption = Redemption.fromJson({
-  'id': 11,
-  'bill_amount': 500,
-  'coins_requested': 50,
-  'status': 'initiated',
-  'created_at': DateTime.now().subtract(const Duration(hours: 1)).toIso8601String(),
-});
-
-Widget _wrap({required bool hasPackage, String status = 'active', bool empty = false}) {
+Widget _wrap({required bool hasPackage, String status = 'active', bool empty = false, bool owner = true}) {
   return ProviderScope(
     overrides: [
       authControllerProvider.overrideWith(_AuthenticatedController.new),
@@ -81,11 +71,7 @@ Widget _wrap({required bool hasPackage, String status = 'active', bool empty = f
       mySubscriptionProvider.overrideWith((ref) async => null),
       unreadNotificationCountProvider.overrideWith((ref) async => 3),
       dashboardPendingPurchasesCountProvider.overrideWith((ref) async => 2),
-      dashboardAwaitingRedemptionsProvider.overrideWith(
-        (ref) async => empty
-            ? const OffsetPage<Redemption>(items: [], currentPage: 1, lastPage: 1, total: 0)
-            : OffsetPage(items: [_redemption], currentPage: 1, lastPage: 1, total: 1),
-      ),
+      isBusinessOwnerProvider.overrideWithValue(owner),
       dashboardRecentPurchasesProvider.overrideWith((ref) async => empty ? const <Purchase>[] : [_purchase]),
       purchaseStatsProvider.overrideWith(
         (ref, range) async => PurchaseStats.fromJson({
@@ -125,9 +111,32 @@ void main() {
         }
         await tester.dragUntilVisible(find.textContaining('1234.50'), page, const Offset(0, -300));
         expect(find.textContaining('1234.50'), findsOneWidget);
-        expect(find.textContaining('500.00'), findsOneWidget);
       },
     );
+  });
+
+  group('Purchases is the one queue: no separate Redemptions option anywhere on the dashboard', () {
+    for (final owner in [true, false]) {
+      testWidgets(owner ? 'for an owner' : 'for staff', (tester) async {
+        // Tall enough to build the whole dashboard, so "not found" means
+        // "not there" rather than "not scrolled to".
+        tester.view.physicalSize = const Size(420, 4000);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(_wrap(hasPackage: true, owner: owner));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Pending purchases'), findsOneWidget);
+        expect(find.text('Awaiting verification'), findsNothing);
+        expect(find.text('Verify redemptions'), findsNothing);
+        expect(find.textContaining('Redemption'), findsNothing);
+        expect(find.textContaining('1234.50'), findsOneWidget, reason: 'the purchase still shows');
+      });
+    }
   });
 
   testWidgets('shows the select-a-package banner when the shop has no package', (tester) async {

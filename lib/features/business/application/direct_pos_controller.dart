@@ -243,7 +243,6 @@ class DirectPosController extends Notifier<DirectPosState> {
       ref
         ..invalidate(businessPurchasesControllerProvider)
         ..invalidate(dashboardRecentPurchasesProvider)
-        ..invalidate(dashboardAwaitingRedemptionsProvider)
         ..invalidate(unreadNotificationCountProvider);
     } on UnknownAppException catch (e) {
       // 402 arrives as UnknownAppException(statusCode: 402); the reason is

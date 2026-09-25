@@ -174,9 +174,7 @@ class BusinessRedemptionsController extends AsyncNotifier<BusinessRedemptionsSta
         ].whereType<Redemption>().toList(),
       ));
     }
-    ref
-      ..invalidate(dashboardAwaitingRedemptionsProvider)
-      ..invalidate(businessRedemptionProvider(updated.id));
+    ref.invalidate(businessRedemptionProvider(updated.id));
     return updated;
   }
 

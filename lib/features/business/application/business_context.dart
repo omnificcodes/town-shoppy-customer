@@ -1,11 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
-import '../../../core/networking/offset_page.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
 import '../../purchases/data/models/purchase.dart';
-import '../../redemptions/data/models/redemption.dart';
 import '../data/business_activity_repository.dart';
 import '../data/business_merchant_repository.dart';
 import '../data/models/business_merchant.dart';
@@ -82,9 +80,4 @@ final dashboardRecentPurchasesProvider = FutureProvider<List<Purchase>>((ref) as
 final dashboardPendingPurchasesCountProvider = FutureProvider<int>((ref) async {
   ref.watch(sessionEpochProvider);
   return (await ref.watch(businessActivityRepositoryProvider).purchases(perPage: 1, status: 'pending')).total;
-});
-
-final dashboardAwaitingRedemptionsProvider = FutureProvider<OffsetPage<Redemption>>((ref) {
-  ref.watch(sessionEpochProvider);
-  return ref.watch(businessActivityRepositoryProvider).redemptions(perPage: 5, status: 'initiated');
 });

@@ -67,7 +67,9 @@ void main() {
         expect(find.text('SIGNED IN AS'), findsOneWidget);
         expect(find.text('+91 99900 03001'), findsOneWidget);
         expect(find.text('Switch'), findsOneWidget);
-        expect(find.text('8 services'), findsOneWidget);
+        // Branches, Customers, Purchases, Direct POS, Offers, Products and
+        // Offer redemptions -- no separate Redemptions any more.
+        expect(find.text('7 services'), findsOneWidget);
         expect(find.text('2 pending'), findsOneWidget);
 
         final page = find.byType(CustomScrollView);
@@ -96,5 +98,25 @@ void main() {
         expect(find.text('Payments'), findsNothing);
       },
     );
+  });
+
+  testWidgets('Purchases is listed and Redemptions is not, for owners and staff alike', (tester) async {
+    for (final isOwner in [true, false]) {
+      // Tall enough to build every group, so "not found" means "not there".
+      tester.view.physicalSize = const Size(420, 4000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(_wrap(isOwner: isOwner));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Purchases'), findsOneWidget, reason: 'isOwner: $isOwner');
+      expect(find.text('Redemptions'), findsNothing, reason: 'isOwner: $isOwner');
+      // A different thing -- customers claiming offers -- and it stays.
+      expect(find.text('Offer redemptions'), findsOneWidget, reason: 'isOwner: $isOwner');
+    }
   });
 }
