@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
@@ -6,12 +8,15 @@ import 'package:customer/features/purchases/data/models/merchant_purchase_qr_res
 import 'package:customer/features/purchases/data/models/purchase.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 import 'package:customer/features/purchases/presentation/request_purchase_screen.dart';
+import 'package:customer/features/redemptions/application/redemption_detail_provider.dart';
+import 'package:customer/features/redemptions/data/models/redemption.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
 import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
 import 'package:customer/features/wallet/data/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 const _resolution = MerchantPurchaseQrResolution(
   merchantId: 42,
@@ -42,6 +47,12 @@ class _FakePurchasesRepository implements PurchasesRepository {
   String nextStatus = 'pending';
   int showCalls = 0;
 
+  /// The coin half the submit returns; nothing redeemed unless a test says.
+  CounterRedemption redemption = const CounterRedemption(
+    applied: false,
+    reason: 'This merchant has no valid Town Coin discount rate configured.',
+  );
+
   @override
   Future<MerchantPurchaseQrResolution> resolveMerchantQr(String token) async => _resolution;
 
@@ -51,13 +62,7 @@ class _FakePurchasesRepository implements PurchasesRepository {
     required double billAmount,
     required String idempotencyKey,
     bool redeem = false,
-  }) async => CounterPurchaseResult(
-    purchase: _purchase(),
-    redemption: const CounterRedemption(
-      applied: false,
-      reason: 'This merchant has no valid Town Coin discount rate configured.',
-    ),
-  );
+  }) async => CounterPurchaseResult(purchase: _purchase(), redemption: redemption);
 
   @override
   Future<Purchase> show(int id) async {
@@ -90,17 +95,27 @@ class _FakeWalletRepository implements WalletRepository {
   Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
 }
 
-Future<void> _submitBill(WidgetTester tester, _FakePurchasesRepository repository) async {
+Future<void> _submitBill(
+  WidgetTester tester,
+  _FakePurchasesRepository repository, {
+  GoRouter? router,
+  bool redemptionDetail = false,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         purchasesRepositoryProvider.overrideWithValue(repository),
         walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+        // The coin half, while the shop has not settled it yet: the screen
+        // polls this, and it must not reach for a real network.
+        if (redemptionDetail) redemptionDetailProvider(5).overrideWith((ref) => Completer<Redemption>().future),
       ],
-      child: MaterialApp(
-        theme: AppTheme.light,
-        home: const RequestPurchaseScreen(scannedToken: 'tok'),
-      ),
+      child: router != null
+          ? MaterialApp.router(theme: AppTheme.light, routerConfig: router)
+          : MaterialApp(
+              theme: AppTheme.light,
+              home: const RequestPurchaseScreen(scannedToken: 'tok'),
+            ),
     ),
   );
   await tester.pumpAndSettle();
@@ -154,11 +169,83 @@ void main() {
 
     expect(repository.showCalls, greaterThan(callsBefore));
     expect(find.text('Confirmed'), findsOneWidget);
-    expect(find.text('Purchase confirmed'), findsOneWidget);
+    expect(find.text('Payment Successful'), findsOneWidget);
+    // Nothing is left to pay, so the hero states the bill itself.
+    expect(find.text('Bill amount'), findsWidgets);
+    expect(find.text('Amount to pay'), findsNothing);
     expect(find.text('You earned'), findsOneWidget);
     expect(find.text('50 coins'), findsOneWidget);
     expect(find.text('Added to your wallet'), findsOneWidget);
+    expect(find.text('You saved'), findsOneWidget);
     expect(find.text('2 coupons'), findsOneWidget);
+
+    // The page is a lazy list; the button sits below the fold.
+    await tester.scrollUntilVisible(find.text('Continue'), 200);
+    expect(find.text('Continue'), findsOneWidget);
+    expect(find.text('View this purchase'), findsNothing);
+  });
+
+  testWidgets('"Payment Successful" is never claimed before the shop approves', (tester) async {
+    await _submitBill(tester, _FakePurchasesRepository());
+
+    expect(find.text('Bill sent successfully'), findsOneWidget);
+    expect(find.text('Payment Successful'), findsNothing);
+  });
+
+  testWidgets('Continue on an approved bill returns to Home', (tester) async {
+    final repository = _FakePurchasesRepository();
+    final router = GoRouter(
+      initialLocation: '/pay',
+      routes: [
+        GoRoute(
+          path: '/pay',
+          builder: (context, state) => const RequestPurchaseScreen(scannedToken: 'tok'),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => const Scaffold(body: Text('Customer home')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await _submitBill(tester, repository, router: router);
+
+    repository.nextStatus = 'recorded';
+    await tester.tap(find.byTooltip('Refresh status'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Continue'), 200);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Customer home'), findsOneWidget);
+  });
+
+  testWidgets('paying with coins asks for no PIN or OTP at any point', (tester) async {
+    // Tall enough to build the whole page: the screen is a lazy list, and a
+    // check for "no PIN" is worthless if the PIN would simply be off-screen.
+    tester.view.physicalSize = const Size(420, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final repository = _FakePurchasesRepository()
+      ..redemption = const CounterRedemption(
+        applied: true,
+        id: 5,
+        discountAmount: 25,
+        coinsRequested: 250,
+        amountPayable: 475,
+        pin: '4821',
+      );
+    await _submitBill(tester, repository, redemptionDetail: true);
+
+    expect(find.text('Bill sent successfully'), findsOneWidget);
+    expect(find.textContaining('PIN'), findsNothing);
+    expect(find.textContaining('OTP'), findsNothing);
+    expect(find.textContaining('4821'), findsNothing);
   });
 
   testWidgets('a declined bill says so instead of showing a tick', (tester) async {

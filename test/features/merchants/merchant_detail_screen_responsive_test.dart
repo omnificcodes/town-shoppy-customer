@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
@@ -106,8 +107,12 @@ final _offer = Offer(
 /// catalog keeps it quiet without reaching for the network.
 class _EmptyProductsRepository implements ProductsRepository {
   @override
-  Future<OffsetPage<Product>> list({int? merchantId, int page = 1, int perPage = 20, Map<String, dynamic> filters = const {}}) async =>
-      const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0);
+  Future<OffsetPage<Product>> list({
+    int? merchantId,
+    int page = 1,
+    int perPage = 20,
+    Map<String, dynamic> filters = const {},
+  }) async => const OffsetPage(items: [], currentPage: 1, lastPage: 1, total: 0);
 
   @override
   Future<Product> show(int id) async => throw UnimplementedError();
@@ -189,7 +194,71 @@ Widget _wrapSingleBranch() {
   );
 }
 
+/// The same screen under a router, with stand-ins for where its pay
+/// buttons can lead, so a test can see which one they open.
+Future<void> _pumpRouted(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(420, 2400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+
+  final router = GoRouter(
+    initialLocation: '/merchants/1',
+    routes: [
+      GoRoute(path: '/merchants/1', builder: (context, state) => const MerchantDetailScreen(merchantId: 1)),
+      GoRoute(
+        path: '/purchases/scan',
+        builder: (context, state) => const Scaffold(body: Text('Counter QR scanner')),
+      ),
+      GoRoute(
+        path: '/merchants/:id/redeem',
+        builder: (context, state) => const Scaffold(body: Text('Code-based redemption')),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        merchantDetailProvider(1).overrideWith((ref) async => _merchant),
+        merchantBranchesProvider(1).overrideWith((ref) async => _branches),
+        merchantOffersProvider(1).overrideWith((ref) async => [_offer]),
+        productsRepositoryProvider.overrideWithValue(_EmptyProductsRepository()),
+        walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+        favoritesRepositoryProvider.overrideWithValue(FakeFavoritesRepository()),
+      ],
+      child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  group('paying with coins from a business page is the counter-QR flow, with no code to hand over', () {
+    testWidgets('the pay bar opens the counter QR scanner', (tester) async {
+      await _pumpRouted(tester);
+
+      await tester.tap(find.text('Pay bill with coins'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Counter QR scanner'), findsOneWidget);
+      expect(find.text('Code-based redemption'), findsNothing);
+    });
+
+    testWidgets('so does the Redeem Town Coin button', (tester) async {
+      await _pumpRouted(tester);
+
+      await tester.tap(find.text('Redeem Town Coin'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Counter QR scanner'), findsOneWidget);
+      expect(find.text('Code-based redemption'), findsNothing);
+    });
+  });
+
   testWidgets('MerchantDetailScreen renders every section with worst-case content without overflow at every viewport', (
     tester,
   ) async {

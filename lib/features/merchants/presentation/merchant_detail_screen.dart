@@ -551,7 +551,8 @@ class _RedeemBanner extends ConsumerWidget {
               size: AppButtonSize.lg,
               icon: Icons.savings_rounded,
               trailingIcon: Icons.arrow_forward_rounded,
-              onPressed: () => context.push('/merchants/${merchant.id}/redeem'),
+              // The counter-QR flow, coins on by default -- see _PayBar.
+              onPressed: () => context.push('/purchases/scan'),
             ),
             if (wallet != null) ...[
               const Padding(
@@ -1245,7 +1246,15 @@ class _PayBar extends StatelessWidget {
                       child: Ink(
                         decoration: const BoxDecoration(gradient: AppGradients.promoHero),
                         child: InkWell(
-                          onTap: () => context.push(canRedeem ? '/merchants/${merchant.id}/redeem' : '/purchases/scan'),
+                          // Paying with coins is the counter-QR flow, the same
+                          // one the scan button beside this opens: scan the
+                          // shop's QR, enter the bill, and the shop approves
+                          // it from its queue. It used to open the Redeem
+                          // flow instead, which ends in a code the merchant
+                          // types in. Scanning is what proves the customer
+                          // is at this counter, so no code is needed after.
+                          // Coins are on by default in that flow.
+                          onTap: () => context.push('/purchases/scan'),
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(minHeight: AppSpacing.touchTarget),
                             child: Padding(

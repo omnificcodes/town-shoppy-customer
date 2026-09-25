@@ -26,12 +26,13 @@ import '../application/purchase_detail_provider.dart';
 /// purchase stays PENDING until the merchant approves it from their own
 /// queue, and the live status sits top-right in [CounterStatusActions].
 ///
-/// The PIN is deliberately small. The merchant settles this from their own
-/// screen, where the request has already appeared; the PIN exists for the
-/// one case where they want proof the person in front of them really
-/// raised it. Making it the hero of the screen would teach customers to
-/// read a code aloud on every purchase, which is exactly the habit that
-/// makes a code worth stealing.
+/// There is no code for the customer to show. Scanning the counter QR is
+/// what proved they are at this counter, and the merchant approves the bill
+/// with one tap from their own queue (`counter_confirm`, in this app and in
+/// the merchant web portal alike). The API still returns a PIN with a coin
+/// redemption, and a merchant can still choose to type one, but nothing
+/// needs it, so it is no longer shown: a code on this screen read as an OTP
+/// the customer had to hand over.
 class CounterWaitingView extends ConsumerStatefulWidget {
   const CounterWaitingView({required this.state, super.key});
 
@@ -45,7 +46,6 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
   static const _pollInterval = Duration(seconds: 4);
 
   Timer? _pollTimer;
-  bool _pinRevealed = false;
 
   int? get _redemptionId => widget.state.redemption?.id;
 
@@ -133,10 +133,13 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
           style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.section),
+        // Once the bill is approved or declined there is nothing left to
+        // pay, so the hero states the bill itself; the saving has its own
+        // tile below.
         _AmountHero(
-          label: outcome == _Outcome.declined ? 'Bill amount' : 'Amount to pay',
-          amount: outcome == _Outcome.declined ? bill : payable,
-          discounted: discount > 0 && outcome != _Outcome.declined,
+          label: outcome.isFinal ? 'Bill amount' : 'Amount to pay',
+          amount: outcome.isFinal ? bill : payable,
+          discounted: discount > 0 && !outcome.isFinal,
           originalBill: bill,
         ),
         const SizedBox(height: AppSpacing.md),
@@ -195,16 +198,12 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
             message: 'No coins were used on this bill. ${redemption.reason!}',
           ),
         ],
-        if (redemption?.pin != null && !settled && outcome == _Outcome.sent) ...[
-          const SizedBox(height: AppSpacing.md),
-          _PinRow(
-            pin: redemption!.pin!,
-            revealed: _pinRevealed,
-            onToggle: () => setState(() => _pinRevealed = !_pinRevealed),
-          ),
-        ],
         const SizedBox(height: AppSpacing.section),
-        if (purchaseId != null)
+        if (outcome == _Outcome.confirmed)
+          // Approved: the journey is over, so back to the app itself rather
+          // than into this purchase's record.
+          AppButton(label: 'Continue', onPressed: () => context.go('/home'))
+        else if (purchaseId != null)
           AppButton(
             label: settled || outcome != _Outcome.sent ? 'Done' : 'View this purchase',
             variant: settled || outcome != _Outcome.sent ? AppButtonVariant.primary : AppButtonVariant.secondary,
@@ -242,12 +241,18 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
 enum _Outcome {
   sent('Bill sent successfully'),
   coinsApplied('Coins applied'),
-  confirmed('Purchase confirmed'),
+  // Only ever shown once the shop has approved the bill -- the app never
+  // sees the money change hands, so the shop's approval is what confirms
+  // it. Until then the screen says "Bill sent", never "successful".
+  confirmed('Payment Successful'),
   declined('Bill declined');
 
   const _Outcome(this.title);
 
   final String title;
+
+  /// Settled one way or the other: nothing is left to pay or wait for.
+  bool get isFinal => this == confirmed || this == declined;
 }
 
 /// The top-right of the counter screen: the purchase's live status, and a
@@ -401,11 +406,7 @@ class _SuccessMarkState extends State<_SuccessMark> with SingleTickerProviderSta
                 child: Container(
                   width: _size,
                   height: _size,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    boxShadow: AppElevation.glow(color),
-                  ),
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle, boxShadow: AppElevation.glow(color)),
                   child: CustomPaint(
                     painter: _MarkPainter(progress: draw.value, declined: widget.declined),
                   ),
@@ -716,42 +717,6 @@ class _DetailsCard extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// The PIN, kept small and hidden until asked for -- see this file's own
-/// docblock for why it is not the hero of this screen.
-class _PinRow extends StatelessWidget {
-  const _PinRow({required this.pin, required this.revealed, required this.onToggle});
-
-  final String pin;
-  final bool revealed;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: TextButton(
-        onPressed: onToggle,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              revealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-              size: AppIconSize.sm,
-              color: AppColors.textSecondary,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              revealed ? 'PIN $pin' : 'Show PIN if the merchant asks',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary, letterSpacing: revealed ? 1.5 : null),
-            ),
-          ],
-        ),
       ),
     );
   }
