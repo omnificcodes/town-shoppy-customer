@@ -50,6 +50,26 @@ jobs:
           --dart-define=CUSTOMER_WEB_URL=${{ env.CUSTOMER_WEB_URL }}
           --dart-define=APP_ENV=production
 
+      - name: Version the bundle URLs so browsers fetch every new deploy
+        # The site is served with no Cache-Control header, so each browser
+        # keeps main.dart.js and flutter_bootstrap.js on its own heuristic --
+        # and a phone that had opened the app before went on running the old
+        # build after a deploy until its cache was cleared by hand. Giving
+        # both files a query string that changes with every commit makes each
+        # deploy a brand-new URL the browser has never cached. index.html is
+        # revalidated on any reload, so reopening the app is enough from here
+        # on. The greps fail the job loudly if a Flutter upgrade ever changes
+        # the loader's shape, rather than silently publishing an uncached
+        # build again. (CanvasKit needs nothing: the loader fetches it from
+        # gstatic under the engine revision already.)
+        run: |
+          set -e
+          v="${GITHUB_SHA:0:12}"
+          sed -i "s|\"mainJsPath\":\"main.dart.js\"|\"mainJsPath\":\"main.dart.js?v=${v}\"|" build/web/flutter_bootstrap.js
+          grep -q "main.dart.js?v=${v}" build/web/flutter_bootstrap.js
+          sed -i "s|src=\"flutter_bootstrap.js\"|src=\"flutter_bootstrap.js?v=${v}\"|" build/web/index.html
+          grep -q "flutter_bootstrap.js?v=${v}" build/web/index.html
+
       - name: Publish to build_branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
