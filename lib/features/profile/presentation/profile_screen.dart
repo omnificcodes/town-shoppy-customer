@@ -126,7 +126,9 @@ class ProfileScreen extends ConsumerWidget {
                       tint: AppColors.businessInk,
                       title: 'Register your business',
                       subtitle: 'Join Town Shoppy as a merchant',
-                      onTap: () => context.push('/register-merchant'),
+                      // `go`, not `push` -- see the Login screen's "Register
+                      // as a merchant" for why a push loses the applicant.
+                      onTap: () => context.go('/register-merchant'),
                     ),
                 ],
               ),

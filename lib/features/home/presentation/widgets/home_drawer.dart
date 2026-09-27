@@ -95,7 +95,10 @@ class HomeDrawer extends ConsumerWidget {
                       subtitle: const Text('Join Town Shoppy as a merchant'),
                       onTap: () {
                         Navigator.of(context).pop();
-                        context.push('/register-merchant');
+                        // `go`, not `push` -- see the Login screen's
+                        // "Register as a merchant" for why a push here
+                        // loses the applicant mid-registration.
+                        context.go('/register-merchant');
                       },
                     ),
                   ],

@@ -168,7 +168,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               AuthTintedPillButton(
                                 leading: 'Own a shop?',
                                 trailing: 'Register as a merchant',
-                                onPressed: isSubmitting ? null : () => context.push('/register-merchant'),
+                                // `go`, not `push`: registration signs the
+                                // applicant in part-way through, and the
+                                // router re-judges the page UNDER a push
+                                // (this one) on that change -- which sent
+                                // a freshly signed-in applicant to Home
+                                // with their application still in flight.
+                                // As its own page it is exempt and stays.
+                                onPressed: isSubmitting ? null : () => context.go('/register-merchant'),
                               ),
                               const SizedBox(height: AppSpacing.xl),
                             ],
