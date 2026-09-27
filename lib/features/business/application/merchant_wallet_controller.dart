@@ -37,13 +37,16 @@ class SpendBlueCoinState {
   bool get isAmountValid => (amountValue ?? 0) > 0;
   bool get canSubmit => target != null && isAmountValid && !isSubmitting;
 
-  /// Estimate shown before confirming: min(bill × rate, bill, balance/10).
-  double estimatedDiscount(int blueBalance) {
+  /// Estimate shown before confirming: min(bill × rate, bill, balance in
+  /// rupees). [coinToInrRate] comes from the wallet the server returned --
+  /// the same figure MerchantCoinLedgerService uses -- so this never
+  /// drifts from what the server will actually charge.
+  double estimatedDiscount(int blueBalance, int coinToInrRate) {
     final bill = amountValue ?? 0;
     final rate = target?.discountRate ?? 0;
     final capped = (bill * rate / 100).clamp(0, bill).toDouble();
-    final coins = (capped * 10).floor().clamp(0, blueBalance);
-    return coins / 10;
+    final coins = (capped * coinToInrRate).floor().clamp(0, blueBalance);
+    return coins / coinToInrRate;
   }
 
   SpendBlueCoinState copyWith({Merchant? target, bool clearTarget = false, String? billAmount, bool? isSubmitting, AppException? error, bool clearError = false, MerchantBlueRedemption? result, String? idempotencyKey}) {

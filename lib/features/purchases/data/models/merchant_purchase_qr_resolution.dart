@@ -1,6 +1,10 @@
-/// Method 1 (3-way purchase architecture) — what scanning a merchant/
-/// branch's Purchase QR resolves to, mirroring `PurchaseController::
-/// resolveMerchantQr()`'s response shape exactly.
+import '../../../merchants/data/models/merchant.dart';
+
+/// Method 1 (3-way purchase architecture) — who a counter purchase is
+/// being requested from: what scanning a merchant/branch's Purchase QR
+/// resolves to (mirroring `PurchaseController::resolveMerchantQr()`'s
+/// response shape exactly), or the same picture built from a merchant
+/// profile the customer is already looking at ([fromMerchant]).
 class MerchantPurchaseQrResolution {
   const MerchantPurchaseQrResolution({
     required this.merchantId,
@@ -10,6 +14,7 @@ class MerchantPurchaseQrResolution {
     required this.branchAddressLine,
     required this.acceptsTownCoin,
     required this.discountRate,
+    this.logoUrl,
   });
 
   factory MerchantPurchaseQrResolution.fromJson(Map<String, dynamic> json) {
@@ -18,6 +23,7 @@ class MerchantPurchaseQrResolution {
     return MerchantPurchaseQrResolution(
       merchantId: merchant['id'] as int,
       merchantName: merchant['name'] as String,
+      logoUrl: merchant['logo_url'] as String?,
       branchId: branch['id'] as int,
       branchName: branch['name'] as String,
       branchAddressLine: branch['address_line'] as String?,
@@ -26,9 +32,31 @@ class MerchantPurchaseQrResolution {
     );
   }
 
+  /// "Pay bill with coins" from the shop's profile: no scan, so nothing
+  /// to resolve -- the profile already carries everything the request
+  /// screen shows, and the server picks the branch (the primary, unless
+  /// the profile names one) when the request is submitted.
+  factory MerchantPurchaseQrResolution.fromMerchant(Merchant merchant) {
+    final branch = merchant.branch;
+    return MerchantPurchaseQrResolution(
+      merchantId: merchant.id,
+      merchantName: merchant.name,
+      logoUrl: merchant.logoUrl,
+      branchId: branch?.id,
+      branchName: branch?.name ?? '',
+      branchAddressLine: branch?.addressLine,
+      acceptsTownCoin: merchant.acceptsTownCoin,
+      discountRate: merchant.discountRate,
+    );
+  }
+
   final int merchantId;
   final String merchantName;
-  final int branchId;
+  final String? logoUrl;
+
+  /// Null only for a profile-started request from a merchant whose
+  /// primary branch is not listed; the server resolves it either way.
+  final int? branchId;
   final String branchName;
   final String? branchAddressLine;
 

@@ -13,7 +13,7 @@ import '../../../wallet/application/wallet_controller.dart';
 /// The three at-a-glance numbers under the greeting.
 ///
 /// "Total saved" is the rupee value of every Town Coin the customer has
-/// ever redeemed (`total_saved_inr`, at 10 coins = ₹1) -- a discount already
+/// ever redeemed (`total_saved_inr`, at the wallet's coin-to-rupee rate) -- a discount already
 /// received, never cash -- and leads to where more coins can be spent.
 class HomeStatsRow extends ConsumerWidget {
   const HomeStatsRow({super.key});

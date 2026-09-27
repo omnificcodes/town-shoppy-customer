@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
+import 'package:customer/features/merchants/data/merchants_repository.dart';
+import 'package:customer/features/merchants/data/models/merchant.dart';
+import 'package:customer/features/merchants/data/models/merchant_branch_ref.dart';
+import 'package:customer/features/merchants/data/models/nearby_merchant.dart';
 import 'package:customer/features/purchases/application/customer_purchase_request_controller.dart';
 import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
+import 'package:customer/features/purchases/data/models/purchase_request_target.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
 import 'package:customer/features/wallet/data/models/wallet_ledger_entry.dart';
@@ -25,6 +31,7 @@ class FakePurchasesRepository implements PurchasesRepository {
   int resolveCallCount = 0;
   int requestCallCount = 0;
   String? lastToken;
+  PurchaseRequestTarget? lastTarget;
   double? lastBillAmount;
   String? lastIdempotencyKey;
 
@@ -41,13 +48,13 @@ class FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<CounterPurchaseResult> requestPurchase({
-    required String token,
+    required PurchaseRequestTarget target,
     required double billAmount,
     required String idempotencyKey,
     bool redeem = false,
   }) async {
     requestCallCount++;
-    lastToken = token;
+    lastTarget = target;
     lastBillAmount = billAmount;
     lastIdempotencyKey = idempotencyKey;
     lastRedeem = redeem;
@@ -72,6 +79,9 @@ const _wallet = SilverWalletBalance(
   shopExclusiveBalance: 0,
   shopExclusiveBreakdown: [],
   balanceInrEquivalent: 80,
+  // Written at the old 10-coins-per-rupee rate; the rate rides along with
+  // the wallet so 800 coins and ₹80 keep agreeing.
+  coinToInrRate: 10,
   updatedAt: null,
 );
 
@@ -85,11 +95,52 @@ class _FakeWalletRepository implements WalletRepository {
   Future<CursorPage<WalletLedgerEntry>> transactions({String? cursor}) async => throw UnimplementedError();
 }
 
-ProviderContainer _container(FakePurchasesRepository repository) {
+/// Only `show()` matters here: it is what the controller falls back to when
+/// a merchant target arrives with nothing but ids.
+class _FakeMerchantsRepository implements MerchantsRepository {
+  _FakeMerchantsRepository({this.merchant, this.showError});
+
+  Merchant? merchant;
+  AppException? showError;
+  int showCallCount = 0;
+
+  @override
+  Future<Merchant> show(int id) async {
+    showCallCount++;
+    if (showError != null) throw showError!;
+    return merchant!;
+  }
+
+  @override
+  Future<OffsetPage<Merchant>> list({
+    int page = 1,
+    int perPage = 20,
+    int? categoryId,
+    bool? acceptsTownCoin,
+    bool? featured,
+    String? search,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<List<MerchantBranchRef>> getBranches(int merchantId) async => throw UnimplementedError();
+
+  @override
+  Future<OffsetPage<NearbyMerchant>> nearby({
+    required double latitude,
+    required double longitude,
+    int? categoryId,
+    double? radiusKm,
+    int page = 1,
+    int perPage = 50,
+  }) async => throw UnimplementedError();
+}
+
+ProviderContainer _container(FakePurchasesRepository repository, {MerchantsRepository? merchants}) {
   final container = ProviderContainer(
     overrides: [
       purchasesRepositoryProvider.overrideWithValue(repository),
       walletRepositoryProvider.overrideWithValue(_FakeWalletRepository()),
+      if (merchants != null) merchantsRepositoryProvider.overrideWithValue(merchants),
     ],
   );
   addTearDown(container.dispose);
@@ -245,7 +296,7 @@ void main() {
       await notifier.submit();
 
       expect(fake.requestCallCount, 1);
-      expect(fake.lastToken, 'tok_123');
+      expect(fake.lastTarget, isA<ScannedPurchaseTarget>().having((t) => t.token, 'token', 'tok_123'));
       expect(fake.lastBillAmount, 500);
       expect(fake.lastIdempotencyKey, expectedKey);
       expect(fake.lastRedeem, isTrue);
@@ -355,6 +406,88 @@ void main() {
         discountRate: 7,
       );
       expect(stateFor('1000', resolution: noCoins).estimatedDiscount, 0);
+    });
+  });
+
+  group('start() with a merchant from its profile ("Pay bill with coins", no scan)', () {
+    final merchant = Merchant.fromJson({
+      'id': 42,
+      'name': 'Corner Cafe',
+      'accepts_town_coin': true,
+      'discount_rate': 7,
+      'branch': {'id': 7, 'name': 'Main Branch', 'address_line': 'MG Road'},
+    });
+
+    test('is ready at once, with the profile as the resolution and no resolve call', () async {
+      final fake = FakePurchasesRepository();
+      final container = _container(fake);
+      final notifier = container.read(customerPurchaseRequestControllerProvider.notifier);
+
+      await notifier.start(PurchaseRequestTarget.merchant(merchant));
+
+      expect(fake.resolveCallCount, 0);
+      final state = container.read(customerPurchaseRequestControllerProvider);
+      expect(state.isResolving, isFalse);
+      expect(state.resolveError, isNull);
+      expect(state.resolution?.merchantName, 'Corner Cafe');
+      expect(state.resolution?.branchName, 'Main Branch');
+      expect(state.resolution?.canDiscount, isTrue);
+    });
+
+    test('submit() names the merchant and its branch instead of a token', () async {
+      final fake = FakePurchasesRepository(requestResult: _pendingPurchase());
+      final container = _container(fake);
+      final notifier = container.read(customerPurchaseRequestControllerProvider.notifier);
+
+      await notifier.start(PurchaseRequestTarget.merchant(merchant));
+      notifier.setBillAmount('500');
+      notifier.review();
+      await notifier.submit();
+
+      expect(fake.requestCallCount, 1);
+      final target = fake.lastTarget;
+      expect(target, isA<MerchantPurchaseTarget>());
+      expect(target!.toRequestJson(), {'merchant_id': 42, 'branch_id': 7});
+      expect(container.read(customerPurchaseRequestControllerProvider).step, CounterStep.waiting);
+    });
+
+    // On web GoRouter JSON-encodes the extra into browser history and hands
+    // the decoded map back on a rebuild, so the profile snapshot is gone and
+    // only the ids remain. This is exactly the shape the route rebuilds.
+    PurchaseRequestTarget afterBrowserRoundTrip(PurchaseRequestTarget target) =>
+        PurchaseRequestTarget.fromExtra(jsonDecode(jsonEncode(target)));
+
+    test('with only the ids left after a browser round trip, fetches the profile by id -- still no scan', () async {
+      final fake = FakePurchasesRepository();
+      final merchants = _FakeMerchantsRepository(merchant: merchant);
+      final container = _container(fake, merchants: merchants);
+      final notifier = container.read(customerPurchaseRequestControllerProvider.notifier);
+
+      final target = afterBrowserRoundTrip(PurchaseRequestTarget.merchant(merchant));
+      expect(target, isA<MerchantPurchaseTarget>().having((t) => t.merchant, 'merchant', isNull));
+
+      await notifier.start(target);
+
+      expect(merchants.showCallCount, 1);
+      expect(fake.resolveCallCount, 0);
+      final state = container.read(customerPurchaseRequestControllerProvider);
+      expect(state.isResolving, isFalse);
+      expect(state.resolution?.merchantName, 'Corner Cafe');
+      expect(state.resolution?.branchName, 'Main Branch');
+      expect(state.resolution?.canDiscount, isTrue);
+    });
+
+    test('a merchant that can no longer be fetched surfaces as a resolve error, like a bad QR', () async {
+      final merchants = _FakeMerchantsRepository(showError: const NotFoundException());
+      final container = _container(FakePurchasesRepository(), merchants: merchants);
+      final notifier = container.read(customerPurchaseRequestControllerProvider.notifier);
+
+      await notifier.start(PurchaseRequestTarget.merchantId(42, branchId: 7));
+
+      final state = container.read(customerPurchaseRequestControllerProvider);
+      expect(state.isResolving, isFalse);
+      expect(state.resolution, isNull);
+      expect(state.resolveError, isA<NotFoundException>());
     });
   });
 }

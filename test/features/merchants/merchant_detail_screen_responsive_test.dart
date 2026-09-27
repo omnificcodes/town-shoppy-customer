@@ -14,6 +14,7 @@ import 'package:customer/features/merchants/data/models/merchant_branch_ref.dart
 import 'package:customer/features/merchants/data/models/merchant_category.dart';
 import 'package:customer/features/merchants/data/models/town_ref.dart';
 import 'package:customer/features/merchants/presentation/merchant_detail_screen.dart';
+import 'package:customer/features/purchases/data/models/purchase_request_target.dart';
 import 'package:customer/features/offers/application/merchant_offers_provider.dart';
 import 'package:customer/features/offers/data/models/offer.dart';
 import 'package:customer/features/products/data/models/product.dart';
@@ -213,6 +214,17 @@ Future<void> _pumpRouted(WidgetTester tester) async {
         builder: (context, state) => const Scaffold(body: Text('Counter QR scanner')),
       ),
       GoRoute(
+        path: '/purchases/request',
+        builder: (context, state) {
+          final target = state.extra;
+          return Scaffold(
+            body: Text(
+              target is MerchantPurchaseTarget ? 'Bill entry for ${target.merchant?.name}' : 'Bill entry',
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: '/merchants/:id/redeem',
         builder: (context, state) => const Scaffold(body: Text('Code-based redemption')),
       ),
@@ -237,25 +249,36 @@ Future<void> _pumpRouted(WidgetTester tester) async {
 }
 
 void main() {
-  group('paying with coins from a business page is the counter-QR flow, with no code to hand over', () {
-    testWidgets('the pay bar opens the counter QR scanner', (tester) async {
+  group('paying with coins from a business page goes straight to the bill, with the shop already known', () {
+    testWidgets('the pay bar opens the bill entry for this shop, with no scan', (tester) async {
       await _pumpRouted(tester);
 
-      await tester.tap(find.text('Pay bill with coins'));
+      // The bar's button is the last of the two on the page.
+      await tester.tap(find.text('Pay bill with coins').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Counter QR scanner'), findsOneWidget);
+      expect(find.textContaining('Bill entry for The Grand Downtown'), findsOneWidget);
+      expect(find.text('Counter QR scanner'), findsNothing);
       expect(find.text('Code-based redemption'), findsNothing);
     });
 
-    testWidgets('so does the Redeem Town Coin button', (tester) async {
+    testWidgets('so does the button on the Save with Town Coin card', (tester) async {
       await _pumpRouted(tester);
 
-      await tester.tap(find.text('Redeem Town Coin'));
+      await tester.tap(find.text('Pay bill with coins').first);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Bill entry for The Grand Downtown'), findsOneWidget);
+      expect(find.text('Counter QR scanner'), findsNothing);
+    });
+
+    testWidgets('the scan button beside the bar still opens the scanner', (tester) async {
+      await _pumpRouted(tester);
+
+      await tester.tap(find.byTooltip('Scan the shop QR'));
       await tester.pumpAndSettle();
 
       expect(find.text('Counter QR scanner'), findsOneWidget);
-      expect(find.text('Code-based redemption'), findsNothing);
     });
   });
 
@@ -269,11 +292,11 @@ void main() {
         expect(find.text('Merchant Details'), findsOneWidget);
         expect(find.textContaining('The Grand Downtown'), findsWidgets);
         expect(find.text('Accepts Town Coin'), findsOneWidget);
-        expect(find.text('Pay bill with coins'), findsOneWidget);
+        // Once on the Save with Town Coin card, once on the pay bar.
+        expect(find.text('Pay bill with coins'), findsNWidgets(2));
 
         final page = find.byType(ListView);
         for (final text in [
-          'Redeem Town Coin',
           'Call store',
           'ABOUT',
           'OFFERS',
@@ -295,7 +318,7 @@ void main() {
       tester,
       _wrapSingleBranch,
       verify: (tester, size) async {
-        expect(find.text('Redeem Town Coin'), findsNothing);
+        expect(find.text('Pay bill with coins'), findsNothing);
         expect(find.text('Scan QR to pay'), findsOneWidget);
 
         final page = find.byType(ListView);

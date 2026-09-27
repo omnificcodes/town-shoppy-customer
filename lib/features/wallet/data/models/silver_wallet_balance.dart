@@ -50,6 +50,7 @@ class SilverWalletBalance {
     required this.updatedAt,
     this.totalRedeemedCoins = 0,
     this.totalSavedInr = 0,
+    this.coinToInrRate = 1,
   });
 
   factory SilverWalletBalance.fromJson(Map<String, dynamic> json) {
@@ -64,6 +65,7 @@ class SilverWalletBalance {
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
       totalRedeemedCoins: json['total_redeemed_coins'] as int? ?? 0,
       totalSavedInr: (json['total_saved_inr'] as num?)?.toDouble() ?? 0,
+      coinToInrRate: json['coin_to_inr_rate'] as int? ?? 1,
     );
   }
 
@@ -75,9 +77,15 @@ class SilverWalletBalance {
   final DateTime? updatedAt;
 
   /// Lifetime coins spent on discounts, and the rupees those discounts
-  /// saved (10 coins = ₹1). A saving already received, never cash.
+  /// saved (at [coinToInrRate]). A saving already received, never cash.
   final int totalRedeemedCoins;
   final double totalSavedInr;
+
+  /// How many coins make ₹1 -- published by the server (config/wallet.php
+  /// is the one place the rate lives) so nothing here hardcodes it. 1 coin
+  /// = ₹1 since 2026-09-26; the fallback matches that for an older
+  /// response that predates the field.
+  final int coinToInrRate;
 
   bool get hasShopExclusiveCoins => shopExclusiveBalance > 0;
 }

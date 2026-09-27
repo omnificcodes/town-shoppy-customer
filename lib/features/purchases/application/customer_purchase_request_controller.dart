@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
 import '../../../core/utils/idempotency_key.dart';
+import '../../merchants/data/merchants_repository.dart';
+import '../../merchants/data/models/merchant.dart';
 import '../../wallet/application/wallet_controller.dart';
 import '../../wallet/data/models/silver_wallet_balance.dart';
 import '../data/models/counter_redemption.dart';
 import '../data/models/merchant_purchase_qr_resolution.dart';
 import '../data/models/purchase.dart';
+import '../data/models/purchase_request_target.dart';
 import '../data/purchases_repository.dart';
 import 'purchases_list_controller.dart';
 
@@ -91,15 +94,16 @@ class CustomerPurchaseRequestState {
   /// The customer's Town Coins, when the wallet has loaded.
   int? get availableCoins => walletBalance?.balance;
 
-  /// The coins [estimatedDiscount] would use, at the wallet's own
-  /// coin-to-rupee rate (never a rate hardcoded here). An estimate, like
-  /// the discount: the server's figure replaces it once the request exists.
+  /// The coins [estimatedDiscount] would use, at the rate the server
+  /// published with the wallet (never a rate hardcoded here, and no longer
+  /// back-derived from balance ÷ rupees, which was undefined for an empty
+  /// wallet). An estimate, like the discount: the server's figure replaces
+  /// it once the request exists.
   int get estimatedCoins {
     final wallet = walletBalance;
     final discount = estimatedDiscount;
-    if (wallet == null || discount <= 0 || wallet.balanceInrEquivalent <= 0) return 0;
-    final coinsPerRupee = wallet.balance / wallet.balanceInrEquivalent;
-    return math.min((discount * coinsPerRupee).round(), wallet.balance);
+    if (wallet == null || discount <= 0) return 0;
+    return math.min((discount * wallet.coinToInrRate).round(), wallet.balance);
   }
 
   bool get canContinue => resolution != null && billAmount != null && !isSubmitting;
@@ -143,7 +147,7 @@ class CustomerPurchaseRequestState {
 /// (`autoDispose`) -- nothing carries over between separate attempts,
 /// including a re-scan of a different QR.
 class CustomerPurchaseRequestController extends Notifier<CustomerPurchaseRequestState> {
-  String? _token;
+  PurchaseRequestTarget? _target;
 
   @override
   CustomerPurchaseRequestState build() {
@@ -165,18 +169,43 @@ class CustomerPurchaseRequestController extends Notifier<CustomerPurchaseRequest
     );
   }
 
-  Future<void> resolveScannedToken(String token) async {
+  /// Where this request is going. A scanned token has to be resolved to
+  /// find out who it belongs to; a merchant chosen from its profile is
+  /// already known, so the form is ready at once with no round trip.
+  Future<void> start(PurchaseRequestTarget target) async {
     if (state.isResolving) return;
 
-    _token = token;
-    state = state.copyWith(isResolving: true, clearResolveError: true);
-    try {
-      final resolution = await ref.read(purchasesRepositoryProvider).resolveMerchantQr(token);
-      state = state.copyWith(isResolving: false, resolution: resolution);
-    } on AppException catch (e) {
-      state = state.copyWith(isResolving: false, resolveError: e);
+    _target = target;
+    switch (target) {
+      case ScannedPurchaseTarget(:final token):
+        state = state.copyWith(isResolving: true, clearResolveError: true);
+        try {
+          final resolution = await ref.read(purchasesRepositoryProvider).resolveMerchantQr(token);
+          state = state.copyWith(isResolving: false, resolution: resolution);
+        } on AppException catch (e) {
+          state = state.copyWith(isResolving: false, resolveError: e);
+        }
+      case MerchantPurchaseTarget(merchant: final Merchant merchant):
+        state = state.copyWith(
+          isResolving: false,
+          clearResolveError: true,
+          resolution: MerchantPurchaseQrResolution.fromMerchant(merchant),
+        );
+      case MerchantPurchaseTarget(:final merchantId):
+        // Only the ids made it here (a browser round trip drops the
+        // profile snapshot -- see PurchaseRequestTarget), so fetch what
+        // the form shows. Still no scan: the customer picked this shop.
+        state = state.copyWith(isResolving: true, clearResolveError: true);
+        try {
+          final merchant = await ref.read(merchantsRepositoryProvider).show(merchantId);
+          state = state.copyWith(isResolving: false, resolution: MerchantPurchaseQrResolution.fromMerchant(merchant));
+        } on AppException catch (e) {
+          state = state.copyWith(isResolving: false, resolveError: e);
+        }
     }
   }
+
+  Future<void> resolveScannedToken(String token) => start(PurchaseRequestTarget.scanned(token));
 
   void setBillAmount(String text) {
     if (state.billAmountText == text) return;
@@ -204,14 +233,14 @@ class CustomerPurchaseRequestController extends Notifier<CustomerPurchaseRequest
   }
 
   Future<void> submit() async {
-    final token = _token;
+    final target = _target;
     final amount = state.billAmount;
-    if (state.isSubmitting || token == null || amount == null) return;
+    if (state.isSubmitting || target == null || amount == null) return;
 
     state = state.copyWith(isSubmitting: true, clearSubmitError: true);
     try {
       final result = await ref.read(purchasesRepositoryProvider).requestPurchase(
-            token: token,
+            target: target,
             billAmount: amount,
             idempotencyKey: state.idempotencyKey,
             redeem: state.redeem,
@@ -230,7 +259,7 @@ class CustomerPurchaseRequestController extends Notifier<CustomerPurchaseRequest
     } on AppException catch (e) {
       // Preserve the resolved merchant/branch and typed amount -- only the
       // in-flight flag and error change, so a network-failure retry
-      // re-sends the same (token, amount, Idempotency-Key) tuple safely.
+      // re-sends the same (target, amount, Idempotency-Key) tuple safely.
       state = state.copyWith(isSubmitting: false, submitError: e);
     }
   }

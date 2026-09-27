@@ -5,6 +5,7 @@ import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/features/purchases/application/purchases_list_controller.dart';
 import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
+import 'package:customer/features/purchases/data/models/purchase_request_target.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 
 Purchase _purchase(int id) {
@@ -59,7 +60,7 @@ class FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<CounterPurchaseResult> requestPurchase({
-    required String token,
+    required PurchaseRequestTarget target,
     required double billAmount,
     required String idempotencyKey,
     bool redeem = false,

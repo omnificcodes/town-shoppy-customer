@@ -22,6 +22,7 @@ import '../../products/presentation/product_card.dart';
 import '../../wallet/application/wallet_controller.dart';
 import '../application/merchant_branches_provider.dart';
 import '../application/merchant_detail_provider.dart';
+import '../../purchases/data/models/purchase_request_target.dart';
 import '../data/models/merchant.dart';
 import '../data/models/merchant_branch_ref.dart';
 import 'category_visual.dart';
@@ -547,12 +548,12 @@ class _RedeemBanner extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             AppButton(
-              label: 'Redeem Town Coin',
+              label: 'Pay bill with coins',
               size: AppButtonSize.lg,
               icon: Icons.savings_rounded,
               trailingIcon: Icons.arrow_forward_rounded,
-              // The counter-QR flow, coins on by default -- see _PayBar.
-              onPressed: () => context.push('/purchases/scan'),
+              // Straight to the bill, no scan -- see _PayBar.
+              onPressed: () => context.push('/purchases/request', extra: PurchaseRequestTarget.merchant(merchant)),
             ),
             if (wallet != null) ...[
               const Padding(
@@ -1246,15 +1247,18 @@ class _PayBar extends StatelessWidget {
                       child: Ink(
                         decoration: const BoxDecoration(gradient: AppGradients.promoHero),
                         child: InkWell(
-                          // Paying with coins is the counter-QR flow, the same
-                          // one the scan button beside this opens: scan the
-                          // shop's QR, enter the bill, and the shop approves
-                          // it from its queue. It used to open the Redeem
-                          // flow instead, which ends in a code the merchant
-                          // types in. Scanning is what proves the customer
-                          // is at this counter, so no code is needed after.
-                          // Coins are on by default in that flow.
-                          onTap: () => context.push('/purchases/scan'),
+                          // The same bill-and-approve flow the scan button
+                          // beside this opens, minus the scan: the customer
+                          // is already on this shop's page, so the shop is
+                          // known. The server treats the scan as the proof
+                          // of presence and, without one, relies on the
+                          // shop approving the bill instead -- which it has
+                          // to do either way. Coins are on by default.
+                          // A shop without a coin discount only offers the
+                          // scan, since there is nothing to save by naming it.
+                          onTap: () => canRedeem
+                              ? context.push('/purchases/request', extra: PurchaseRequestTarget.merchant(merchant))
+                              : context.push('/purchases/scan'),
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(minHeight: AppSpacing.touchTarget),
                             child: Padding(

@@ -377,15 +377,22 @@ class _HeroCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
-                        const Expanded(
+                        Expanded(
                           child: _HeroTile(
                             label: 'Coin value',
-                            badge: _Badge(
+                            badge: const _Badge(
                               icon: Icons.currency_rupee_rounded,
                               background: AppColors.successBg,
                               foreground: AppColors.success,
                             ),
-                            value: '10 = ₹1',
+                            // The server publishes the rate with the
+                            // balance; the label follows it instead of
+                            // hardcoding a figure that can change.
+                            value: switch (wallet) {
+                              AsyncData(:final value) => '${value.coinToInrRate} = ₹1',
+                              AsyncError() => '—',
+                              _ => null,
+                            },
                             caption: 'A discount, never cash',
                           ),
                         ),

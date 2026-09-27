@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../data/models/purchase_request_target.dart';
 
 /// Method 1, step 1 (3-way purchase architecture): full-screen camera scan
 /// of a merchant/branch's permanent Purchase QR. On a successful decode,
@@ -46,7 +47,7 @@ class _ScanMerchantQrScreenState extends ConsumerState<ScanMerchantQrScreen> {
     HapticFeedback.mediumImpact();
     _controller.stop();
 
-    context.pushReplacement('/purchases/request', extra: value);
+    context.pushReplacement('/purchases/request', extra: PurchaseRequestTarget.scanned(value));
   }
 
   @override

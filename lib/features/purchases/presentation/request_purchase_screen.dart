@@ -15,6 +15,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/state_panel.dart';
 import '../application/customer_purchase_request_controller.dart';
 import '../data/models/merchant_purchase_qr_resolution.dart';
+import '../data/models/purchase_request_target.dart';
 import 'counter_waiting_view.dart';
 
 /// Method 1, step 2 — shown immediately after ScanMerchantQrScreen decodes
@@ -29,9 +30,12 @@ import 'counter_waiting_view.dart';
 /// it, check the final figure, then wait at the counter while the merchant
 /// settles. Only the last has anything behind it on the backend.
 class RequestPurchaseScreen extends ConsumerStatefulWidget {
-  const RequestPurchaseScreen({required this.scannedToken, super.key});
+  const RequestPurchaseScreen({required this.target, super.key});
 
-  final String scannedToken;
+  /// A scanned counter QR, or a merchant chosen from its own profile
+  /// ("Pay bill with coins"). The screen is the same from here on; only
+  /// the first step differs (resolve the token vs. already known).
+  final PurchaseRequestTarget target;
 
   @override
   ConsumerState<RequestPurchaseScreen> createState() => _RequestPurchaseScreenState();
@@ -50,7 +54,7 @@ class _RequestPurchaseScreenState extends ConsumerState<RequestPurchaseScreen> {
     // controller below, so the mutation lands on a provider this widget is
     // already listening to.
     Future.microtask(
-      () => ref.read(customerPurchaseRequestControllerProvider.notifier).resolveScannedToken(widget.scannedToken),
+      () => ref.read(customerPurchaseRequestControllerProvider.notifier).start(widget.target),
     );
   }
 
@@ -138,13 +142,26 @@ class _MerchantHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final branchLine = [resolution.branchName, resolution.branchAddressLine].whereType<String>().join(' · ');
 
+    final logoUrl = resolution.logoUrl;
+
     return Column(
       children: [
+        // The shop's own logo when it has one -- the same face the profile
+        // shows, so a customer who came from it sees the same shop here.
         Container(
           width: AppSize.avatarLg,
           height: AppSize.avatarLg,
+          clipBehavior: Clip.antiAlias,
           decoration: const BoxDecoration(color: AppColors.surfaceMuted, shape: BoxShape.circle),
-          child: const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.lg),
+          child: logoUrl == null
+              ? const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.lg)
+              : Image.network(
+                  logoUrl,
+                  fit: BoxFit.cover,
+                  webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                  errorBuilder: (_, _, _) =>
+                      const Icon(Icons.storefront_rounded, color: AppColors.orange, size: AppIconSize.lg),
+                ),
         ),
         const SizedBox(height: AppSpacing.sm),
         Text('To', style: Theme.of(context).textTheme.bodySmall),

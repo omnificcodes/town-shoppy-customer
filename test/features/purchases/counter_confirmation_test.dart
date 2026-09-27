@@ -4,6 +4,7 @@ import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/purchases/data/models/counter_redemption.dart';
 import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
+import 'package:customer/features/purchases/data/models/purchase_request_target.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 import 'package:customer/features/purchases/presentation/request_purchase_screen.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
@@ -71,7 +72,7 @@ class _FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<CounterPurchaseResult> requestPurchase({
-    required String token,
+    required PurchaseRequestTarget target,
     required double billAmount,
     required String idempotencyKey,
     bool redeem = false,
@@ -134,7 +135,7 @@ Future<void> _submitBill(WidgetTester tester, _FakePurchasesRepository repositor
           ? MaterialApp.router(theme: AppTheme.light, routerConfig: router)
           : MaterialApp(
               theme: AppTheme.light,
-              home: const RequestPurchaseScreen(scannedToken: 'tok'),
+              home: const RequestPurchaseScreen(target: PurchaseRequestTarget.scanned('tok')),
             ),
     ),
   );
@@ -293,7 +294,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/pay',
-          builder: (context, state) => const RequestPurchaseScreen(scannedToken: 'tok'),
+          builder: (context, state) => const RequestPurchaseScreen(target: PurchaseRequestTarget.scanned('tok')),
         ),
         GoRoute(
           path: '/home',

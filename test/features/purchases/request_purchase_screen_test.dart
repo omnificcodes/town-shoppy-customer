@@ -7,8 +7,10 @@ import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/networking/cursor_page.dart';
 import 'package:customer/core/networking/offset_page.dart';
 import 'package:customer/core/theme/app_theme.dart';
+import 'package:customer/features/merchants/data/models/merchant.dart';
 import 'package:customer/features/purchases/data/models/merchant_purchase_qr_resolution.dart';
 import 'package:customer/features/purchases/data/models/purchase.dart';
+import 'package:customer/features/purchases/data/models/purchase_request_target.dart';
 import 'package:customer/features/purchases/data/purchases_repository.dart';
 import 'package:customer/features/purchases/presentation/request_purchase_screen.dart';
 import 'package:customer/features/wallet/data/models/silver_wallet_balance.dart';
@@ -21,9 +23,11 @@ class _FakePurchasesRepository implements PurchasesRepository {
   MerchantPurchaseQrResolution? resolution;
   AppException? resolveError;
   Completer<void>? resolveDelay;
+  int resolveCallCount = 0;
 
   @override
   Future<MerchantPurchaseQrResolution> resolveMerchantQr(String token) async {
+    resolveCallCount++;
     if (resolveDelay != null) await resolveDelay!.future;
     if (resolveError != null) throw resolveError!;
     return resolution!;
@@ -31,7 +35,7 @@ class _FakePurchasesRepository implements PurchasesRepository {
 
   @override
   Future<CounterPurchaseResult> requestPurchase({
-    required String token,
+    required PurchaseRequestTarget target,
     required double billAmount,
     required String idempotencyKey,
     bool redeem = false,
@@ -57,6 +61,9 @@ class _FakeWalletRepository implements WalletRepository {
         shopExclusiveBalance: 0,
         shopExclusiveBreakdown: [],
         balanceInrEquivalent: 80,
+        // This fixture is written at the old 10-coins-per-rupee rate; the
+        // rate rides along with the wallet so the maths below still add up.
+        coinToInrRate: 10,
         updatedAt: null,
       );
 
@@ -75,7 +82,10 @@ const _resolution = MerchantPurchaseQrResolution(
   discountRate: 7,
 );
 
-(Widget, ProviderContainer) _wrapWithContainer({PurchasesRepository? repository, String scannedToken = 'tok_123'}) {
+(Widget, ProviderContainer) _wrapWithContainer({
+  PurchasesRepository? repository,
+  PurchaseRequestTarget target = const PurchaseRequestTarget.scanned('tok_123'),
+}) {
   final container = ProviderContainer(
     overrides: [
       if (repository != null) purchasesRepositoryProvider.overrideWithValue(repository),
@@ -84,7 +94,7 @@ const _resolution = MerchantPurchaseQrResolution(
   );
   final widget = UncontrolledProviderScope(
     container: container,
-    child: MaterialApp(theme: AppTheme.light, home: RequestPurchaseScreen(scannedToken: scannedToken)),
+    child: MaterialApp(theme: AppTheme.light, home: RequestPurchaseScreen(target: target)),
   );
   return (widget, container);
 }
@@ -117,7 +127,10 @@ void main() {
 
     testWidgets('an invalid/revoked QR shows the error state, not the form', (tester) async {
       final fake = _FakePurchasesRepository(resolveError: const NotFoundException());
-      final (widget, container) = _wrapWithContainer(repository: fake, scannedToken: 'bad_token');
+      final (widget, container) = _wrapWithContainer(
+        repository: fake,
+        target: const PurchaseRequestTarget.scanned('bad_token'),
+      );
       addTearDown(container.dispose);
 
       await tester.pumpWidget(widget);
@@ -202,6 +215,36 @@ void main() {
       final payFinder = find.widgetWithText(ElevatedButton, 'Pay with Town Coins');
       await tester.dragUntilVisible(payFinder, find.byType(ListView).first, const Offset(0, -200));
       expect(tester.widget<ElevatedButton>(payFinder).onPressed, isNotNull);
+    });
+  });
+
+  group('"Pay bill with coins" from a shop profile', () {
+    /// The shop the customer was already looking at -- everything the
+    /// form shows is on it, so there is nothing to resolve.
+    final merchant = Merchant.fromJson({
+      'id': 42,
+      'name': 'Corner Cafe',
+      'logo_url': null,
+      'accepts_town_coin': true,
+      'discount_rate': 7,
+      'branch': {'id': 7, 'name': 'Main Branch', 'address_line': 'MG Road'},
+    });
+
+    testWidgets('opens straight on the bill, with the shop named and no scan or resolve call', (tester) async {
+      final fake = _FakePurchasesRepository(resolution: _resolution);
+      final (widget, container) = _wrapWithContainer(
+        repository: fake,
+        target: PurchaseRequestTarget.merchant(merchant),
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      expect(fake.resolveCallCount, 0);
+      expect(find.text('Corner Cafe'), findsOneWidget);
+      expect(find.text('Main Branch · MG Road'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
     });
   });
 }

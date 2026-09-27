@@ -165,9 +165,12 @@ void main() {
         // so everything below them is legitimately below the fold --
         // reachable, not missing.
         final page = find.byType(ListView);
-        for (final text in ['Accepts Town Coin', 'Redeem Town Coin', 'Directions', 'BRANCH LOCATION']) {
-          await tester.dragUntilVisible(find.text(text), page, const Offset(0, -200));
-          expect(find.text(text), findsOneWidget, reason: '$text should be reachable at $size');
+        for (final text in ['Accepts Town Coin', 'Pay bill with coins', 'Directions', 'BRANCH LOCATION']) {
+          // The sticky pay bar repeats 'Pay bill with coins' outside the
+          // list, so only look for the copy that scrolls with the page.
+          final inPage = find.descendant(of: page, matching: find.text(text));
+          await tester.dragUntilVisible(inPage, page, const Offset(0, -200));
+          expect(inPage, findsOneWidget, reason: '$text should be reachable at $size');
         }
       },
     );

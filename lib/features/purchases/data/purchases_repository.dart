@@ -7,6 +7,7 @@ import '../../../core/networking/offset_page.dart';
 import 'models/counter_redemption.dart';
 import 'models/merchant_purchase_qr_resolution.dart';
 import 'models/purchase.dart';
+import 'models/purchase_request_target.dart';
 
 /// `GET /purchases` / `GET /purchases/{id}` — for a customer account,
 /// `PurchaseController` scopes both to `customer_profile_id === own`
@@ -66,17 +67,19 @@ class PurchasesRepository {
     }
   }
 
-  /// Method 1, step 2 — submits the bill amount against the SAME token
-  /// that was scanned (never merchant_id/branch_id) so the backend
-  /// re-resolves the target itself; the customer cannot end up requesting
-  /// against a different merchant/branch than the one they scanned.
+  /// Method 1, step 2 — submits the bill amount against [target]: the SAME
+  /// token that was scanned (so the backend re-resolves the merchant/
+  /// branch itself, and the customer cannot end up requesting against a
+  /// different one than they scanned), or the merchant chosen from its own
+  /// profile, which the backend treats as unproven presence and settles on
+  /// the merchant's approval instead.
   /// `Idempotency-Key` required, same pattern as RedemptionsRepository.initiate().
   /// With [redeem] true the server also spends this customer's Town Coins
   /// against the same bill, in the same call, and returns the resulting
   /// redemption in `meta`. How much is never sent from here -- the server
   /// derives it from the merchant's own rate and the wallet.
   Future<CounterPurchaseResult> requestPurchase({
-    required String token,
+    required PurchaseRequestTarget target,
     required double billAmount,
     required String idempotencyKey,
     bool redeem = false,
@@ -84,7 +87,7 @@ class PurchasesRepository {
     try {
       final response = await _dio.post(
         '/purchases/requests',
-        data: {'token': token, 'bill_amount': billAmount, if (redeem) 'redeem': true},
+        data: {...target.toRequestJson(), 'bill_amount': billAmount, if (redeem) 'redeem': true},
         options: Options(headers: {'Idempotency-Key': idempotencyKey}),
       );
 

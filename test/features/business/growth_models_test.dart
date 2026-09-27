@@ -65,8 +65,22 @@ void main() {
   });
 
   test('MerchantWallet and the string-money blue redemption parse', () {
-    final w = MerchantWallet.fromJson({'blue_balance': 250, 'red_balance': 400, 'updated_at': null});
-    expect(w.blueInr, 25);
+    final w = MerchantWallet.fromJson({
+      'blue_balance': 250,
+      'red_balance': 400,
+      'coin_to_inr_rate': 1,
+      'updated_at': null,
+    });
+    expect(w.blueInr, 250);
+    // The rupee value follows the server's rate, never a figure baked in here.
+    final legacy = MerchantWallet.fromJson({
+      'blue_balance': 250,
+      'red_balance': 400,
+      'coin_to_inr_rate': 10,
+      'updated_at': null,
+    });
+    expect(legacy.blueInr, 25);
+    expect(legacy.redInr, 40);
     final r = MerchantBlueRedemption.fromJson({'id': 1, 'spending_merchant_id': 1, 'redeeming_merchant_id': 2, 'redeeming_merchant_name': 'Cafe', 'bill_amount': '100.00', 'discount_amount': '10.00', 'coins_debited': 100, 'status': 'settled'});
     expect(r.discountAmount, 10);
     expect(r.redeemingMerchantName, 'Cafe');

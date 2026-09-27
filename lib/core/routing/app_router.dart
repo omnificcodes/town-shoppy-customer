@@ -78,6 +78,7 @@ import '../../features/wallet/presentation/wallet_screen.dart';
 import '../../features/purchases/presentation/my_qr_screen.dart';
 import '../../features/purchases/presentation/purchase_detail_screen.dart';
 import '../../features/purchases/presentation/purchases_list_screen.dart';
+import '../../features/purchases/data/models/purchase_request_target.dart';
 import '../../features/purchases/presentation/request_purchase_screen.dart';
 import '../../features/purchases/presentation/scan_merchant_qr_screen.dart';
 import '../../features/redemptions/presentation/redeem_offers_screen.dart';
@@ -155,7 +156,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '$_purchasesPath/scan', builder: (context, state) => const ScanMerchantQrScreen()),
       GoRoute(
         path: '$_purchasesPath/request',
-        builder: (context, state) => RequestPurchaseScreen(scannedToken: state.extra as String),
+        builder: (context, state) => RequestPurchaseScreen(target: PurchaseRequestTarget.fromExtra(state.extra)),
       ),
       GoRoute(path: '$_purchasesPath/my-qr', builder: (context, state) => const MyQrScreen()),
       GoRoute(

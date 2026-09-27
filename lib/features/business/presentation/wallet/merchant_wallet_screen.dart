@@ -75,7 +75,7 @@ class MerchantWalletScreen extends ConsumerWidget {
                         label: 'Spend Blue Coin at another merchant',
                         icon: Icons.send_rounded,
                         size: AppButtonSize.lg,
-                        onPressed: w.blueBalance > 0 ? () => _openSpendSheet(context, ref, w.blueBalance) : null,
+                        onPressed: w.blueBalance > 0 ? () => _openSpendSheet(context, ref, w.blueBalance, w.coinToInrRate) : null,
                       ),
                       if (w.blueBalance <= 0) ...[
                         const SizedBox(height: AppSpacing.xs),
@@ -93,7 +93,7 @@ class MerchantWalletScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.smd),
                 const _HowItWorks(icon: Icons.storefront_rounded, title: 'Earn on every redemption', body: 'When a customer spends Town Coin at your counter, your business receives the full coin value as Blue Coin — and the same again as Red Coin.'),
                 const SizedBox(height: AppSpacing.sm),
-                const _HowItWorks(icon: Icons.shopping_bag_rounded, title: 'Spend Blue Coin elsewhere', body: "Pay part of your own bill at another Town Shoppy merchant. The discount is capped by that merchant's discount rate and your balance. 10 coins = ₹1."),
+                const _HowItWorks(icon: Icons.shopping_bag_rounded, title: 'Spend Blue Coin elsewhere', body: "Pay part of your own bill at another Town Shoppy merchant. The discount is capped by that merchant's discount rate and your balance."),
                 const SizedBox(height: AppSpacing.sm),
                 const _HowItWorks(icon: Icons.workspace_premium_rounded, title: 'Subscription bonus', body: 'Every ₹500 of plan spend in a month adds bonus Blue and Red Coin to your wallet.'),
                 const SizedBox(height: AppSpacing.xl),
@@ -105,13 +105,13 @@ class MerchantWalletScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openSpendSheet(BuildContext context, WidgetRef ref, int blueBalance) async {
+  Future<void> _openSpendSheet(BuildContext context, WidgetRef ref, int blueBalance, int coinToInrRate) async {
     final result = await showModalBottomSheet<dynamic>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(sheetContext).bottom),
-        child: _SpendBlueCoinSheet(blueBalance: blueBalance),
+        child: _SpendBlueCoinSheet(blueBalance: blueBalance, coinToInrRate: coinToInrRate),
       ),
     );
     if (result != null && context.mounted) {
@@ -211,9 +211,10 @@ class _HowItWorks extends StatelessWidget {
 /// Pick a merchant (searched by name, Town Coin-accepting only), type the
 /// bill, see the estimated discount, confirm. Settles immediately.
 class _SpendBlueCoinSheet extends ConsumerStatefulWidget {
-  const _SpendBlueCoinSheet({required this.blueBalance});
+  const _SpendBlueCoinSheet({required this.blueBalance, required this.coinToInrRate});
 
   final int blueBalance;
+  final int coinToInrRate;
 
   @override
   ConsumerState<_SpendBlueCoinSheet> createState() => _SpendBlueCoinSheetState();
@@ -302,7 +303,7 @@ class _SpendBlueCoinSheetState extends ConsumerState<_SpendBlueCoinSheet> {
                   child: Row(
                     children: [
                       Expanded(child: Text('Estimated discount', style: textTheme.bodyMedium)),
-                      Text(formatMoney(state.estimatedDiscount(widget.blueBalance)), style: AppTypography.numericFinancialMedium.copyWith(color: AppColors.goldDark)),
+                      Text(formatMoney(state.estimatedDiscount(widget.blueBalance, widget.coinToInrRate)), style: AppTypography.numericFinancialMedium.copyWith(color: AppColors.goldDark)),
                     ],
                   ),
                 ),
