@@ -19,6 +19,9 @@ class WalletLedgerSourceDisplay {
     'campaign_reward': WalletLedgerSourceDisplay('Campaign reward', Icons.campaign_rounded),
     'admin_adjustment': WalletLedgerSourceDisplay('Adjustment', Icons.tune_rounded),
     'redemption_debit': WalletLedgerSourceDisplay('Redeemed', Icons.qr_code_2_rounded),
+    // Blue Coin the customer's own business earned, mirrored here so it
+    // can be spent in Customer mode (BlueCoinMirrorService on the API).
+    'business_blue_coin': WalletLedgerSourceDisplay('Blue Coin from your business', Icons.store_rounded),
   };
 
   static const _fallback = WalletLedgerSourceDisplay('Town Coin activity', Icons.swap_horiz_rounded);

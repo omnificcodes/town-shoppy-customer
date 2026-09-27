@@ -108,14 +108,15 @@ void main() {
     );
   });
 
-  testWidgets('wallet renders both balances and the spend button without overflow', (tester) async {
+  testWidgets('wallet renders both balances, with no spend button -- Blue Coin is spent in Customer mode', (tester) async {
     await forEachViewport(
       tester,
       _wallet,
       verify: (tester, size) async {
         expect(find.text('1234567'), findsOneWidget);
         expect(find.text('89'), findsOneWidget);
-        expect(find.text('Spend Blue Coin at another merchant'), findsOneWidget);
+        expect(find.text('Spend Blue Coin at another merchant'), findsNothing);
+        expect(find.text('Also in your customer wallet as Universal Town Coin'), findsOneWidget);
       },
     );
   });
