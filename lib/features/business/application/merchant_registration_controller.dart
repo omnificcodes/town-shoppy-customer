@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/app_mode/app_mode.dart';
 import '../../../core/app_mode/app_mode_controller.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../auth/application/auth_controller.dart';
@@ -107,10 +106,12 @@ class MerchantRegistrationController extends Notifier<MerchantRegistrationState>
       final merchant = await repo.register(buildInput(logoUrl: logoUrl, coverImageUrl: coverUrl));
 
       // The caller just became a Merchant Owner: refresh `/auth/me` so the
-      // router and Business mode see the new profile, and land them in
-      // Business mode straight away.
+      // router and Business mode see the new profile. Which app opens next
+      // is THEIR choice, asked on the success screen -- so no mode is
+      // presumed here, and an app closed before answering reopens on the
+      // mode chooser rather than in a mode they never picked.
       await ref.read(authControllerProvider.notifier).refreshAccount();
-      await ref.read(appModeControllerProvider.notifier).select(AppMode.business);
+      await ref.read(appModeControllerProvider.notifier).clear();
 
       state = state.copyWith(isSubmitting: false, registered: merchant, imageUploadFailed: uploadFailed);
     } on AppException catch (e) {

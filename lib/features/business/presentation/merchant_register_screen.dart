@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/app_mode/app_mode.dart';
+import '../../../core/app_mode/app_mode_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -479,20 +481,24 @@ class _SuccessViewState extends ConsumerState<_SuccessView> {
   bool _isConfirming = false;
   bool _confirmFailed = false;
 
+  /// The new owner chose the Business app. Remembered as their mode
+  /// (`AppModeController`), the same as picking it on the mode chooser.
+  ///
   /// [MerchantRegistrationController.submit] already refreshed the account
   /// once, right after `POST /merchants` succeeded -- this is usually a
   /// no-op that confirms what is already fresh. It exists for when that
   /// first refresh silently lost a flaky mobile connection: without it,
   /// `hasMerchantAccess` on the account still in memory reads false, and
   /// the router (which has no way to know "this account just became a
-  /// merchant, wait") sends "Go to dashboard" straight back to the
-  /// Customer Home it would show any other non-merchant account -- no
-  /// error, no explanation, just the wrong screen. Retried a couple of
-  /// times before giving up and saying so, rather than letting one bad
-  /// request silently strand a brand-new merchant outside their own shop.
-  Future<void> _goToDashboard() async {
+  /// merchant, wait") sends them straight back to the Customer Home it
+  /// would show any other non-merchant account -- no error, no
+  /// explanation, just the wrong screen. Retried a couple of times before
+  /// giving up and saying so, rather than letting one bad request silently
+  /// strand a brand-new merchant outside their own shop.
+  Future<void> _openBusinessApp() async {
     final auth = ref.read(authControllerProvider);
     if (auth is AuthAuthenticated && auth.account.hasMerchantAccess) {
+      await ref.read(appModeControllerProvider.notifier).select(AppMode.business);
       if (mounted) context.go(BusinessRoutes.root);
       return;
     }
@@ -511,13 +517,21 @@ class _SuccessViewState extends ConsumerState<_SuccessView> {
     if (!mounted) return;
 
     if (confirmed) {
-      context.go(BusinessRoutes.root);
+      await ref.read(appModeControllerProvider.notifier).select(AppMode.business);
+      if (mounted) context.go(BusinessRoutes.root);
     } else {
       setState(() {
         _isConfirming = false;
         _confirmFailed = true;
       });
     }
+  }
+
+  /// The new owner would rather keep shopping for now. Their shop is not
+  /// going anywhere: "Switch to Business" lives in the Customer menu.
+  Future<void> _stayInCustomerApp() async {
+    await ref.read(appModeControllerProvider.notifier).select(AppMode.customer);
+    if (mounted) context.go('/home');
   }
 
   @override
@@ -550,6 +564,14 @@ class _SuccessViewState extends ConsumerState<_SuccessView> {
                     style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Which app would you like to open?', style: textTheme.titleMedium?.copyWith(color: AuthPalette.brown), textAlign: TextAlign.center),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Your number now works in both. You can switch any time from the menu.',
+                    style: textTheme.bodySmall?.copyWith(color: AuthPalette.mutedText),
+                    textAlign: TextAlign.center,
+                  ),
                   if (widget.imageUploadFailed) ...[
                     const SizedBox(height: AppSpacing.md),
                     const InfoBox(
@@ -567,7 +589,9 @@ class _SuccessViewState extends ConsumerState<_SuccessView> {
                     ),
                   ],
                   const SizedBox(height: AppSpacing.lg),
-                  AuthGradientButton(label: 'Go to dashboard', isLoading: _isConfirming, onPressed: _isConfirming ? null : _goToDashboard),
+                  AuthGradientButton(label: 'Open Business app', isLoading: _isConfirming, onPressed: _isConfirming ? null : _openBusinessApp),
+                  const SizedBox(height: AppSpacing.sm),
+                  AuthOutlinedPillButton(label: 'Stay in Customer app', onPressed: _isConfirming ? null : _stayInCustomerApp),
                 ],
               ),
             ),
