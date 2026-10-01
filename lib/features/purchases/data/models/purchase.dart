@@ -90,6 +90,7 @@ class Purchase {
     this.updatedAt,
     this.customer,
     this.expectedCoins,
+    this.isFirstPurchaseBonus = false,
     this.transactionId,
     this.coinPayment,
   });
@@ -118,6 +119,7 @@ class Purchase {
           ? PurchaseCustomerRef.fromJson(json['customer'] as Map<String, dynamic>)
           : null,
       expectedCoins: json['expected_coins'] as int?,
+      isFirstPurchaseBonus: json['is_first_purchase_bonus'] as bool? ?? false,
       transactionId: json['transaction_id'] as String?,
       coinPayment: json['coin_payment'] is Map
           ? CoinPayment.fromJson(json['coin_payment'] as Map<String, dynamic>)
@@ -151,6 +153,11 @@ class Purchase {
   /// Coins this bill earns: what approval will credit while it is still
   /// pending, otherwise what was awarded. Null from an older API.
   final int? expectedCoins;
+
+  /// Whether [expectedCoins] is the first-purchase-at-a-shop bonus (the
+  /// whole bill back in coins) rather than the ordinary reward. The server
+  /// decides; the app only says so. False from an older API.
+  final bool isFirstPurchaseBonus;
 
   /// The reference both the customer and the business quote ("TC000090"),
   /// issued by the server. Null from an older API.

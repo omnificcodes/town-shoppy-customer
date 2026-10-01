@@ -13,6 +13,8 @@ class WalletLedgerSourceDisplay {
 
   static const _byline = <String, WalletLedgerSourceDisplay>{
     'purchase_reward': WalletLedgerSourceDisplay('Purchase reward', Icons.storefront_rounded),
+    // The whole bill back in coins on a customer's first purchase at a shop.
+    'first_purchase_bonus': WalletLedgerSourceDisplay('First purchase bonus', Icons.card_giftcard_rounded),
     'referral_reward': WalletLedgerSourceDisplay('Referral reward', Icons.people_alt_rounded),
     'promotional_reward': WalletLedgerSourceDisplay('Promotional bonus', Icons.celebration_rounded),
     'subscription_reward': WalletLedgerSourceDisplay('Subscription bonus', Icons.workspace_premium_rounded),

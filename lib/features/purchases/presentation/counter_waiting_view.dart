@@ -188,9 +188,13 @@ class _CounterWaitingViewState extends ConsumerState<CounterWaitingView> {
             _ => purchase?.expectedCoins,
           },
           earnedLabel: outcome == _Outcome.confirmed || outcome == _Outcome.declined ? 'You earned' : "You'll earn",
+          // A first purchase at a shop earns the whole bill back in coins;
+          // say so, or a 100x-the-usual figure just looks like a mistake.
           earnedCaption: switch (outcome) {
-            _Outcome.confirmed => 'Added to your wallet',
             _Outcome.declined => 'Not issued',
+            _Outcome.confirmed when purchase?.isFirstPurchaseBonus ?? false => 'First purchase bonus · in your wallet',
+            _Outcome.confirmed => 'Added to your wallet',
+            _ when purchase?.isFirstPurchaseBonus ?? false => 'First purchase bonus · once approved',
             _ => 'Credited once approved',
           },
         ),
