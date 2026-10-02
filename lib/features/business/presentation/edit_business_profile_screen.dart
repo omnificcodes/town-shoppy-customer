@@ -60,7 +60,6 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
   int? _categoryId;
   String? _logoUrl;
   String? _coverUrl;
-  bool _acceptsTownCoin = false;
   bool _initialized = false;
   bool _touched = false;
 
@@ -94,7 +93,6 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     _categoryId = m.category?.id;
     _logoUrl = m.logoUrl;
     _coverUrl = m.coverImageUrl;
-    _acceptsTownCoin = m.acceptsTownCoin;
 
     // The web edit sheet takes a free-typed platform name, so "Instagram"
     // and "instagram" both land in the Instagram field.
@@ -129,11 +127,13 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     return uri != null && uri.hasScheme && uri.host.isNotEmpty ? null : 'Enter a valid URL.';
   }
 
+  /// Required: every business accepts Town Coin, so the rate can be changed
+  /// but never left blank. Same 1-100 band the server enforces.
   String? get _discountError {
     final v = _discount.text.trim();
-    if (v.isEmpty) return null;
+    if (v.isEmpty) return 'Discount rate is required.';
     final n = double.tryParse(v);
-    return n == null || n < 0 || n > 100 ? 'Enter a number between 0 and 100.' : null;
+    return n == null || n < 1 || n > 100 ? 'Enter a rate between 1 and 100.' : null;
   }
 
   String? _socialError(SocialPlatform p) => p.validate(_social[p]!.text);
@@ -186,7 +186,9 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
             coverImageUrl: _coverUrl,
             websiteUrl: _website.text,
             discountRate: _discount.text,
-            acceptsTownCoin: _acceptsTownCoin,
+            // Mandatory for every business; also switches it on for a
+            // business that predates the rule the first time it saves.
+            acceptsTownCoin: true,
             socialLinks: social,
             businessHours: BusinessHours(_hours),
           ),
@@ -387,21 +389,20 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
               ),
               const SizedBox(height: AppSpacing.smd),
               AppTextField(
-                label: 'Discount rate (%)',
+                label: 'Discount rate (%) *',
                 controller: _discount,
-                helperText: 'Leave blank if this business has no standard discount.',
+                helperText: 'The share of a bill a customer can pay with Town Coin. Required.',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                 errorText: serverError('discount_rate') ?? (_touched ? _discountError : null),
               ),
               const SizedBox(height: AppSpacing.sm),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Accepts Town Coin'),
-                subtitle: const Text('Customers can spend Town Coin at your counter'),
-                value: _acceptsTownCoin,
-                activeColor: AppColors.businessInk,
-                onChanged: (v) => setState(() => _acceptsTownCoin = v),
+              // Mandatory for every business, so there is nothing to switch:
+              // it is stated, and saving always sends it as on.
+              const InfoBox(
+                icon: Icons.verified_rounded,
+                tone: AppTone.success,
+                message: 'Accepts Town Coin: on. Every Town Shoppy business accepts Town Coin at the counter.',
               ),
               const SizedBox(height: AppSpacing.section),
               if (state.error != null) ...[

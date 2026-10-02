@@ -10,6 +10,7 @@ class MerchantRegistrationInput {
     required this.addressLine,
     required this.latitude,
     required this.longitude,
+    required this.discountRate,
     this.city,
     this.state,
     this.postalCode,
@@ -26,6 +27,11 @@ class MerchantRegistrationInput {
   final String addressLine;
   final double latitude;
   final double longitude;
+
+  /// The share of a bill (percent) a customer may pay with Town Coin.
+  /// Required: every business accepts Town Coin, so every business has a
+  /// rate. Acceptance itself is not sent -- the server switches it on.
+  final double discountRate;
   final String? city;
   final String? state;
   final String? postalCode;
@@ -44,6 +50,7 @@ class MerchantRegistrationInput {
       'address_line': addressLine.trim(),
       'latitude': latitude,
       'longitude': longitude,
+      'discount_rate': discountRate,
       if (clean(city) != null) 'city': clean(city),
       if (clean(state) != null) 'state': clean(state),
       if (clean(postalCode) != null) 'postal_code': clean(postalCode),

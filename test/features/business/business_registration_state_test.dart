@@ -79,6 +79,7 @@ MerchantRegistrationInput _input({String? logoUrl, String? coverImageUrl}) => co
   addressLine: 'Market Road',
   latitude: 10.5,
   longitude: 76.2,
+  discountRate: 10,
 );
 
 ProviderContainer _container(FakeAuthRepository auth) {

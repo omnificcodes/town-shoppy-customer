@@ -37,6 +37,8 @@ BusinessMerchant _merchant() => BusinessMerchant.fromJson({
   'owner_name': 'Asha',
   'status': 'active',
   'accepts_town_coin': true,
+  // Mandatory for every business -- a merchant without a rate cannot save.
+  'discount_rate': 10,
   'logo_url': 'https://api.townshoppy.com/storage/uploads/images/logo.png',
   'cover_image_url': 'https://api.townshoppy.com/storage/uploads/images/cover.png',
   // Saved from the web edit sheet: free-typed platform names.
@@ -144,7 +146,32 @@ void main() {
     });
     expect(sent['logo_url'], 'https://api.townshoppy.com/storage/uploads/images/logo.png');
     expect(sent['cover_image_url'], 'https://api.townshoppy.com/storage/uploads/images/cover.png');
+    // Mandatory for every business: the rate goes with every save, and
+    // Town Coin acceptance is always sent as on -- there is no switch.
+    expect(sent['discount_rate'], 10);
+    expect(sent['accepts_town_coin'], isTrue);
     expect(find.text('Business profile'), findsOneWidget);
+  });
+
+  testWidgets('the discount rate is required: clearing it blocks Save, and Town Coin has no off switch', (
+    tester,
+  ) async {
+    final repository = _FakeMerchantRepository();
+    await tester.pumpWidget(_wrap(repository));
+    await tester.pumpAndSettle();
+
+    await _scrollTo(tester, _field('Discount rate (%) *'));
+    expect(find.byType(SwitchListTile), findsNothing);
+    expect(find.textContaining('Accepts Town Coin: on'), findsOneWidget);
+
+    await tester.enterText(_field('Discount rate (%) *'), '');
+    await _scrollTo(tester, find.text('Save changes'));
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    expect(repository.sent, isNull);
+    await tester.scrollUntilVisible(find.text('Discount rate is required.'), -300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Discount rate is required.'), findsOneWidget);
   });
 
   testWidgets('merchant logos fall back to an HTML image on web so uploads show without CORS headers', (tester) async {

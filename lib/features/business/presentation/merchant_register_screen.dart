@@ -52,6 +52,7 @@ class _MerchantRegisterScreenState extends ConsumerState<MerchantRegisterScreen>
   final _city = TextEditingController();
   final _state = TextEditingController();
   final _postalCode = TextEditingController();
+  final _discount = TextEditingController();
   int? _categoryId;
   int? _townId;
   int? _associationId;
@@ -72,7 +73,7 @@ class _MerchantRegisterScreenState extends ConsumerState<MerchantRegisterScreen>
 
   @override
   void dispose() {
-    for (final c in [_name, _ownerName, _description, _contactMobile, _address, _city, _state, _postalCode, _mobile, _password, _confirm]) {
+    for (final c in [_name, _ownerName, _description, _contactMobile, _address, _city, _state, _postalCode, _discount, _mobile, _password, _confirm]) {
       c.dispose();
     }
     super.dispose();
@@ -86,8 +87,17 @@ class _MerchantRegisterScreenState extends ConsumerState<MerchantRegisterScreen>
   String? get _associationError => _associationId == null ? 'Association is required.' : null;
   String? get _addressError => _address.text.trim().isEmpty ? 'Address is required.' : null;
   String? get _pinError => _pin == null ? "Pin your business's location on the map." : null;
+
+  /// Required for every business: the share of a bill a customer may pay
+  /// with Town Coin. Same 1-100 band the server enforces.
+  String? get _discountError {
+    final v = _discount.text.trim();
+    if (v.isEmpty) return 'Discount rate is required.';
+    final n = double.tryParse(v);
+    return n == null || n < 1 || n > 100 ? 'Enter a rate between 1 and 100.' : null;
+  }
   bool get _businessValid =>
-      [_nameError, _ownerError, _categoryError, _townError, _associationError, _addressError, _pinError].every((e) => e == null);
+      [_nameError, _ownerError, _categoryError, _townError, _associationError, _addressError, _pinError, _discountError].every((e) => e == null);
 
   String? get _mobileError => _mobile.text.replaceAll(RegExp(r'[^0-9]'), '').length < 10 ? 'Enter a valid mobile number.' : null;
   String? get _passwordError => _password.text.length < 8 ? 'Use at least 8 characters.' : null;
@@ -102,6 +112,7 @@ class _MerchantRegisterScreenState extends ConsumerState<MerchantRegisterScreen>
         addressLine: _address.text,
         latitude: _pin!.latitude,
         longitude: _pin!.longitude,
+        discountRate: double.parse(_discount.text.trim()),
         city: _city.text,
         state: _state.text,
         postalCode: _postalCode.text,
@@ -341,6 +352,27 @@ class _MerchantRegisterScreenState extends ConsumerState<MerchantRegisterScreen>
         Text('Business location *', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: AppSpacing.xs),
         LocationPicker(value: _pin, onChanged: (p) => setState(() => _pin = p), errorText: server('latitude') ?? show(_pinError)),
+        const SizedBox(height: AppSpacing.section),
+        // Every Town Shoppy business accepts Town Coin, so the rate is part
+        // of signing up and acceptance is stated, not asked.
+        const SectionHeader(title: 'Town Coin', subtitle: 'How customers pay with coins at your shop.', icon: Icons.percent_rounded),
+        const SizedBox(height: AppSpacing.smd),
+        AppTextField(
+          label: 'Discount rate (%) *',
+          controller: _discount,
+          hintText: '10',
+          helperText: 'The share of a bill a customer can pay with Town Coin. 10 means up to ₹100 off a ₹1,000 bill.',
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+          errorText: server('discount_rate') ?? show(_discountError),
+          textInputAction: TextInputAction.done,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const InfoBox(
+          icon: Icons.verified_rounded,
+          tone: AppTone.success,
+          message: 'Accepts Town Coin: on. Every Town Shoppy business accepts Town Coin at the counter.',
+        ),
         const SizedBox(height: AppSpacing.section),
         if (state.error != null && state.fieldErrors.isEmpty) ...[
           InfoBox(icon: Icons.error_outline_rounded, tone: AppTone.error, message: state.error!.message),
