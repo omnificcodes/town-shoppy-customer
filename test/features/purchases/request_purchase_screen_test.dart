@@ -213,7 +213,7 @@ void main() {
       expect(find.text('800'), findsOneWidget);
 
       // The button sits below the breakdown, past the fold on a test-sized screen.
-      final payFinder = find.widgetWithText(ElevatedButton, 'Apply Town Coin discount');
+      final payFinder = find.widgetWithText(ElevatedButton, 'Apply Town Coin Discount');
       await tester.dragUntilVisible(payFinder, find.byType(ListView).first, const Offset(0, -200));
       expect(tester.widget<ElevatedButton>(payFinder).onPressed, isNotNull);
     });

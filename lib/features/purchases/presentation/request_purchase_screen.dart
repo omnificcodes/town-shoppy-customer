@@ -429,7 +429,7 @@ class _ReviewStep extends StatelessWidget {
         AppButton(
           // Sends a request the business approves -- nothing is paid or
           // deducted by this tap alone.
-          label: hasDiscount ? 'Apply Town Coin discount' : 'Send payment request',
+          label: hasDiscount ? 'Apply Town Coin Discount' : 'Send payment request',
           icon: Icons.lock_outline_rounded,
           isLoading: state.isSubmitting,
           onPressed: state.canSubmit ? controller.submit : null,
