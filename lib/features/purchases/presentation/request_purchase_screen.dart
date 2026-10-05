@@ -407,7 +407,7 @@ class _ReviewStep extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Divider(height: 1, color: AppColors.border),
               ),
-              _AmountRow(label: 'Pay Cash Only', value: '₹${payable.toStringAsFixed(2)}', emphasised: true),
+              _AmountRow(label: 'Pay at Store', value: '₹${payable.toStringAsFixed(2)}', emphasised: true),
             ],
           ),
         ),
@@ -420,6 +420,21 @@ class _ReviewStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
+        if (state.submitError != null) ...[
+          InfoBox(tone: AppTone.error, icon: Icons.error_outline_rounded, message: state.submitError!.message),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        // Straight under the bill, ahead of the note, so it sits higher on
+        // the screen.
+        AppButton(
+          // Sends a request the business approves -- nothing is paid or
+          // deducted by this tap alone.
+          label: hasDiscount ? 'Apply Town Coin discount' : 'Send payment request',
+          icon: Icons.lock_outline_rounded,
+          isLoading: state.isSubmitting,
+          onPressed: state.canSubmit ? controller.submit : null,
+        ),
+        const SizedBox(height: AppSpacing.md),
         // The discount is an estimate until the server recalculates it from
         // the merchant's own rate and the wallet, so the screen says so
         // rather than presenting it as already agreed.
@@ -428,19 +443,6 @@ class _ReviewStep extends StatelessWidget {
           message: hasDiscount
               ? 'The merchant confirms this at the counter. Your coins are only spent once they do.'
               : 'The merchant reviews this before you receive Town Coins and Lucky Draw coupons.',
-        ),
-        const SizedBox(height: AppSpacing.section),
-        if (state.submitError != null) ...[
-          InfoBox(tone: AppTone.error, icon: Icons.error_outline_rounded, message: state.submitError!.message),
-          const SizedBox(height: AppSpacing.md),
-        ],
-        AppButton(
-          // Sends a request the business approves -- nothing is paid or
-          // deducted by this tap alone.
-          label: hasDiscount ? 'Pay with Town Coins' : 'Send payment request',
-          icon: Icons.lock_outline_rounded,
-          isLoading: state.isSubmitting,
-          onPressed: state.canSubmit ? controller.submit : null,
         ),
         const SizedBox(height: AppSpacing.section),
       ],

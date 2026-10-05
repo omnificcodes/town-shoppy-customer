@@ -209,10 +209,11 @@ void main() {
 
       expect(find.text('− ₹80.00'), findsOneWidget);
       expect(find.text('Town Coins to use'), findsOneWidget);
+      expect(find.text('Pay at Store'), findsOneWidget);
       expect(find.text('800'), findsOneWidget);
 
       // The button sits below the breakdown, past the fold on a test-sized screen.
-      final payFinder = find.widgetWithText(ElevatedButton, 'Pay with Town Coins');
+      final payFinder = find.widgetWithText(ElevatedButton, 'Apply Town Coin discount');
       await tester.dragUntilVisible(payFinder, find.byType(ListView).first, const Offset(0, -200));
       expect(tester.widget<ElevatedButton>(payFinder).onPressed, isNotNull);
     });
