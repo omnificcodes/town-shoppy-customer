@@ -407,7 +407,7 @@ class _ReviewStep extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Divider(height: 1, color: AppColors.border),
               ),
-              _AmountRow(label: 'To pay', value: '₹${payable.toStringAsFixed(2)}', emphasised: true),
+              _AmountRow(label: 'Pay Cash Only', value: '₹${payable.toStringAsFixed(2)}', emphasised: true),
             ],
           ),
         ),
