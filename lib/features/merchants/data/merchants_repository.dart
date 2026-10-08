@@ -15,9 +15,9 @@ import 'models/nearby_merchant.dart';
 /// specifically), so this client always receives the same
 /// `MerchantPublicResource` shape a guest would.
 ///
-/// `category_id`, `accepts_town_coin` and `search` are the real filters
-/// this client uses on `index()` (`association_id` is also
-/// backend-supported but has no client use case yet). `search` is a plain
+/// `category_id`, `association_id`, `accepts_town_coin` and `search` are
+/// the real filters this client uses on `index()` (`association_id` backs
+/// the list behind a Home association tile). `search` is a plain
 /// `name LIKE` match — unprivileged callers (every request this app makes)
 /// hit the same `->when($request->filled('search'), ...)` clause a Super
 /// Admin does, so it's fully public. There is still no `town_id` filter on
@@ -32,6 +32,7 @@ class MerchantsRepository {
     int page = 1,
     int perPage = 20,
     int? categoryId,
+    int? associationId,
     bool? acceptsTownCoin,
     bool? featured,
     String? search,
@@ -43,6 +44,7 @@ class MerchantsRepository {
           'page': page,
           'per_page': perPage,
           if (categoryId != null) 'category_id': categoryId,
+          if (associationId != null) 'association_id': associationId,
           if (acceptsTownCoin == true) 'accepts_town_coin': 1,
           if (featured == true) 'featured': 1,
           if (search != null && search.trim().isNotEmpty) 'search': search.trim(),

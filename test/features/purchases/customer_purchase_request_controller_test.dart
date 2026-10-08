@@ -116,6 +116,7 @@ class _FakeMerchantsRepository implements MerchantsRepository {
     int page = 1,
     int perPage = 20,
     int? categoryId,
+    int? associationId,
     bool? acceptsTownCoin,
     bool? featured,
     String? search,

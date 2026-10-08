@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -6,6 +7,7 @@ import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/indian_mobile.dart';
+import '../../wallet/application/wallet_controller.dart';
 import '../data/models/merchant.dart';
 import 'category_visual.dart';
 import 'favorite_button.dart';
@@ -18,8 +20,10 @@ import 'merchant_logo.dart';
 /// Every line reads `MerchantPublicResource`. The call and WhatsApp actions
 /// use the merchant's own published `contact_mobile_number`, and only appear
 /// when it is a dialable Indian mobile number; otherwise the card offers
-/// "View shop". Stitch's star ratings, verified tick and review counts are
-/// absent on purpose: nothing in the backend records them.
+/// "View shop". When the signed-in customer holds Shop-Exclusive coins for
+/// this shop (spendable only here), a round coin under the heart shows it.
+/// Stitch's star ratings, verified tick and review counts are absent on
+/// purpose: nothing in the backend records them.
 class MerchantCard extends StatelessWidget {
   const MerchantCard({super.key, required this.merchant, this.onTap, this.distanceKm, this.place});
 
@@ -155,7 +159,13 @@ class MerchantCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      FavoriteButton(merchantId: merchant.id, merchantName: merchant.name),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FavoriteButton(merchantId: merchant.id, merchantName: merchant.name),
+                          _ShopCoinsBalance(merchantId: merchant.id),
+                        ],
+                      ),
                     ],
                   ),
                   Padding(
@@ -296,6 +306,73 @@ class _TownCoinBadge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The customer's Shop-Exclusive coins for this one shop -- the coins that
+/// can only be spent here -- from the wallet's `shop_exclusive_breakdown`.
+/// Universal coins are left out on purpose: they are the same on every card.
+/// Nothing shows while the wallet is loading or when there are none here.
+class _ShopCoinsBalance extends ConsumerWidget {
+  const _ShopCoinsBalance({required this.merchantId});
+
+  final int merchantId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final breakdown = ref.watch(walletControllerProvider).value?.shopExclusiveBreakdown;
+    final coins =
+        breakdown?.where((row) => row.merchantId == merchantId).fold<int>(0, (sum, row) => sum + row.balance) ?? 0;
+    if (coins <= 0) return const SizedBox.shrink();
+
+    final label = coins == 1 ? '1 coin' : '$coins coins';
+
+    // A round gold coin under the heart: the number, with "coins" beneath.
+    return Semantics(
+      label: 'You have $label to spend only at this shop',
+      excludeSemantics: true,
+      child: Container(
+        width: _size,
+        height: _size,
+        margin: const EdgeInsets.only(top: AppSpacing.xxs),
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFF1C2), Color(0xFFF2C94C)],
+          ),
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.55), width: 1.5),
+          boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: FittedBox(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _compact(coins),
+                style: const TextStyle(color: AppColors.goldDark, fontSize: 15, fontWeight: FontWeight.w800, height: 1.1),
+              ),
+              Text(
+                coins == 1 ? 'coin' : 'coins',
+                style: const TextStyle(color: AppColors.goldDark, fontSize: 9, fontWeight: FontWeight.w700, height: 1.1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _size = 48.0;
+
+  /// 400 -> "400", 12500 -> "12.5k", so any balance fits inside the coin.
+  static String _compact(int coins) {
+    if (coins < 1000) return '$coins';
+    final thousands = coins / 1000;
+    final whole = thousands >= 100 || thousands == thousands.truncateToDouble();
+    return '${whole ? thousands.truncate() : thousands.toStringAsFixed(1)}k';
   }
 }
 
