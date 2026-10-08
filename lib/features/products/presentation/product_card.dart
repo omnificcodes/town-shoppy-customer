@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../cart/application/cart_controller.dart';
+import '../../product_coupons/presentation/product_coupon_button.dart';
 import '../data/models/product.dart';
 import 'add_to_bag_button.dart';
 import 'product_price.dart';
@@ -80,6 +81,13 @@ class ProductCard extends ConsumerWidget {
                           top: AppSpacing.xs,
                           child: _DiscountFlag(percent: percent),
                         ),
+                      // Lucky Draw coupons the shop gives for this product
+                      // -- tapping asks the shop for them.
+                      Positioned(
+                        right: AppSpacing.xs,
+                        top: AppSpacing.xs,
+                        child: ProductCouponButton(product: product, compact: true),
+                      ),
                       if (product.acceptsTownCoin)
                         Positioned(
                           left: AppSpacing.xs,

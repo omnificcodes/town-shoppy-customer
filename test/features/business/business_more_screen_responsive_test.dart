@@ -81,9 +81,10 @@ void main() {
         expect(find.text('SIGNED IN AS'), findsOneWidget);
         expect(find.text('+91 99900 03001'), findsOneWidget);
         expect(find.text('Switch'), findsOneWidget);
-        // Branches, Customers, Purchases, Direct POS, Offers, Products and
-        // Offer redemptions -- no separate Redemptions any more.
-        expect(find.text('7 services'), findsOneWidget);
+        // Branches, Customers, Purchases, Direct POS, Offers, Products,
+        // Offer redemptions and Coupon requests -- no separate Redemptions
+        // any more.
+        expect(find.text('8 services'), findsOneWidget);
         expect(find.text('2 pending'), findsOneWidget);
         // Offer claims are not purchases: they have their own count.
         expect(find.text('1 pending'), findsOneWidget);

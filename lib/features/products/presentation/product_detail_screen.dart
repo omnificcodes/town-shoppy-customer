@@ -15,6 +15,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../merchants/presentation/merchant_logo.dart';
 import '../application/products_list_controller.dart';
+import '../../product_coupons/presentation/product_coupon_button.dart';
 import '../data/models/product.dart';
 import 'product_price.dart';
 
@@ -390,6 +391,10 @@ class _OverviewCard extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.md),
           ProductPrice(product: product, large: true),
+          if (product.offersCoupons || product.myCouponRequest == 'approved') ...[
+            const SizedBox(height: AppSpacing.md),
+            ProductCouponButton(product: product),
+          ],
         ],
       ),
     );

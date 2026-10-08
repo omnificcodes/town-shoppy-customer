@@ -20,6 +20,9 @@ class Product {
     this.mrp,
     this.discountAmount,
     this.discountPercentage,
+    this.couponCount = 0,
+    this.couponsPerClaim = 0,
+    this.myCouponRequest,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -42,8 +45,34 @@ class Product {
       mrp: (json['mrp'] as num?)?.toDouble(),
       discountAmount: (json['discount_amount'] as num?)?.toDouble(),
       discountPercentage: (json['discount_percentage'] as num?)?.toDouble(),
+      couponCount: json['coupon_count'] as int? ?? 0,
+      couponsPerClaim: json['coupons_per_claim'] as int? ?? 0,
+      myCouponRequest: json['my_coupon_request'] as String?,
     );
   }
+
+  /// A copy with the signed-in customer's request state changed -- used
+  /// the moment a request is sent, ahead of the list's own refetch.
+  Product withMyCouponRequest(String? request) => Product(
+    id: id,
+    merchantId: merchantId,
+    merchantName: merchantName,
+    merchantLogoUrl: merchantLogoUrl,
+    merchantContactMobileNumber: merchantContactMobileNumber,
+    name: name,
+    description: description,
+    price: price,
+    imageUrls: imageUrls,
+    townCoinPercentage: townCoinPercentage,
+    acceptsTownCoin: acceptsTownCoin,
+    status: status,
+    mrp: mrp,
+    discountAmount: discountAmount,
+    discountPercentage: discountPercentage,
+    couponCount: couponCount,
+    couponsPerClaim: couponsPerClaim,
+    myCouponRequest: request,
+  );
 
   final int id;
   final int? merchantId;
@@ -67,6 +96,16 @@ class Product {
   /// locally only if an older API omits the fields entirely.
   final double? discountAmount;
   final double? discountPercentage;
+
+  /// Product coupons (a plan feature). [couponCount] is what the shop set;
+  /// [couponsPerClaim] what a customer gets today -- 0 when the shop's plan
+  /// does not include product coupons. [myCouponRequest] is the signed-in
+  /// customer's own `pending` or `approved` request, null when none.
+  final int couponCount;
+  final int couponsPerClaim;
+  final String? myCouponRequest;
+
+  bool get offersCoupons => couponsPerClaim > 0;
 
   double? get saving {
     final shown = discountAmount;
@@ -104,6 +143,7 @@ class ProductInput {
     this.imageUrls = const [],
     this.townCoinPercentage,
     this.status = 'active',
+    this.couponCount,
   });
 
   final String name;
@@ -120,6 +160,11 @@ class ProductInput {
   final double? townCoinPercentage;
   final String status;
 
+  /// Lucky Draw coupons a customer can ask for on this product. `null`
+  /// leaves the field out of the request -- the form only sends it when
+  /// the shop's plan includes product coupons.
+  final int? couponCount;
+
   Map<String, dynamic> toJson() {
     String? orNull(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
     return {
@@ -130,6 +175,7 @@ class ProductInput {
       'image_urls': imageUrls.isEmpty ? null : imageUrls,
       'town_coin_percentage': townCoinPercentage,
       'status': status,
+      if (couponCount != null) 'coupon_count': couponCount,
     };
   }
 }

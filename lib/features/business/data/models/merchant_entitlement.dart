@@ -7,6 +7,8 @@ class MerchantEntitlement {
     required this.status,
     required this.planName,
     required this.inGracePeriod,
+    this.productCoupons = false,
+    this.maxCouponsPerProduct,
   });
 
   factory MerchantEntitlement.fromJson(Map<String, dynamic> json) {
@@ -15,6 +17,8 @@ class MerchantEntitlement {
       status: json['status'] as String?,
       planName: json['plan_name'] as String?,
       inGracePeriod: json['in_grace_period'] as bool? ?? false,
+      productCoupons: json['product_coupons'] as bool? ?? false,
+      maxCouponsPerProduct: json['max_coupons_per_product'] as int?,
     );
   }
 
@@ -27,4 +31,11 @@ class MerchantEntitlement {
   final String? status;
   final String? planName;
   final bool inGracePeriod;
+
+  /// Whether the shop's plan lets it attach Lucky Draw coupons to products,
+  /// and the most one product may carry (null = no ceiling of its own).
+  /// Fail-open leaves this off: the field only appears once the server
+  /// says the plan includes it.
+  final bool productCoupons;
+  final int? maxCouponsPerProduct;
 }

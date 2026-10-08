@@ -73,6 +73,11 @@ NotificationTarget? notificationTarget(String type) {
     'offer_redemption.requested' => const NotificationTarget(BusinessRoutes.offerRedemptions, AppMode.business),
     'offer_redemption.approved' || 'offer_redemption.rejected' =>
       const NotificationTarget('/offer-redemptions', AppMode.customer),
+    // Product coupons: the shop's queue for the request; the customer's
+    // coupons once accepted, or the catalog to ask again once declined.
+    'product_coupon.requested' => const NotificationTarget(BusinessRoutes.productCouponRequests, AppMode.business),
+    'product_coupon.approved' => const NotificationTarget('/coupons', AppMode.customer),
+    'product_coupon.rejected' => const NotificationTarget('/shopping', AppMode.customer),
     // The winning customer's own wins list.
     'draw.won' => const NotificationTarget('/lucky-draw/my-wins', AppMode.customer),
     // The sponsoring merchant, never the winning customer.

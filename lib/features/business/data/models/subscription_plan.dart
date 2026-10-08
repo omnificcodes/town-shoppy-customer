@@ -57,6 +57,7 @@ class SubscriptionPlan {
         'banner_placement' => 'Banner placement',
         'premium_support' => 'Premium support',
         'self_scan_qr' => 'Self-scan QR',
+        'product_coupons' => 'Product coupons',
         _ => key.replaceAll('_', ' '),
       };
 }

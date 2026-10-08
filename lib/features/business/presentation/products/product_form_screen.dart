@@ -148,6 +148,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final _percentage = TextEditingController(
     text: widget.product?.townCoinPercentage != null ? _trim(widget.product!.townCoinPercentage!) : '',
   );
+  late final _coupons = TextEditingController(
+    text: (widget.product?.couponCount ?? 0) > 0 ? '${widget.product!.couponCount}' : '',
+  );
   late List<String> _imageUrls = List.of(widget.product?.imageUrls ?? const []);
   late bool _acceptsTownCoin = widget.product?.acceptsTownCoin ?? false;
   late bool _active = widget.product?.isActive ?? true;
@@ -163,7 +166,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_name, _description, _price, _mrp, _percentage]) {
+    for (final c in [_name, _description, _price, _mrp, _percentage, _coupons]) {
       c.dispose();
     }
     super.dispose();
@@ -196,11 +199,33 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     return r == null || r <= 0 || r > 100 ? 'Enter a percentage between 0.01 and 100.' : null;
   }
 
+  /// Product coupons are a plan feature; the section only shows (and the
+  /// count is only sent) when the shop's plan includes them.
+  bool get _couponsEnabled => ref.read(merchantEntitlementProvider).value?.productCoupons ?? false;
+
+  /// Empty means no coupons on this product.
+  int get _couponValue => int.tryParse(_coupons.text.trim()) ?? 0;
+
+  String? get _couponError {
+    if (!_couponsEnabled || _coupons.text.trim().isEmpty) return null;
+    final n = int.tryParse(_coupons.text.trim());
+    if (n == null || n < 0) return 'Enter a whole number of coupons.';
+    final max = ref.read(merchantEntitlementProvider).value?.maxCouponsPerProduct;
+    if (max != null && n > max) return 'Your plan allows at most $max coupons per product.';
+    return null;
+  }
+
   Future<String> _upload(XFile image) => ref.read(businessMerchantRepositoryProvider).uploadImage(image);
 
   Future<void> _save() async {
     setState(() => _touched = true);
-    if (_nameError != null || _priceError != null || _mrpError != null || _percentageError != null) return;
+    if (_nameError != null ||
+        _priceError != null ||
+        _mrpError != null ||
+        _percentageError != null ||
+        _couponError != null) {
+      return;
+    }
 
     final input = ProductInput(
       name: _name.text,
@@ -210,6 +235,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       imageUrls: _imageUrls,
       townCoinPercentage: _acceptsTownCoin ? double.parse(_percentage.text.trim()) : null,
       status: _active ? 'active' : 'inactive',
+      couponCount: _couponsEnabled ? _couponValue : null,
     );
 
     setState(() {
@@ -266,6 +292,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   Widget build(BuildContext context) {
     String? server(String f) => _fieldErrors[f]?.firstOrNull;
     String? show(String? local) => _touched ? local : null;
+    final entitlement = ref.watch(merchantEntitlementProvider).value;
 
     return BusinessScaffold(
       title: _isEdit ? 'Edit product' : 'New product',
@@ -359,6 +386,27 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
               errorText: server('town_coin_percentage') ?? show(_percentageError),
+            ),
+          ],
+          if (entitlement?.productCoupons ?? false) ...[
+            const SizedBox(height: AppSpacing.section),
+            const SectionHeader(
+              title: 'Lucky Draw coupons',
+              subtitle: 'Customers can ask for these coupons from this product.',
+              icon: Icons.confirmation_number_outlined,
+            ),
+            const SizedBox(height: AppSpacing.smd),
+            AppTextField(
+              label: 'Coupons per customer',
+              controller: _coupons,
+              hintText: 'e.g. 2',
+              helperText: entitlement?.maxCouponsPerProduct != null
+                  ? 'Up to ${entitlement!.maxCouponsPerProduct} on your plan. Leave blank for none. You accept each request.'
+                  : 'Leave blank for none. You accept each request.',
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              errorText: server('coupon_count') ?? show(_couponError),
+              onChanged: (_) => setState(() {}),
             ),
           ],
           const SizedBox(height: AppSpacing.section),

@@ -18,6 +18,7 @@ import '../../../shared/widgets/loading_skeleton.dart';
 import '../../cart/presentation/bag_bar.dart';
 import '../application/products_list_controller.dart';
 import '../application/products_query.dart';
+import '../../product_coupons/presentation/product_coupon_button.dart';
 import '../data/models/product.dart';
 import 'add_to_bag_button.dart';
 import 'product_card.dart';
@@ -503,6 +504,10 @@ class _FeaturedProductCard extends StatelessWidget {
                     AddToBagButton(product: product, large: true),
                   ],
                 ),
+                if (product.offersCoupons || product.myCouponRequest == 'approved') ...[
+                  const SizedBox(height: AppSpacing.smd),
+                  ProductCouponButton(product: product),
+                ],
               ],
             ),
           ),

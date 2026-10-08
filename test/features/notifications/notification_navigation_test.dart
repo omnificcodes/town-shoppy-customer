@@ -32,6 +32,8 @@ void main() {
       expect(notificationTarget('payment.invoice_available'), const NotificationTarget(BusinessRoutes.invoices, AppMode.business));
       expect(notificationTarget('subscription.activated'), const NotificationTarget(BusinessRoutes.subscriptions, AppMode.business));
       expect(notificationTarget('offer_redemption.requested'), const NotificationTarget(BusinessRoutes.offerRedemptions, AppMode.business));
+      expect(notificationTarget('product_coupon.requested'), const NotificationTarget(BusinessRoutes.productCouponRequests, AppMode.business));
+      expect(notificationTarget('product_coupon.approved'), const NotificationTarget('/coupons', AppMode.customer));
       expect(notificationTarget('prize.won'), const NotificationTarget(BusinessRoutes.prizes, AppMode.business));
       expect(notificationTarget('merchant.approved'), const NotificationTarget(BusinessRoutes.profile, AppMode.business));
       expect(notificationTarget('merchant.rejected'), const NotificationTarget(BusinessRoutes.profile, AppMode.business));

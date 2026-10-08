@@ -36,6 +36,7 @@ import '../../features/business/presentation/prizes/business_prize_detail_screen
 import '../../features/business/presentation/prizes/business_prizes_screen.dart';
 import '../../features/business/presentation/prizes/prize_form_screen.dart';
 import '../../features/business/presentation/products/business_products_screen.dart';
+import '../../features/business/presentation/products/product_coupon_requests_screen.dart';
 import '../../features/business/presentation/products/product_form_screen.dart';
 import '../../features/business/presentation/wallet/merchant_wallet_screen.dart';
 import '../../features/business/presentation/direct_pos/direct_pos_screen.dart';
@@ -62,6 +63,7 @@ import '../../features/lucky_draw/presentation/draw_detail_screen.dart';
 import '../../features/lucky_draw/presentation/draws_list_screen.dart';
 import '../../features/lucky_draw/presentation/my_vouchers_screen.dart';
 import '../../features/lucky_draw/presentation/voucher_detail_screen.dart';
+import '../../features/merchants/presentation/association_merchants_screen.dart';
 import '../../features/merchants/presentation/merchant_detail_screen.dart';
 import '../../features/merchants/presentation/merchants_list_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -227,6 +229,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '$_merchantsPath/:id',
         builder: (context, state) => MerchantDetailScreen(merchantId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/associations/:id',
+        builder: (context, state) => AssociationMerchantsScreen(associationId: int.parse(state.pathParameters['id']!)),
       ),
       GoRoute(path: _favoritesPath, builder: (context, state) => const FavoritesScreen()),
       GoRoute(
@@ -414,6 +420,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: BusinessRoutes.offerRedemptions,
         builder: (context, state) => const RequirePackage(feature: 'Offer redemptions', child: OfferRedemptionsScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.productCouponRequests,
+        builder: (context, state) =>
+            const RequirePackage(feature: 'Coupon requests', child: ProductCouponRequestsScreen()),
       ),
       GoRoute(
         path: BusinessRoutes.wallet,
