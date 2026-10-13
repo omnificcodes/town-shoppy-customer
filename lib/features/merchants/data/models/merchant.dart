@@ -43,6 +43,7 @@ class Merchant {
     this.tagline,
     this.coverImageUrl,
     this.businessHours,
+    this.planPerks = const MerchantPlanPerks(),
   });
 
   factory Merchant.fromJson(Map<String, dynamic> json) {
@@ -62,6 +63,7 @@ class Merchant {
       tagline: json['tagline'] as String?,
       coverImageUrl: json['cover_image_url'] as String?,
       businessHours: MerchantBusinessHours.tryParse(json['business_hours']),
+      planPerks: MerchantPlanPerks.fromJson(json['plan_perks']),
     );
   }
 
@@ -83,5 +85,42 @@ class Merchant {
   /// Null when the merchant never set hours -- "unknown", not "closed".
   final MerchantBusinessHours? businessHours;
 
+  /// BR-43: what the shop's plan lets customers see.
+  final MerchantPlanPerks planPerks;
+
   TownRef? get town => association?.town;
+}
+
+/// `plan_perks` on `MerchantPublicResource` (BR-43): which listing items
+/// the shop's current plan carries. A shop with no plan shows the basics.
+class MerchantPlanPerks {
+  const MerchantPlanPerks({
+    this.mapLocation = true,
+    this.socialLinks = true,
+    this.officialPartnerBadge = false,
+    this.onlineStorePage = false,
+    this.storeUrl,
+    this.counter = true,
+  });
+
+  factory MerchantPlanPerks.fromJson(dynamic json) {
+    if (json is! Map) return const MerchantPlanPerks();
+    return MerchantPlanPerks(
+      mapLocation: json['map_location'] as bool? ?? true,
+      socialLinks: json['social_links'] as bool? ?? true,
+      officialPartnerBadge: json['official_partner_badge'] as bool? ?? false,
+      onlineStorePage: json['online_store_page'] as bool? ?? false,
+      storeUrl: json['store_url'] as String?,
+      counter: json['counter'] as bool? ?? true,
+    );
+  }
+
+  final bool mapLocation;
+  final bool socialLinks;
+  final bool officialPartnerBadge;
+  final bool onlineStorePage;
+  final String? storeUrl;
+
+  /// Whether the shop takes bills and coins at the counter at all.
+  final bool counter;
 }

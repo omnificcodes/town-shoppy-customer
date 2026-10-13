@@ -17,6 +17,7 @@ class BusinessOffer {
     required this.coinDiscountRate,
     required this.applicableItem,
     required this.isCoinRedeemable,
+    this.isFlashSale = false,
     required this.terms,
     required this.startsAt,
     required this.endsAt,
@@ -42,6 +43,7 @@ class BusinessOffer {
       coinDiscountRate: (json['coin_discount_rate'] as num?)?.toDouble(),
       applicableItem: json['applicable_item'] as String?,
       isCoinRedeemable: json['is_coin_redeemable'] as bool? ?? false,
+      isFlashSale: json['is_flash_sale'] as bool? ?? false,
       terms: json['terms'] as String?,
       startsAt: _date(json['starts_at']),
       endsAt: _date(json['ends_at']),
@@ -68,6 +70,9 @@ class BusinessOffer {
   final double? coinDiscountRate;
   final String? applicableItem;
   final bool isCoinRedeemable;
+
+  /// BR-43: shown with a countdown in the customer Home's Flash sales strip.
+  final bool isFlashSale;
   final String? terms;
   final DateTime? startsAt;
   final DateTime? endsAt;
@@ -127,6 +132,7 @@ class OfferInput {
     this.coinDiscountRate,
     this.applicableItem,
     this.branchId,
+    this.isFlashSale = false,
   });
 
   final String title;
@@ -141,6 +147,9 @@ class OfferInput {
   final String? applicableItem;
   final int? branchId;
 
+  /// Only a plan with the flash-sale item may set this.
+  final bool isFlashSale;
+
   Map<String, dynamic> toJson() {
     String? orNull(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
     return {
@@ -153,6 +162,7 @@ class OfferInput {
       'branch_id': branchId,
       'starts_at': startsAt.toUtc().toIso8601String(),
       'ends_at': endsAt.toUtc().toIso8601String(),
+      'is_flash_sale': isFlashSale,
     };
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:customer/features/business/application/business_context.dart';
+import 'package:customer/features/business/data/models/merchant_entitlement.dart';
 import 'package:customer/core/errors/app_exception.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/business/application/business_offers_controller.dart';
@@ -32,7 +34,12 @@ BusinessOffer _offer({String status = 'active'}) => BusinessOffer.fromJson({
 
 Widget _app({BusinessOffer? initial, required Future<BusinessOffer> Function() load}) {
   return ProviderScope(
-    overrides: [businessOfferProvider(7).overrideWith((ref) => load())],
+    overrides: [
+      businessOfferProvider(7).overrideWith((ref) => load()),
+      // The form reads the plan (BR-43 flash-sale switch); answer it here
+      // rather than letting a real request's timer outlive the test.
+      merchantEntitlementProvider.overrideWith((ref) async => MerchantEntitlement.failOpen),
+    ],
     child: MaterialApp(
       theme: AppTheme.light,
       home: EditOfferScreen(offerId: 7, initial: initial),

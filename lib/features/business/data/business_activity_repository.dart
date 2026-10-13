@@ -128,9 +128,17 @@ class BusinessActivityRepository {
 
   // ---- Purchase actions (owner or staff; `pending` only; 409 otherwise) ----
 
-  Future<Purchase> approvePurchase(int id) async {
+  /// [scratchCardId] gives a scratch card design with the approved bill
+  /// (a plan feature); the server refuses the approval if it cannot.
+  Future<Purchase> approvePurchase(int id, {int? scratchCardId, int? stampCardId}) async {
     try {
-      final response = await _dio.post('/purchases/$id/approve');
+      final response = await _dio.post(
+        '/purchases/$id/approve',
+        data: {
+          if (scratchCardId != null) 'scratch_card_id': scratchCardId,
+          if (stampCardId != null) 'stamp_card_id': stampCardId,
+        },
+      );
       return Purchase.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);

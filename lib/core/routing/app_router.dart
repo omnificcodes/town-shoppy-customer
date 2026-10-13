@@ -37,6 +37,21 @@ import '../../features/business/presentation/prizes/business_prizes_screen.dart'
 import '../../features/business/presentation/prizes/prize_form_screen.dart';
 import '../../features/business/presentation/products/business_products_screen.dart';
 import '../../features/business/presentation/products/product_coupon_requests_screen.dart';
+import '../../features/business/presentation/scratch_cards/business_scratch_cards_screen.dart';
+import '../../features/business/presentation/scratch_cards/redeem_scratch_card_screen.dart';
+import '../../features/business/presentation/scratch_cards/scratch_card_form_screen.dart';
+import '../../features/scratch_cards/data/models/scratch_card.dart';
+import '../../features/scratch_cards/presentation/scratch_card_screen.dart';
+import '../../features/scratch_cards/presentation/scratch_cards_screen.dart';
+import '../../features/business/presentation/review_link/business_review_link_screen.dart';
+import '../../features/business/presentation/online_store/business_online_store_screen.dart';
+import '../../features/business/presentation/review_link/review_feedback_screen.dart';
+import '../../features/business/presentation/stamp_cards/business_stamp_cards_screen.dart';
+import '../../features/business/presentation/stamp_cards/stamp_card_customer_screen.dart';
+import '../../features/business/presentation/stamp_cards/stamp_card_form_screen.dart';
+import '../../features/stamp_cards/data/models/stamp_card.dart';
+import '../../features/stamp_cards/presentation/stamp_card_detail_screen.dart';
+import '../../features/stamp_cards/presentation/stamp_cards_screen.dart';
 import '../../features/business/presentation/products/product_form_screen.dart';
 import '../../features/business/presentation/wallet/merchant_wallet_screen.dart';
 import '../../features/business/presentation/direct_pos/direct_pos_screen.dart';
@@ -59,7 +74,10 @@ import '../../features/coupons/presentation/coupon_detail_screen.dart';
 import '../../features/coupons/presentation/coupons_list_screen.dart';
 import '../../features/favorites/presentation/favorites_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/business/presentation/draws/business_draw_detail_screen.dart';
+import '../../features/business/presentation/draws/business_draws_screen.dart';
 import '../../features/lucky_draw/presentation/draw_detail_screen.dart';
+import '../../features/lucky_draw/presentation/draw_show_screen.dart';
 import '../../features/lucky_draw/presentation/draws_list_screen.dart';
 import '../../features/lucky_draw/presentation/my_vouchers_screen.dart';
 import '../../features/lucky_draw/presentation/voucher_detail_screen.dart';
@@ -192,6 +210,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '$_luckyDrawPath/:id',
         builder: (context, state) => DrawDetailScreen(drawId: int.parse(state.pathParameters['id']!)),
       ),
+      // BR-44: the animated replay of a completed draw.
+      GoRoute(
+        path: '$_luckyDrawPath/:id/watch',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          return DrawShowScreen(drawId: id, detailsPath: '$_luckyDrawPath/$id');
+        },
+      ),
       GoRoute(path: '/redeem', builder: (context, state) => const RedeemOffersScreen()),
       GoRoute(path: _redemptionsPath, builder: (context, state) => const RedemptionsListScreen()),
       GoRoute(
@@ -235,6 +261,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => AssociationMerchantsScreen(associationId: int.parse(state.pathParameters['id']!)),
       ),
       GoRoute(path: _favoritesPath, builder: (context, state) => const FavoritesScreen()),
+      // Scratch cards the customer was given, and the reveal.
+      GoRoute(path: '/scratch-cards', builder: (context, state) => const ScratchCardsScreen()),
+      GoRoute(
+        path: '/scratch-cards/:id',
+        builder: (context, state) => ScratchCardScreen(cardId: int.parse(state.pathParameters['id']!)),
+      ),
+      // Digital stamp cards the customer is collecting.
+      GoRoute(path: '/stamp-cards', builder: (context, state) => const StampCardsScreen()),
+      GoRoute(
+        path: '/stamp-cards/:id',
+        builder: (context, state) => StampCardDetailScreen(cardId: int.parse(state.pathParameters['id']!)),
+      ),
       GoRoute(
         path: _shoppingPath,
         // Pushed from the merchant detail page's Products section "See
@@ -283,11 +321,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: BusinessRoutes.root, builder: (context, state) => const BusinessDashboardScreen()),
           GoRoute(
             path: BusinessRoutes.purchases,
-            builder: (context, state) => const RequirePackage(feature: 'Purchases', child: BusinessPurchasesScreen()),
+            builder: (context, state) => const RequirePackage(feature: 'Purchases', featureKey: 'counter', child: BusinessPurchasesScreen()),
           ),
           GoRoute(
             path: BusinessRoutes.offers,
-            builder: (context, state) => const RequirePackage(feature: 'Offers', child: BusinessOffersScreen()),
+            builder: (context, state) => const RequirePackage(feature: 'Offers', featureKey: 'offers', child: BusinessOffersScreen()),
           ),
           GoRoute(path: BusinessRoutes.more, builder: (context, state) => const BusinessMoreScreen()),
         ],
@@ -306,7 +344,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: BusinessRoutes.counter,
-        builder: (context, state) => const RequirePackage(feature: 'Direct POS', child: DirectPosScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Direct POS', featureKey: 'counter', child: DirectPosScreen()),
       ),
       // The camera scanner pops with the decoded string; the caller decides
       // what it means (customer identity QR at the counter, a redemption
@@ -317,12 +355,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: BusinessRoutes.branches,
-        builder: (context, state) => const RequirePackage(feature: 'Your branches', child: BusinessBranchesScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Your branches', featureKey: 'counter', child: BusinessBranchesScreen()),
       ),
       // `/new` before `/:id/...` so "new" is never parsed as an id.
       GoRoute(
         path: BusinessRoutes.branchNew,
-        builder: (context, state) => const RequirePackage(feature: 'Your branches', child: BranchFormScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Your branches', featureKey: 'counter', child: BranchFormScreen()),
       ),
       GoRoute(
         path: '${BusinessRoutes.branches}/:id/edit',
@@ -347,7 +385,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // `/new` before `/:id` so "new" is never parsed as an id.
       GoRoute(
         path: BusinessRoutes.offerNew,
-        builder: (context, state) => const RequirePackage(feature: 'Offers', child: OfferFormScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Offers', featureKey: 'offers', child: OfferFormScreen()),
       ),
       GoRoute(
         path: '${BusinessRoutes.offers}/:id',
@@ -371,12 +409,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: BusinessRoutes.products,
-        builder: (context, state) => const RequirePackage(feature: 'Products', child: BusinessProductsScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Products', featureKey: 'products', child: BusinessProductsScreen()),
       ),
       // `/new` before `/:id/edit` so "new" is never parsed as an id.
       GoRoute(
         path: BusinessRoutes.productNew,
-        builder: (context, state) => const RequirePackage(feature: 'Products', child: ProductFormScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Products', featureKey: 'products', child: ProductFormScreen()),
       ),
       GoRoute(
         path: '${BusinessRoutes.products}/:id/edit',
@@ -393,7 +431,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: BusinessRoutes.customers,
-        builder: (context, state) => const RequirePackage(feature: 'Your customer directory', child: BusinessCustomersScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Your customer directory', featureKey: 'counter', child: BusinessCustomersScreen()),
       ),
       GoRoute(
         path: '${BusinessRoutes.customers}/:id',
@@ -404,7 +442,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: BusinessRoutes.redemptions,
-        builder: (context, state) => const RequirePackage(feature: 'Town Coin redemptions', child: BusinessRedemptionsScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Town Coin redemptions', featureKey: 'counter', child: BusinessRedemptionsScreen()),
       ),
       GoRoute(
         path: '${BusinessRoutes.redemptions}/:id',
@@ -419,16 +457,88 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: BusinessRoutes.offerRedemptions,
-        builder: (context, state) => const RequirePackage(feature: 'Offer redemptions', child: OfferRedemptionsScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Offer redemptions', featureKey: 'counter', child: OfferRedemptionsScreen()),
       ),
       GoRoute(
         path: BusinessRoutes.productCouponRequests,
         builder: (context, state) =>
-            const RequirePackage(feature: 'Coupon requests', child: ProductCouponRequestsScreen()),
+            const RequirePackage(feature: 'Coupon requests', featureKey: 'product_coupons', child: ProductCouponRequestsScreen()),
+      ),
+      // Scratch cards (a plan feature): designs, a new one, the redeem
+      // counter and an edit form. /new and /redeem before /:id/edit.
+      GoRoute(
+        path: BusinessRoutes.scratchCards,
+        builder: (context, state) => const RequirePackage(feature: 'Scratch cards', child: BusinessScratchCardsScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.scratchCardNew,
+        builder: (context, state) => const RequirePackage(feature: 'Scratch cards', child: ScratchCardFormScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.scratchCardRedeem,
+        builder: (context, state) => const RequirePackage(feature: 'Scratch cards', child: RedeemScratchCardScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.scratchCards}/:id/edit',
+        builder: (context, state) => RequirePackage(
+          feature: 'Scratch cards',
+          child: ScratchCardFormScreen(design: state.extra is ScratchCardDesign ? state.extra! as ScratchCardDesign : null),
+        ),
+      ),
+      // Digital stamp cards (a plan feature): the cards, a new one, the
+      // counter's customer lookup and an edit form. /new and /customer
+      // before /:id/edit.
+      GoRoute(
+        path: BusinessRoutes.stampCards,
+        builder: (context, state) => const RequirePackage(feature: 'Stamp cards', child: BusinessStampCardsScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.stampCardNew,
+        builder: (context, state) => const RequirePackage(feature: 'Stamp cards', child: StampCardFormScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.stampCardCustomer,
+        builder: (context, state) => const RequirePackage(feature: 'Stamp cards', child: StampCardCustomerScreen()),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.stampCards}/:id/edit',
+        builder: (context, state) => RequirePackage(
+          feature: 'Stamp cards',
+          child: StampCardFormScreen(programme: state.extra is StampCardProgramme ? state.extra! as StampCardProgramme : null),
+        ),
+      ),
+      // Magic review link (a plan feature): the QR poster and results, and
+      // every rating / private note.
+      GoRoute(
+        path: BusinessRoutes.reviewLink,
+        builder: (context, state) => const RequirePackage(feature: 'Review link', child: BusinessReviewLinkScreen()),
+      ),
+      GoRoute(
+        path: BusinessRoutes.reviewLinkFeedback,
+        builder: (context, state) => const RequirePackage(feature: 'Review link', child: ReviewFeedbackScreen()),
+      ),
+      // Online store page (a plan feature): the shop's shareable link and QR.
+      GoRoute(
+        path: BusinessRoutes.onlineStore,
+        builder: (context, state) => const RequirePackage(feature: 'Online store', featureKey: 'online_store_page', child: BusinessOnlineStoreScreen()),
       ),
       GoRoute(
         path: BusinessRoutes.wallet,
-        builder: (context, state) => const RequirePackage(feature: 'Your merchant wallet', child: MerchantWalletScreen()),
+        builder: (context, state) => const RequirePackage(feature: 'Your merchant wallet', featureKey: 'counter', child: MerchantWalletScreen()),
+      ),
+      // BR-44: Business mode's view of the association's draws. Public
+      // information, so no package gate -- Owner and Staff alike.
+      GoRoute(path: BusinessRoutes.draws, builder: (context, state) => const BusinessDrawsScreen()),
+      GoRoute(
+        path: '${BusinessRoutes.draws}/:id',
+        builder: (context, state) => BusinessDrawDetailScreen(drawId: int.parse(state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '${BusinessRoutes.draws}/:id/watch',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          return DrawShowScreen(drawId: id, detailsPath: '${BusinessRoutes.draws}/$id');
+        },
       ),
       GoRoute(
         path: BusinessRoutes.prizes,

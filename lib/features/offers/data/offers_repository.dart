@@ -46,6 +46,7 @@ class OffersRepository {
     int? categoryId,
     int? expiringWithinDays,
     int? merchantId,
+    bool flashSale = false,
   }) async {
     try {
       final response = await _dio.get(
@@ -56,6 +57,7 @@ class OffersRepository {
           'merchant_id': ?merchantId,
           'category_id': ?categoryId,
           'expiring_within_days': ?expiringWithinDays,
+          if (flashSale) 'flash_sale': 1,
         },
       );
       final items = (ApiEnvelope.data(response) as List<dynamic>)

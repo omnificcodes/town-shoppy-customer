@@ -82,6 +82,7 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
   late final _item = TextEditingController(text: widget.offer?.applicableItem ?? '');
   late String? _imageUrl = widget.offer?.imageUrl;
   late bool _coinRedeemable = widget.offer?.coinDiscountRate != null;
+  late bool _flashSale = widget.offer?.isFlashSale ?? false;
   late int? _branchId = widget.offer?.branchId;
   late DateTime? _startsAt = widget.offer?.startsAt?.toLocal();
   late DateTime? _endsAt = widget.offer?.endsAt?.toLocal();
@@ -158,6 +159,7 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
       branchId: _branchId,
       startsAt: _startsAt!,
       endsAt: _endsAt!,
+      isFlashSale: _flashSale,
     );
 
     setState(() {
@@ -247,6 +249,20 @@ class _OfferFormScreenState extends ConsumerState<OfferFormScreen> {
             ),
             const SizedBox(height: AppSpacing.smd),
             AppTextField(label: 'Applicable item (optional)', controller: _item, hintText: 'e.g. Any pizza', maxLength: 255, errorText: server('applicable_item')),
+          ],
+          if (ref.watch(merchantEntitlementProvider).value?.has('flash_sale') ?? false) ...[
+            const SizedBox(height: AppSpacing.section),
+            const SectionHeader(title: 'Flash sale', subtitle: 'Shown with a live countdown in the Flash sales strip on the customer Home.', icon: Icons.bolt_rounded),
+            const SizedBox(height: AppSpacing.xs),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Run this as a flash sale'),
+              subtitle: const Text('Keep it short: a few hours to a day works best.'),
+              value: _flashSale,
+              activeColor: AppColors.businessInk,
+              onChanged: (v) => setState(() => _flashSale = v),
+            ),
+            if (server('is_flash_sale') != null) Text(server('is_flash_sale')!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
           ],
           const SizedBox(height: AppSpacing.section),
           const SectionHeader(title: 'Schedule', subtitle: 'When this offer runs.', icon: Icons.schedule_rounded),

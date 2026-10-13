@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/storage/secure_storage_service.dart';
 import '../../../core/utils/indian_mobile.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../products/data/models/product.dart';
@@ -32,7 +35,7 @@ class CartLine {
 /// shops could not be sent anywhere. Adding a product from another shop
 /// offers to start a new bag instead.
 ///
-/// It is in-memory only: closing the app empties it. Nothing about it
+/// It lives on the device only (see [CartController.storageKey]) and never
 /// reaches the backend.
 @immutable
 class CartState {
@@ -69,16 +72,41 @@ class CartState {
   /// Whether [product] can join the bag as it stands, i.e. the bag is
   /// empty or already holds this same shop's products.
   bool accepts(Product product) => isEmpty || merchantId == product.merchantId;
+
+  Map<String, dynamic> toJson() => {
+    'lines': [
+      for (final line in lines) {'product': line.product.toJson(), 'quantity': line.quantity},
+    ],
+  };
+
+  factory CartState.fromJson(Map<String, dynamic> json) {
+    return CartState(
+      lines: [
+        for (final raw in json['lines'] as List<dynamic>? ?? const [])
+          CartLine(
+            product: Product.fromJson((raw as Map<String, dynamic>)['product'] as Map<String, dynamic>),
+            quantity: raw['quantity'] as int,
+          ),
+      ],
+    );
+  }
 }
 
 class CartController extends Notifier<CartState> {
   static const maxQuantityPerLine = 99;
+
+  /// Where the bag is kept between launches. The same on-device store the
+  /// session token uses -- the bag is a per-customer thing and must never
+  /// leak into another account's session, so it is also dropped on logout
+  /// (the session epoch below).
+  static const storageKey = 'cart.bag.v1';
 
   @override
   CartState build() {
     // One account's bag must never survive into the next account's
     // session, the same rule every other per-customer cache here follows.
     ref.watch(sessionEpochProvider);
+    _restore();
     return const CartState();
   }
 
@@ -94,13 +122,13 @@ class CartController extends Notifier<CartState> {
   /// Empties the bag and puts [product] in it — the answer to "start a new
   /// bag with this shop's product?".
   void startNewBagWith(Product product) {
-    state = CartState(lines: [CartLine(product: product, quantity: 1)]);
+    _set(CartState(lines: [CartLine(product: product, quantity: 1)]));
   }
 
   /// Sets one product's quantity; 0 or less removes the line.
   void setQuantity(Product product, int quantity) {
     if (quantity <= 0) {
-      state = CartState(lines: state.lines.where((line) => line.product.id != product.id).toList());
+      _set(CartState(lines: state.lines.where((line) => line.product.id != product.id).toList()));
       return;
     }
     if (!state.accepts(product)) return;
@@ -109,11 +137,13 @@ class CartController extends Notifier<CartState> {
     final existing = state.lines.indexWhere((line) => line.product.id == product.id);
 
     if (existing == -1) {
-      state = CartState(
-        lines: [
-          ...state.lines,
-          CartLine(product: product, quantity: capped),
-        ],
+      _set(
+        CartState(
+          lines: [
+            ...state.lines,
+            CartLine(product: product, quantity: capped),
+          ],
+        ),
       );
       return;
     }
@@ -122,10 +152,43 @@ class CartController extends Notifier<CartState> {
     // Re-seat the product too: a newly fetched copy may carry a changed
     // price, and the bag should charge what the catalog now says.
     lines[existing] = CartLine(product: product, quantity: capped);
-    state = CartState(lines: lines);
+    _set(CartState(lines: lines));
   }
 
-  void clear() => state = const CartState();
+  void clear() => _set(const CartState());
+
+  void _set(CartState next) {
+    state = next;
+    _persist(next);
+  }
+
+  Future<void> _persist(CartState snapshot) async {
+    final storage = ref.read(secureStorageServiceProvider);
+    try {
+      if (snapshot.isEmpty) {
+        await storage.delete(storageKey);
+      } else {
+        await storage.write(storageKey, jsonEncode(snapshot.toJson()));
+      }
+    } catch (_) {
+      // Storage unavailable (a private web window, a locked keystore): the
+      // bag still works for this session, it just will not come back.
+    }
+  }
+
+  Future<void> _restore() async {
+    final storage = ref.read(secureStorageServiceProvider);
+    try {
+      final raw = await storage.read(storageKey);
+      if (raw == null || raw.isEmpty) return;
+      final restored = CartState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      // Only fill an empty bag: whatever was added while the read was in
+      // flight wins over what was stored.
+      if (ref.mounted && state.isEmpty && !restored.isEmpty) state = restored;
+    } catch (_) {
+      // A corrupt or unreadable bag is simply an empty one.
+    }
+  }
 }
 
 final cartControllerProvider = NotifierProvider<CartController, CartState>(CartController.new);

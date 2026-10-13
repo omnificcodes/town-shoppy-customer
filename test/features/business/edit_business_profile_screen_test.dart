@@ -184,4 +184,24 @@ void main() {
     final image = tester.widget<Image>(find.byType(Image));
     expect((image.image as NetworkImage).webHtmlElementStrategy, WebHtmlElementStrategy.fallback);
   });
+
+  testWidgets('a business that never set its hours starts open 9 to 6 every day, with Apply to all days on', (tester) async {
+    final repository = _FakeMerchantRepository();
+    await tester.pumpWidget(_wrap(repository));
+    await tester.pumpAndSettle();
+
+    await _scrollTo(tester, find.text('Apply to all days'));
+    final applyAll = find.ancestor(of: find.text('Apply to all days'), matching: find.byType(Row)).first;
+    expect(tester.widget<Switch>(find.descendant(of: applyAll, matching: find.byType(Switch))).value, isTrue);
+
+    await _scrollTo(tester, find.text('Save changes'));
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    final hours = repository.sent?['business_hours'] as Map<String, dynamic>;
+    expect(hours.keys, hasLength(7));
+    for (final day in hours.values) {
+      expect(day, {'open': '09:00', 'close': '18:00', 'closed': false});
+    }
+  });
 }

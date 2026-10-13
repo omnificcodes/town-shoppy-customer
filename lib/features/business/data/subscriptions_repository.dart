@@ -54,6 +54,17 @@ class SubscriptionsRepository {
     }
   }
 
+  /// `POST /subscriptions/start-trial` -- Owner only (BR-43): starts a
+  /// plan's free trial without payment, once per shop.
+  Future<MerchantSubscription> startTrial(int planId) async {
+    try {
+      final response = await _dio.post('/subscriptions/start-trial', data: {'subscription_plan_id': planId});
+      return MerchantSubscription.fromJson(ApiEnvelope.data(response) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
   /// `POST /payments/subscriptions/intent` -- Owner only. `planId` is the
   /// only input; the amount charged is derived server-side from that
   /// plan's price. `Idempotency-Key` matches the same header every other

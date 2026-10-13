@@ -15,14 +15,19 @@ import 'widgets/business_page_header.dart';
 /// Wraps every package-gated Business screen. Until the shop is on a
 /// package the child never builds -- the [PackageGateScreen] takes its
 /// place, exactly like the web app's `<RequirePackage feature="…">`
-/// layouts. The backend enforces the same rule with a 402, so this is
-/// presentation, not security.
+/// layouts. With [featureKey] (BR-43) the plan must also carry that
+/// catalogue item, or the "not in your plan" variant shows. The backend
+/// enforces the same rules with a 402, so this is presentation, not
+/// security.
 class RequirePackage extends ConsumerWidget {
-  const RequirePackage({super.key, required this.feature, required this.child});
+  const RequirePackage({super.key, required this.feature, required this.child, this.featureKey});
 
   /// Human label for what is locked ("Purchases", "Your merchant wallet").
   final String feature;
   final Widget child;
+
+  /// The plan catalogue item this screen needs, e.g. `counter`.
+  final String? featureKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,16 +37,26 @@ class RequirePackage extends ConsumerWidget {
       // merchantEntitlementProvider already fails open; an error here is
       // unreachable in practice, but a blank screen is never acceptable.
       error: (_, _) => child,
-      data: (value) => value.hasPackage ? child : PackageGateScreen(feature: feature),
+      data: (value) {
+        if (!value.hasPackage) return PackageGateScreen(feature: feature);
+        if (featureKey != null && !value.has(featureKey!)) {
+          return PackageGateScreen(feature: feature, notInPlan: true, planName: value.planName);
+        }
+        return child;
+      },
     );
   }
 }
 
 /// "Please select a package" -- copy and structure mirror the web gate.
+/// With [notInPlan] the shop has a package, just not this item: the copy
+/// points at upgrading rather than choosing.
 class PackageGateScreen extends ConsumerWidget {
-  const PackageGateScreen({super.key, required this.feature});
+  const PackageGateScreen({super.key, required this.feature, this.notInPlan = false, this.planName});
 
   final String feature;
+  final bool notInPlan;
+  final String? planName;
 
   static const _benefits = [
     'Record purchases and issue coupons',
@@ -79,60 +94,66 @@ class PackageGateScreen extends ConsumerWidget {
                     color: AppColors.gold.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   ),
-                  child: const Icon(Icons.lock_rounded, color: AppColors.yellow, size: AppIconSize.xl),
+                  child: Icon(notInPlan ? Icons.workspace_premium_rounded : Icons.lock_rounded, color: AppColors.yellow, size: AppIconSize.xl),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text('LOCKED', style: AppTypography.overline.copyWith(color: AppColors.yellow)),
+                Text(notInPlan ? 'NOT IN YOUR PLAN' : 'LOCKED', style: AppTypography.overline.copyWith(color: AppColors.yellow)),
                 const SizedBox(height: AppSpacing.xs),
-                Text('Please select a package', style: textTheme.headlineMedium?.copyWith(color: AppColors.onBusinessInk)),
+                Text(
+                  notInPlan ? 'Upgrade to unlock $feature' : 'Please select a package',
+                  style: textTheme.headlineMedium?.copyWith(color: AppColors.onBusinessInk),
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  '$feature unlocks as soon as your shop is on a Town Shoppy plan. Until then you can still use your dashboard and update your shop profile.',
+                  notInPlan
+                      ? '${planName == null ? 'Your current plan' : 'Your $planName plan'} does not include $feature. Move to a plan that has it and it unlocks right away.'
+                      : '$feature unlocks as soon as your shop is on a Town Shoppy plan. Until then you can still use your dashboard and update your shop profile.',
                   style: textTheme.bodyMedium?.copyWith(color: AppColors.onBusinessInkMuted),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 if (isOwner)
                   AppButton(
-                    label: 'Choose a package',
+                    label: notInPlan ? 'See plans' : 'Choose a package',
                     trailingIcon: Icons.arrow_forward_rounded,
                     onPressed: () => context.push(BusinessRoutes.subscriptions),
                   )
                 else
                   Text(
-                    'Ask the shop owner to choose a package.',
+                    notInPlan ? 'Ask the shop owner to upgrade the plan.' : 'Ask the shop owner to choose a package.',
                     style: textTheme.bodyMedium?.copyWith(color: AppColors.yellow, fontWeight: FontWeight.w600),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.section),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('What a package gives you', style: textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.smd),
-                for (final benefit in _benefits)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.verified_rounded, color: AppColors.success, size: AppIconSize.md),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(child: Text(benefit, style: textTheme.bodyMedium)),
-                      ],
+          if (!notInPlan) ...[
+            const SizedBox(height: AppSpacing.section),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('What a package unlocks', style: textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final benefit in _benefits)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: AppColors.success, size: AppIconSize.md),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(child: Text(benefit, style: textTheme.bodyMedium)),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppButton(
-            label: 'Back to dashboard',
-            variant: AppButtonVariant.text,
-            onPressed: () => context.go(BusinessRoutes.root),
-          ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              label: 'Back to dashboard',
+              variant: AppButtonVariant.text,
+              onPressed: () => context.go(BusinessRoutes.root),
+            ),
+          ],
         ],
       ),
     );

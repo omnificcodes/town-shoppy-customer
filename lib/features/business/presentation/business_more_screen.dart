@@ -29,7 +29,10 @@ class BusinessMoreScreen extends ConsumerWidget {
     final account = auth is AuthAuthenticated ? auth.account : null;
     final isLoggingOut = auth is AuthAuthenticated && auth.isLoggingOut;
     final isOwner = ref.watch(isBusinessOwnerProvider);
-    final hasPackage = ref.watch(merchantEntitlementProvider).value?.hasPackage ?? true;
+    final entitlement = ref.watch(merchantEntitlementProvider).value;
+    final hasPackage = entitlement?.hasPackage ?? true;
+    // BR-43: a package that lacks the entry's plan item locks it too.
+    bool inPlan(BusinessDestination d) => d.featureKey == null || entitlement == null || entitlement.has(d.featureKey!);
     final pendingPurchases = ref.watch(dashboardPendingPurchasesCountProvider).value ?? 0;
     final offerPage = ref.watch(dashboardPendingOfferRedemptionsProvider).value;
     final pendingOffers = offerPage?.items.length ?? 0;
@@ -67,9 +70,9 @@ class BusinessMoreScreen extends ConsumerWidget {
                           _MenuRow(
                             icon: d.icon,
                             title: d.label,
-                            subtitle: d.subtitle,
-                            locked: d.gated && !hasPackage,
-                            badge: d.gated && !hasPackage
+                            subtitle: d.gated && hasPackage && !inPlan(d) ? 'Not included in your plan' : d.subtitle,
+                            locked: d.gated && (!hasPackage || !inPlan(d)),
+                            badge: d.gated && (!hasPackage || !inPlan(d))
                                 ? null
                                 : d.path == BusinessRoutes.purchases && pendingPurchases > 0
                                 ? '$pendingPurchases pending'

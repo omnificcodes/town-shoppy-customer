@@ -14,6 +14,8 @@ class MerchantSubscription {
     required this.pendingPlan,
     required this.pendingPlanChangeAt,
     required this.cancelledAt,
+    this.trialEndsAt,
+    this.renewalOpen = false,
   });
 
   factory MerchantSubscription.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,8 @@ class MerchantSubscription {
       pendingPlan: json['pending_plan'] is Map ? SubscriptionPlan.fromJson(json['pending_plan'] as Map<String, dynamic>) : null,
       pendingPlanChangeAt: _date(json['pending_plan_change_at']),
       cancelledAt: _date(json['cancelled_at']),
+      trialEndsAt: _date(json['trial_ends_at']),
+      renewalOpen: json['renewal_open'] as bool? ?? false,
     );
   }
 
@@ -47,6 +51,15 @@ class MerchantSubscription {
   final SubscriptionPlan? pendingPlan;
   final DateTime? pendingPlanChangeAt;
   final DateTime? cancelledAt;
+
+  /// BR-43: set while the current period is a free trial.
+  final DateTime? trialEndsAt;
+
+  /// Whether the owner may pay for the same plan right now (trial, or the
+  /// renewal window before the period ends).
+  final bool renewalOpen;
+
+  bool get isTrial => trialEndsAt != null;
 
   bool get grantsFullService => status == 'active' || status == 'grace_period';
 }

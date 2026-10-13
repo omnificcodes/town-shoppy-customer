@@ -78,6 +78,8 @@ Future<void> showPurchaseCelebration(
   double? discountAmount,
   int? coinsRedeemed,
   int? coinsAwarded,
+  String? scratchCardTitle,
+  String? stampSummary,
 }) {
   final saved = discountAmount != null && discountAmount > 0;
   final earned = coinsAwarded != null && coinsAwarded > 0;
@@ -125,6 +127,36 @@ Future<void> showPurchaseCelebration(
                       Padding(padding: const EdgeInsets.only(bottom: AppSpacing.xs), child: Text('Town Coins earned', style: textTheme.labelMedium)),
                     ],
                   ),
+                ),
+              ],
+              if (scratchCardTitle != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🎁', style: TextStyle(fontSize: 18)),
+                    const SizedBox(width: AppSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        'Scratch card "$scratchCardTitle" sent to the customer',
+                        style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (stampSummary != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.loyalty_rounded, size: AppIconSize.sm, color: AppColors.businessInk),
+                    const SizedBox(width: AppSpacing.xs),
+                    Flexible(
+                      child: Text(stampSummary, style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+                    ),
+                  ],
                 ),
               ],
               const SizedBox(height: AppSpacing.lg),

@@ -23,6 +23,7 @@ class _FakeOffersRepository implements OffersRepository {
     int? categoryId,
     int? expiringWithinDays,
     int? merchantId,
+    bool flashSale = false,
   }) async {
     calls.add((page: page, categoryId: categoryId, expiringWithinDays: expiringWithinDays));
     return OffsetPage(

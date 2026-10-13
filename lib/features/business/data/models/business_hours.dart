@@ -13,6 +13,9 @@ class DayHours {
   /// The web app's default for a day the merchant never set.
   static const unset = DayHours(open: '09:00', close: '18:00', closed: true);
 
+  /// What a business starts with before it has set any hours: open 9 to 6.
+  static const standard = DayHours(open: '09:00', close: '18:00', closed: false);
+
   factory DayHours.fromJson(Map<String, dynamic> json) {
     return DayHours(
       open: json['open'] as String? ?? unset.open,
@@ -34,6 +37,17 @@ class DayHours {
 
 class BusinessHours {
   const BusinessHours(this.days);
+
+  /// Every day open 9 to 6 -- the starting point for a new business.
+  static const standard = BusinessHours({
+    'monday': DayHours.standard,
+    'tuesday': DayHours.standard,
+    'wednesday': DayHours.standard,
+    'thursday': DayHours.standard,
+    'friday': DayHours.standard,
+    'saturday': DayHours.standard,
+    'sunday': DayHours.standard,
+  });
 
   factory BusinessHours.fromJson(Map<String, dynamic> json) {
     return BusinessHours({

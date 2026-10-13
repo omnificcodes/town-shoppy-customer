@@ -22,6 +22,7 @@ import '../../../purchases/data/models/purchase.dart';
 import '../../../purchases/presentation/load_more_threshold.dart';
 import '../../../purchases/presentation/purchase_status.dart';
 import '../../application/business_purchases_controller.dart';
+import '../../application/voice_alert_service.dart';
 import '../../application/list_range.dart';
 import '../business_routes.dart';
 import '../widgets/business_dialogs.dart';
@@ -75,6 +76,7 @@ class _BusinessPurchasesScreenState extends ConsumerState<BusinessPurchasesScree
     try {
       final updated = await ref.read(businessPurchasesControllerProvider.notifier).approve(purchase.id);
       if (!mounted) return;
+      ref.read(voiceAlertServiceProvider).announcePayment(amount: updated.billAmount);
       await showPurchaseCelebration(context, title: 'Purchase approved!', coinsAwarded: updated.coinsAwarded);
     } on AppException catch (e) {
       if (mounted) {

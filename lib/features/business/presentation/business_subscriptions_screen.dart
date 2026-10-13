@@ -23,6 +23,7 @@ import '../application/business_context.dart';
 import '../application/subscription_checkout_controller.dart';
 import '../data/models/merchant_subscription.dart';
 import '../data/models/subscription_plan.dart';
+import '../data/subscriptions_repository.dart';
 import 'business_routes.dart';
 import 'business_status.dart';
 import 'widgets/business_page_header.dart';
@@ -170,6 +171,11 @@ class BusinessSubscriptionsScreen extends ConsumerWidget {
                         isCheaperThanCurrent: isEntitled && subPlanPrice != null && plan.price < subPlanPrice,
                         nativeCheckout: useNativeCheckout,
                         busy: checkoutState?.isBusyFor(plan.id) ?? false,
+                        // BR-43: the one free trial per shop, from the plans page.
+                        canStartTrial: isOwner && plan.hasTrial && !isEntitled && ref.watch(myMerchantProvider).value?.freeTrialUsedAt == null,
+                        renewalOpen: isEntitled && subPlanId == plan.id && (sub?.renewalOpen ?? false) && !plan.isFree,
+                        isTrial: sub?.isTrial ?? false,
+                        onStartTrial: () => _startTrial(context, ref, plan),
                         onSubscribe: useNativeCheckout
                             ? () => ref.read(subscriptionCheckoutControllerProvider.notifier).start(plan, contactNumber: mobileNumber)
                             : null,
@@ -217,6 +223,40 @@ class BusinessSubscriptionsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// BR-43: starts a plan's free trial -- no payment, once per shop.
+Future<void> _startTrial(BuildContext context, WidgetRef ref, SubscriptionPlan plan) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Start ${plan.name} free?'),
+      content: Text(
+        plan.isFree
+            ? 'Your shop gets ${plan.name} free for ${plan.trialDays} days. Every shop gets one free trial.'
+            : 'Your shop gets ${plan.name} free for ${plan.trialDays} days. After that it costs ₹${plan.price.toStringAsFixed(0)} / ${plan.billingCycle}, paid from this page. Every shop gets one free trial.',
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Start free')),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref.read(subscriptionsRepositoryProvider).startTrial(plan.id);
+    ref
+      ..invalidate(mySubscriptionProvider)
+      ..invalidate(merchantEntitlementProvider)
+      ..invalidate(myMerchantProvider);
+    messenger.showSnackBar(SnackBar(content: Text('${plan.name} started. Free for ${plan.trialDays} days.')));
+  } on ValidationAppException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.fieldErrors['subscription_plan_id']?.first ?? e.message)));
+  } on AppException catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(e.message)));
   }
 }
 
@@ -271,7 +311,10 @@ class _CurrentPlanCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           if (s.plan != null) DetailRow(label: 'Price', value: '₹${s.plan!.price.toStringAsFixed(0)} / ${s.plan!.billingCycle}'),
-          if (s.currentPeriodEnd != null) DetailRow(label: 'Renews / ends', value: _date(s.currentPeriodEnd!)),
+          if (s.isTrial && s.trialEndsAt != null)
+            DetailRow(label: 'Free trial ends', value: _date(s.trialEndsAt!))
+          else if (s.currentPeriodEnd != null)
+            DetailRow(label: 'Renews / ends', value: _date(s.currentPeriodEnd!)),
           DetailRow(
             label: 'Coupons this month',
             value: s.couponQuotaRemaining == null ? '${s.couponQuotaUsed} used · unlimited' : '${s.couponQuotaUsed} used · ${s.couponQuotaRemaining} left',
@@ -298,10 +341,22 @@ class _PlanCard extends StatelessWidget {
     this.nativeCheckout = false,
     this.busy = false,
     this.onSubscribe,
+    this.canStartTrial = false,
+    this.renewalOpen = false,
+    this.isTrial = false,
+    this.onStartTrial,
   });
 
   final SubscriptionPlan plan;
   final bool isCurrent;
+
+  /// BR-43: the plan has a trial and this shop has not used its one trial.
+  final bool canStartTrial;
+
+  /// The current plan may be paid for again now (trial, or renewal window).
+  final bool renewalOpen;
+  final bool isTrial;
+  final VoidCallback? onStartTrial;
 
   /// A subscription exists that points at this plan but never activated
   /// (its last payment failed or was abandoned) -- shown as "Payment
@@ -328,6 +383,10 @@ class _PlanCard extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text(plan.name, style: textTheme.titleLarge)),
+              if (plan.badgeLabel != null && plan.badgeLabel!.isNotEmpty) ...[
+                StatusBadge(label: plan.badgeLabel!, tone: AppTone.pending, icon: Icons.auto_awesome_rounded),
+                const SizedBox(width: AppSpacing.xs),
+              ],
               if (isCurrent)
                 const StatusBadge(label: 'Current', tone: AppTone.info)
               else if (isStalled)
@@ -335,30 +394,50 @@ class _PlanCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('₹${plan.price.toStringAsFixed(0)}', style: AppTypography.numericFinancialMedium),
-              const SizedBox(width: AppSpacing.xs),
-              Padding(padding: const EdgeInsets.only(bottom: AppSpacing.xxs), child: Text('/ ${plan.billingCycle}', style: textTheme.bodySmall)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(plan.couponQuotaMonthly == null ? 'Unlimited coupons' : '${plan.couponQuotaMonthly} coupons / month', style: textTheme.bodyMedium),
-          if (plan.enabledFeatureLabels.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [for (final f in plan.enabledFeatureLabels) StatusBadge(label: f, tone: AppTone.neutral, icon: Icons.check_rounded)],
+          if (plan.hasTrial) ...[
+            Text('Free for ${plan.trialDays} days', style: textTheme.titleMedium?.copyWith(color: AppColors.success, fontWeight: FontWeight.w800)),
+            if (!plan.isFree) Text('then ₹${plan.price.toStringAsFixed(0)} / ${plan.billingCycle}', style: textTheme.bodySmall),
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('₹${plan.price.toStringAsFixed(0)}', style: AppTypography.numericFinancialMedium),
+                const SizedBox(width: AppSpacing.xs),
+                Padding(padding: const EdgeInsets.only(bottom: AppSpacing.xxs), child: Text('/ ${plan.billingCycle}', style: textTheme.bodySmall)),
+              ],
             ),
+          if (plan.description != null && plan.description!.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(plan.description!.trim(), style: textTheme.bodySmall),
           ],
-          if (nativeCheckout) ...[
+          const SizedBox(height: AppSpacing.sm),
+          if (plan.items.isEmpty)
+            Text(plan.couponQuotaMonthly == null ? 'Unlimited coupons' : '${plan.couponQuotaMonthly} coupons / month', style: textTheme.bodyMedium)
+          else
+            _PlanItems(plan: plan),
+          if (canStartTrial) ...[
             const SizedBox(height: AppSpacing.smd),
-            if (isCurrent)
+            AppButton(
+              label: 'Start free · ${plan.trialDays} days',
+              icon: Icons.card_giftcard_rounded,
+              isLoading: busy,
+              onPressed: busy ? null : onStartTrial,
+            ),
+          ] else if (nativeCheckout) ...[
+            const SizedBox(height: AppSpacing.smd),
+            if (isCurrent && renewalOpen)
+              AppButton(
+                label: isTrial ? 'Pay & continue' : 'Renew now',
+                icon: Icons.workspace_premium_rounded,
+                isLoading: busy,
+                onPressed: busy ? null : onSubscribe,
+              )
+            else if (isCurrent)
               const SizedBox.shrink()
             else if (isCheaperThanCurrent)
               Text('Downgrade from the Subscriptions page on the web.', style: AppTypography.caption)
+            else if (plan.isFree)
+              Text('Your free trial has already been used.', style: AppTypography.caption)
             else
               AppButton(
                 label: isStalled ? 'Retry payment' : 'Subscribe',
@@ -370,6 +449,50 @@ class _PlanCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// What the plan includes, grouped the way the catalogue groups it (BR-43).
+class _PlanItems extends StatelessWidget {
+  const _PlanItems({required this.plan});
+
+  final SubscriptionPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final groups = plan.includedByGroup;
+    if (groups.isEmpty) return Text('Nothing included yet.', style: textTheme.bodySmall);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in groups.entries) ...[
+          Text(entry.key.toUpperCase(), style: AppTypography.overline.copyWith(color: AppColors.textSecondary, letterSpacing: 0.8)),
+          const SizedBox(height: AppSpacing.xxs),
+          for (final item in entry.value)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(Icons.check_circle_rounded, size: AppIconSize.sm, color: AppColors.success),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(child: Text(item.label, style: textTheme.bodyMedium)),
+                  if (item.showsValue) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(item.display, style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                  ],
+                ],
+              ),
+            ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ],
     );
   }
 }

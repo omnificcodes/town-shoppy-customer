@@ -51,6 +51,31 @@ class Product {
     );
   }
 
+  /// The resource shape back, so a product can be stored (the bag survives
+  /// an app restart) and read again with [Product.fromJson].
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'merchant': {
+      'id': merchantId,
+      'name': merchantName,
+      'logo_url': merchantLogoUrl,
+      'contact_mobile_number': merchantContactMobileNumber,
+    },
+    'name': name,
+    'description': description,
+    'price': price,
+    'image_urls': imageUrls,
+    'town_coin_percentage': townCoinPercentage,
+    'accepts_town_coin': acceptsTownCoin,
+    'status': status,
+    'mrp': mrp,
+    'discount_amount': discountAmount,
+    'discount_percentage': discountPercentage,
+    'coupon_count': couponCount,
+    'coupons_per_claim': couponsPerClaim,
+    'my_coupon_request': myCouponRequest,
+  };
+
   /// A copy with the signed-in customer's request state changed -- used
   /// the moment a request is sent, ahead of the list's own refetch.
   Product withMyCouponRequest(String? request) => Product(

@@ -230,4 +230,12 @@ void main() {
     expect(auth.meCallCount, 1);
     expect(_accountIn(container)?.hasMerchantAccess, isTrue);
   });
+
+  test('a new business is registered open 9 to 6 every day', () {
+    final hours = _input().toJson()['business_hours'] as Map<String, dynamic>;
+    expect(hours.keys, ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+    for (final day in hours.values) {
+      expect(day, {'open': '09:00', 'close': '18:00', 'closed': false});
+    }
+  });
 }

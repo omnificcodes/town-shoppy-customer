@@ -12,14 +12,19 @@ import '../../merchants/application/featured_merchants_provider.dart';
 import '../../merchants/application/merchant_categories_provider.dart';
 import '../../notifications/application/unread_count_provider.dart';
 import '../../offers/application/trending_offers_provider.dart';
+import '../../scratch_cards/application/scratch_cards_providers.dart';
+import '../../stamp_cards/application/stamp_cards_providers.dart';
 import '../../wallet/application/wallet_controller.dart';
 import '../application/home_nearby_controller.dart';
 import 'widgets/association_partners_section.dart';
 import 'widgets/best_offers_section.dart';
 import 'widgets/category_grid.dart';
 import 'widgets/featured_shops_section.dart';
+import 'widgets/flash_sales_strip.dart';
 import 'widgets/home_header.dart';
 import 'widgets/home_hero_banner.dart';
+import 'widgets/scratch_cards_banner.dart';
+import 'widgets/stamp_cards_section.dart';
 import 'widgets/home_stats_row.dart';
 import 'widgets/nearby_stores_section.dart';
 
@@ -61,6 +66,8 @@ class HomeScreen extends ConsumerWidget {
                     ..invalidate(homeNearbyMerchantsProvider)
                     ..invalidate(featuredMerchantsProvider)
                     ..invalidate(trendingOffersProvider)
+                    ..invalidate(myScratchCardsProvider)
+                    ..invalidate(myStampCardsProvider)
                     ..invalidate(unreadNotificationCountProvider);
                   await ref.read(walletControllerProvider.notifier).refresh();
                 },
@@ -71,7 +78,10 @@ class HomeScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.md),
                     const HomeStatsRow(),
                     const SizedBox(height: AppSpacing.md),
+                    const ScratchCardsBanner(),
                     const HomeHeroBanner(),
+                    const FlashSalesStrip(),
+                    const StampCardsSection(),
                     const AssociationPartnersSection(),
                     const CategoryGrid(),
                     const NearbyStoresSection(),

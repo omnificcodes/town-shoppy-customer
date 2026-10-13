@@ -5,7 +5,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:customer/core/theme/app_theme.dart';
 import 'package:customer/features/lucky_draw/application/draws_list_controller.dart';
 import 'package:customer/features/lucky_draw/application/my_vouchers_controller.dart';
+import 'package:customer/core/networking/offset_page.dart';
+import 'package:customer/features/lucky_draw/data/lucky_draw_repository.dart';
 import 'package:customer/features/lucky_draw/data/models/draw.dart';
+import 'package:customer/features/lucky_draw/data/models/draw_entry.dart';
 import 'package:customer/features/lucky_draw/data/models/draw_winner.dart';
 import 'package:customer/features/lucky_draw/data/models/prize.dart';
 import 'package:customer/features/lucky_draw/data/models/voucher.dart';
@@ -47,6 +50,28 @@ final _winners = [
   DrawWinner(id: 2, drawId: 1, prize: null, winnerLabel: 'A customer', status: 'selected', selectedAt: DateTime(2026, 9, 1)),
 ];
 
+/// The BR-44 entries list, with a long name and shop -- the page the detail
+/// screen reads for its "All entries" section.
+final _entries = DrawEntriesPage(
+  page: OffsetPage(
+    items: [
+      const DrawEntry(
+        id: 1,
+        couponId: 10,
+        entrantLabel: 'Priyankashree S.',
+        couponCode: '****7G2K',
+        shopName: 'The Grand Downtown Corner Cafe, Bakery, and Artisanal Coffee Roastery Emporium',
+        isWinner: true,
+      ),
+      const DrawEntry(id: 2, couponId: 11, entrantLabel: 'A customer', couponCode: '****9ZZ1', shopName: null, isWinner: false),
+    ],
+    currentPage: 1,
+    lastPage: 1,
+    total: 2,
+  ),
+  byShop: const [DrawShopEntries(id: 9, name: 'Corner Cafe', entries: 2)],
+);
+
 final _voucher = Voucher(
   id: 1,
   code: 'ABCD-EFGH-1234',
@@ -79,11 +104,15 @@ void main() {
         overrides: [
           drawDetailProvider(1).overrideWith((ref) async => _draw),
           drawWinnersProvider(1).overrideWith((ref) async => _winners),
+          drawEntriesPageProvider((1, 1)).overrideWith((ref) async => _entries),
         ],
         child: _app(const DrawDetailScreen(drawId: 1)),
       ),
       verify: (tester, size) async {
         expect(find.text('Monthly Draw'), findsOneWidget);
+        // The hero and "Watch the draw" come first (BR-44); at 2x on a
+        // 568px screen the explainer sits below the fold.
+        await tester.dragUntilVisible(find.textContaining('Winners are drawn at random'), find.byType(ListView), const Offset(0, -200));
         expect(find.textContaining('Winners are drawn at random'), findsOneWidget);
         await tester.dragUntilVisible(find.text('Priyankashree S.'), find.byType(ListView), const Offset(0, -300));
         expect(find.text('Priyankashree S.'), findsOneWidget);

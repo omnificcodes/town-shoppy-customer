@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/utils/idempotency_key.dart';
 import '../../notifications/application/unread_count_provider.dart';
+import '../../scratch_cards/application/scratch_cards_providers.dart';
+import '../../stamp_cards/application/stamp_cards_providers.dart';
 import '../data/direct_pos_repository.dart';
 import '../data/models/direct_pos.dart';
 import 'business_context.dart';
@@ -238,9 +240,17 @@ class DirectPosController extends Notifier<DirectPosState> {
             idempotencyKey: state.idempotencyKey,
             branchId: state.branchId,
             billReference: state.billReference,
+            scratchCardId: ref.read(directPosScratchCardProvider),
+            stampCardId: ref.read(directPosStampProvider),
           );
       state = state.copyWith(isSubmitting: false, result: result);
+      // The card and stamp went with this bill; the next bill starts
+      // without them, and the month's remaining count has moved.
+      ref.read(directPosScratchCardProvider.notifier).set(null);
+      ref.read(directPosStampProvider.notifier).set(null);
       ref
+        ..invalidate(scratchCardDesignsProvider)
+        ..invalidate(stampCardProgrammesProvider)
         ..invalidate(businessPurchasesControllerProvider)
         ..invalidate(dashboardRecentPurchasesProvider)
         ..invalidate(unreadNotificationCountProvider);
@@ -263,3 +273,17 @@ class DirectPosController extends Notifier<DirectPosState> {
 }
 
 final directPosControllerProvider = NotifierProvider.autoDispose<DirectPosController, DirectPosState>(DirectPosController.new);
+
+/// The scratch card design chosen for the bill being entered, or null for
+/// none. Kept beside the form state rather than inside it: it never changes
+/// the bill's signature, so it must not rotate the idempotency key.
+class DirectPosScratchCardController extends Notifier<int?> {
+  @override
+  int? build() => null;
+
+  void set(int? designId) => state = designId;
+}
+
+final directPosScratchCardProvider = NotifierProvider.autoDispose<DirectPosScratchCardController, int?>(
+  DirectPosScratchCardController.new,
+);

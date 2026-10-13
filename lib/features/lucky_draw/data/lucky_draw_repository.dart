@@ -5,6 +5,7 @@ import '../../../core/networking/api_client.dart';
 import '../../../core/networking/api_envelope.dart';
 import '../../../core/networking/offset_page.dart';
 import 'models/draw.dart';
+import 'models/draw_entry.dart';
 import 'models/draw_winner.dart';
 import 'models/voucher.dart';
 
@@ -18,9 +19,14 @@ class LuckyDrawRepository {
 
   final Dio _dio;
 
-  Future<OffsetPage<Draw>> draws({int page = 1, int perPage = 20}) async {
+  /// `associationId` narrows the list to one association's draws -- what a
+  /// shop wants in Business mode (its own association).
+  Future<OffsetPage<Draw>> draws({int page = 1, int perPage = 20, int? associationId}) async {
     try {
-      final response = await _dio.get('/draws', queryParameters: {'page': page, 'per_page': perPage});
+      final response = await _dio.get(
+        '/draws',
+        queryParameters: {'page': page, 'per_page': perPage, if (associationId != null) 'association_id': associationId},
+      );
       final items = (ApiEnvelope.data(response) as List<dynamic>).map((e) => Draw.fromJson(e as Map<String, dynamic>)).toList();
       final meta = ApiEnvelope.meta(response) ?? const {};
       return OffsetPage(
@@ -47,6 +53,43 @@ class LuckyDrawRepository {
     try {
       final response = await _dio.get('/draws/$drawId/winners');
       return (ApiEnvelope.data(response) as List<dynamic>).map((e) => DrawWinner.fromJson(e as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// `GET /draws/{id}/entries` (BR-44): every coupon in the locked pool,
+  /// masked, with the shop it was earned at and whether it won.
+  Future<DrawEntriesPage> entries(int drawId, {int page = 1, int perPage = 50}) async {
+    try {
+      final response = await _dio.get('/draws/$drawId/entries', queryParameters: {'page': page, 'per_page': perPage});
+      final items = (ApiEnvelope.data(response) as List<dynamic>)
+          .map((e) => DrawEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final meta = ApiEnvelope.meta(response) ?? const {};
+      return DrawEntriesPage(
+        page: OffsetPage(
+          items: items,
+          currentPage: meta['current_page'] as int? ?? page,
+          lastPage: meta['last_page'] as int? ?? page,
+          total: meta['total'] as int? ?? items.length,
+        ),
+        byShop: (meta['by_shop'] as List<dynamic>? ?? [])
+            .map((e) => DrawShopEntries.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
+  /// Up to 300 entries in random order -- the names the draw show scrolls.
+  Future<List<DrawEntry>> entriesSample(int drawId) async {
+    try {
+      final response = await _dio.get('/draws/$drawId/entries', queryParameters: {'shuffle': 1});
+      return (ApiEnvelope.data(response) as List<dynamic>)
+          .map((e) => DrawEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       ApiEnvelope.rethrowAsAppException(e);
     }
@@ -87,6 +130,15 @@ class LuckyDrawRepository {
       ApiEnvelope.rethrowAsAppException(e);
     }
   }
+}
+
+/// One page of a draw's entries plus the per-shop totals the endpoint
+/// returns alongside it.
+class DrawEntriesPage {
+  const DrawEntriesPage({required this.page, required this.byShop});
+
+  final OffsetPage<DrawEntry> page;
+  final List<DrawShopEntries> byShop;
 }
 
 final luckyDrawRepositoryProvider = Provider<LuckyDrawRepository>((ref) {

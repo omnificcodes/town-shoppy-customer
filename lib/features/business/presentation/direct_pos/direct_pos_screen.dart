@@ -11,14 +11,23 @@ import '../../../../core/theme/app_gradients.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/date_format.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/info_box.dart';
 import '../../application/business_branches_controller.dart';
 import '../../application/business_context.dart';
 import '../../application/direct_pos_controller.dart';
+import '../../application/voice_alert_service.dart';
 import '../../data/models/direct_pos.dart';
 import '../business_qr_scan_screen.dart';
 import '../business_routes.dart';
+import '../../../scratch_cards/application/scratch_cards_providers.dart';
+import '../../../scratch_cards/data/models/scratch_card.dart';
+import '../../../stamp_cards/application/stamp_cards_providers.dart';
+import '../../../stamp_cards/data/models/stamp_card.dart';
+import '../../../stamp_cards/data/stamp_cards_repository.dart';
+import '../scratch_cards/scratch_card_picker.dart';
+import '../stamp_cards/stamp_card_picker.dart';
 import '../widgets/business_dialogs.dart';
 
 /// The counter, following the Google Stitch redesign. Step 1 identifies
@@ -142,14 +151,22 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
     ref.listen(directPosControllerProvider.select((s) => s.result), (prev, next) async {
       if (next == null || prev == next) return;
       final purchaseId = next.purchase.id;
+      ref.read(voiceAlertServiceProvider).announcePayment(amount: next.payableAmount);
       await showPurchaseCelebration(
         context,
         title: 'Purchase recorded!',
         discountAmount: next.redeemedCoins > 0 ? next.discountAmount : null,
         coinsRedeemed: next.redeemedCoins > 0 ? next.redeemedCoins : null,
         coinsAwarded: next.purchase.coinsAwarded,
+        scratchCardTitle: next.purchase.scratchCardTitle,
+        stampSummary: next.purchase.stamp?.summary,
       );
       if (!context.mounted) return;
+      if (next.purchase.couponQuotaExhausted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No Lucky Draw coupon on this bill: your plan\'s monthly coupons are used up.'), duration: Duration(seconds: 5)),
+        );
+      }
       if (next.duplicateWarning != null) {
         ScaffoldMessenger.of(
           context,
@@ -393,6 +410,8 @@ class _DirectPosScreenState extends ConsumerState<DirectPosScreen> {
                     ),
                   ],
                 ),
+                const _ScratchCardStep(),
+                const _StampCardStep(),
                 if (preview != null) ...[const SizedBox(height: AppSpacing.md), _PayableSummary(preview: preview)],
                 if (state.error != null && state.subscriptionReason == null) ...[
                   const SizedBox(height: AppSpacing.md),
@@ -1224,6 +1243,167 @@ class _LookupStatus extends StatelessWidget {
         size: AppIconSize.md,
         color: known ? AppColors.success : AppColors.textSecondary,
         semanticLabel: known ? 'Customer found' : 'New customer',
+      ),
+    );
+  }
+}
+
+/// Step 3, only for a shop whose plan includes scratch cards and that has
+/// at least one active design: choose a card to give with this bill, or
+/// none. Shows what is left this month; when nothing is, says so instead
+/// of offering a choice the server would refuse.
+class _ScratchCardStep extends ConsumerWidget {
+  const _ScratchCardStep();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final designs = ref.watch(scratchCardDesignsProvider).value;
+    if (designs == null || !designs.enabled || designs.active.isEmpty) return const SizedBox.shrink();
+
+    final selected = ref.watch(directPosScratchCardProvider);
+    final submitting = ref.watch(directPosControllerProvider.select((s) => s.isSubmitting));
+    final remaining = designs.remaining;
+    final exhausted = remaining == 0;
+    final chosen = selected == null ? null : designs.active.where((d) => d.id == selected).firstOrNull;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: _StepCard(
+        number: 3,
+        title: 'Scratch card',
+        subtitle: exhausted
+            ? 'All of this month\'s cards have been given.'
+            : remaining == null
+            ? 'A surprise gift with this bill, if you like.'
+            : 'A surprise gift with this bill. $remaining left this month.',
+        children: [
+          if (exhausted)
+            const InfoBox(
+              icon: Icons.card_giftcard_outlined,
+              message: 'The count resets with your next billing month. This bill is recorded without a card.',
+            )
+          else ...[
+            const _FieldLabel('Give a card'),
+            DropdownButtonFormField<int>(
+              value: selected,
+              isExpanded: true,
+              decoration: _boxDecoration(
+                hintText: 'No card',
+                prefix: const Icon(Icons.card_giftcard_rounded, size: AppIconSize.md, color: AppColors.textSecondary),
+              ),
+              items: [
+                const DropdownMenuItem<int>(value: null, child: Text('No card')),
+                for (final ScratchCardDesign d in designs.active)
+                  DropdownMenuItem(value: d.id, child: Text('${d.title} · ${d.rewardSummary}', overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: submitting ? null : (id) => ref.read(directPosScratchCardProvider.notifier).set(id),
+            ),
+            if (chosen != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              ScratchCardDesignRow(design: chosen),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Step 4, only for a shop whose plan includes stamp cards and that has a
+/// card running: once the customer is known, their progress on each card,
+/// a tap to add this bill's stamp (one per bill, never required), and a
+/// "Reward given" button on a full card. With a scanned QR the customer
+/// is not known until the bill is recorded, so only the choice is shown.
+class _StampCardStep extends ConsumerStatefulWidget {
+  const _StampCardStep();
+
+  @override
+  ConsumerState<_StampCardStep> createState() => _StampCardStepState();
+}
+
+class _StampCardStepState extends ConsumerState<_StampCardStep> {
+  int? _rewardingId;
+
+  Future<void> _reward(CustomerStampCard card, int customerId) async {
+    final ok = await showBusinessConfirmDialog(
+      context,
+      title: 'Reward given?',
+      message: 'The customer gets their ${card.rewardText}. The card is marked claimed and a fresh "${card.title}" card starts.',
+      confirmLabel: 'Reward given',
+    );
+    if (!ok || !mounted) return;
+    setState(() => _rewardingId = card.id);
+    try {
+      await ref.read(stampCardsRepositoryProvider).reward(card.id);
+      ref
+        ..invalidate(customerStampProgressProvider(customerId))
+        ..invalidate(stampCardProgrammesProvider);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Marked as claimed — ${card.rewardText}.')));
+    } on AppException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _rewardingId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final programmes = ref.watch(stampCardProgrammesProvider).value;
+    if (programmes == null || !programmes.canStamp) return const SizedBox.shrink();
+
+    final state = ref.watch(directPosControllerProvider);
+    final selected = ref.watch(directPosStampProvider);
+    final customerId = state.lookedUp?.customerProfileId;
+    final progress = customerId == null ? const <CustomerStampCard>[] : (ref.watch(customerStampProgressProvider(customerId)).value ?? const []);
+    final billAmount = state.amountValue;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: _StepCard(
+        number: 4,
+        title: 'Stamp card',
+        subtitle: customerId == null
+            ? 'Tap a card to add this bill\'s stamp. Never required.'
+            : 'Tap a card to add this bill\'s stamp. One per bill, never required.',
+        children: [
+          for (final programme in programmes.active) ...[
+            Builder(
+              builder: (context) {
+                final card = progress.where((c) => c.stampCardId == programme.id).firstOrNull;
+                final isSelected = selected == programme.id;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    StampProgrammeRow(
+                      programme: programme,
+                      progress: card,
+                      billAmount: billAmount,
+                      selected: isSelected,
+                      onTap: state.isSubmitting
+                          ? null
+                          : () => ref.read(directPosStampProvider.notifier).set(isSelected ? null : programme.id),
+                      trailing: Icon(
+                        isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                        color: isSelected ? AppColors.businessInk : AppColors.textDisabled,
+                      ),
+                    ),
+                    if (card != null && card.isFull && customerId != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      AppButton(
+                        label: 'Reward given — ${card.rewardText}',
+                        icon: Icons.verified_rounded,
+                        size: AppButtonSize.sm,
+                        isLoading: _rewardingId == card.id,
+                        onPressed: _rewardingId != null ? null : () => _reward(card, customerId),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ],
       ),
     );
   }

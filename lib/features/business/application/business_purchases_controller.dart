@@ -158,7 +158,9 @@ class BusinessPurchasesController extends AsyncNotifier<BusinessPurchasesState> 
   /// Approve/reject a `pending` request. The row is swapped for the
   /// backend's updated copy; the dashboard counters are invalidated so the
   /// KPI tiles agree with what the merchant just did.
-  Future<Purchase> approve(int id) => _act(() => ref.read(businessActivityRepositoryProvider).approvePurchase(id));
+  Future<Purchase> approve(int id, {int? scratchCardId, int? stampCardId}) => _act(
+    () => ref.read(businessActivityRepositoryProvider).approvePurchase(id, scratchCardId: scratchCardId, stampCardId: stampCardId),
+  );
 
   Future<Purchase> reject(int id, {String? reason}) =>
       _act(() => ref.read(businessActivityRepositoryProvider).rejectPurchase(id, reason: reason));

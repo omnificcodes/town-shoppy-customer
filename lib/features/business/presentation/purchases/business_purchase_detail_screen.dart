@@ -18,6 +18,12 @@ import '../../../../shared/widgets/status_badge.dart';
 import '../../../purchases/data/models/purchase.dart';
 import '../../../purchases/presentation/purchase_status.dart';
 import '../../application/business_purchases_controller.dart';
+import '../../application/voice_alert_service.dart';
+import '../../../scratch_cards/application/scratch_cards_providers.dart';
+import '../../../stamp_cards/application/stamp_cards_providers.dart';
+import '../../../stamp_cards/data/models/stamp_card.dart';
+import '../scratch_cards/scratch_card_picker.dart';
+import '../stamp_cards/stamp_card_picker.dart';
 import '../widgets/business_dialogs.dart';
 import 'purchase_review_copy.dart';
 import '../widgets/business_page_header.dart';
@@ -39,18 +45,56 @@ class _BusinessPurchaseDetailScreenState extends ConsumerState<BusinessPurchaseD
   Future<void> _approve() async {
     final purchase = ref.read(businessPurchaseProvider(widget.purchaseId)).value;
     if (purchase == null) return;
+
+    // A scratch card can go with the approved bill (a plan feature): offer
+    // the shop's active designs first, when its plan allows one right now.
+    int? scratchCardId;
+    final designs = ref.read(scratchCardDesignsProvider).value;
+    if (designs != null && designs.canGive) {
+      final choice = await showScratchCardPicker(context, designs);
+      if (choice == null || !mounted) return;
+      scratchCardId = choice.designId;
+    }
+
+    // A loyalty stamp can go with it too (a plan feature), never required.
+    int? stampCardId;
+    final programmes = ref.read(stampCardProgrammesProvider).value;
+    if (programmes != null && programmes.canStamp) {
+      final customerId = purchase.customer?.id;
+      final progress = customerId == null ? const <CustomerStampCard>[] : (await ref.read(customerStampProgressProvider(customerId).future).catchError((_) => <CustomerStampCard>[]));
+      if (!mounted) return;
+      final choice = await showStampCardPicker(context, programmes, progress: progress, billAmount: purchase.billAmount);
+      if (choice == null || !mounted) return;
+      stampCardId = choice.programmeId;
+    }
+
+    final extras = [
+      if (scratchCardId != null) 'A scratch card goes to the customer with it.',
+      if (stampCardId != null) 'Their stamp card gets a stamp.',
+    ].join(' ');
     final ok = await showBusinessConfirmDialog(
       context,
       title: approveTitle(purchase),
-      message: approveMessage(purchase),
+      message: extras.isEmpty ? approveMessage(purchase) : '${approveMessage(purchase)} $extras',
       confirmLabel: 'Approve',
     );
     if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
-      final updated = await ref.read(businessPurchasesControllerProvider.notifier).approve(widget.purchaseId);
+      final updated = await ref
+          .read(businessPurchasesControllerProvider.notifier)
+          .approve(widget.purchaseId, scratchCardId: scratchCardId, stampCardId: stampCardId);
+      if (scratchCardId != null) ref.invalidate(scratchCardDesignsProvider);
+      if (stampCardId != null) ref.invalidate(stampCardProgrammesProvider);
       if (!mounted) return;
-      await showPurchaseCelebration(context, title: 'Purchase approved!', coinsAwarded: updated.coinsAwarded);
+      ref.read(voiceAlertServiceProvider).announcePayment(amount: updated.billAmount);
+      await showPurchaseCelebration(
+        context,
+        title: 'Purchase approved!',
+        coinsAwarded: updated.coinsAwarded,
+        scratchCardTitle: updated.scratchCardTitle,
+        stampSummary: updated.stamp?.summary,
+      );
     } on AppException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.statusCode == 402 ? '${e.message} Visit Subscriptions to choose a plan.' : e.message)));
     } finally {

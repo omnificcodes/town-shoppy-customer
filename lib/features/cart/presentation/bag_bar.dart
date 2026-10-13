@@ -11,6 +11,31 @@ import '../../products/presentation/add_to_bag_button.dart';
 import '../../products/presentation/product_price.dart';
 import '../application/cart_controller.dart';
 
+/// Sends the bag to its shop on WhatsApp and, once WhatsApp has opened with
+/// it, empties the bag -- the order is with the seller now, and a bag that
+/// stayed full would invite sending it twice. Shared by the docked bar and
+/// the bag sheet so both behave the same.
+Future<void> orderBagViaWhatsApp(BuildContext context, WidgetRef ref) async {
+  final cart = ref.read(cartControllerProvider);
+  final number = cart.contactMobileNumber;
+  if (number == null) return;
+
+  // Already the bare ten digits -- `whatsappUri` is what writes the 91.
+  final uri = whatsappUri(number, text: buildCartOrderMessage(cart));
+  final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!context.mounted) return;
+
+  if (!launched) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp on this device.')));
+    return;
+  }
+
+  ref.read(cartControllerProvider.notifier).clear();
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(const SnackBar(content: Text('Order sent to WhatsApp. Your bag has been emptied.')));
+}
+
 /// The docked bag: what is in it, what it comes to, and the order itself.
 /// Renders nothing while the bag is empty, so the catalog keeps its full
 /// height until something is added.
@@ -83,24 +108,14 @@ class BagBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(flex: 3, child: _OrderButton(onPressed: orderable ? () => _order(context, ref) : null)),
+            Expanded(
+              flex: 3,
+              child: _OrderButton(onPressed: orderable ? () => orderBagViaWhatsApp(context, ref) : null),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _order(BuildContext context, WidgetRef ref) async {
-    final cart = ref.read(cartControllerProvider);
-    // Already the bare ten digits -- `whatsappUri` is what writes the 91.
-    final uri = whatsappUri(cart.contactMobileNumber!, text: buildCartOrderMessage(cart));
-
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp on this device.')));
-    }
   }
 }
 
@@ -157,7 +172,8 @@ class _OrderButton extends StatelessWidget {
   }
 }
 
-/// The bag's own list, for changing it away from the catalog tiles.
+/// The bag's own list, for changing it away from the catalog tiles -- and
+/// ordering it from right there.
 Future<void> showBagSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -173,6 +189,7 @@ class _BagSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.watch(cartControllerProvider);
+    final orderable = cart.contactMobileNumber != null;
 
     return SafeArea(
       child: Padding(
@@ -258,6 +275,23 @@ class _BagSheet extends ConsumerWidget {
                   'You save ${formatRupees(cart.saved)}',
                   style: AppTypography.caption.copyWith(color: AppColors.success, fontWeight: FontWeight.w700),
                 ),
+              const SizedBox(height: AppSpacing.md),
+              _OrderButton(
+                onPressed: orderable
+                    ? () async {
+                        await orderBagViaWhatsApp(context, ref);
+                        if (context.mounted) Navigator.of(context).maybePop();
+                      }
+                    : null,
+              ),
+              if (!orderable) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'This shop has not published a WhatsApp number yet, so the bag cannot be ordered.',
+                  style: AppTypography.caption,
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ],
           ],
         ),

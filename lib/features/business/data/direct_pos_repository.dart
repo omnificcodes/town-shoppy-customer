@@ -61,6 +61,8 @@ class DirectPosRepository {
     required String idempotencyKey,
     int? branchId,
     String? billReference,
+    int? scratchCardId,
+    int? stampCardId,
   }) async {
     try {
       final response = await _dio.post(
@@ -68,6 +70,10 @@ class DirectPosRepository {
         data: {
           'merchant_id': merchantId,
           if (branchId != null) 'branch_id': branchId,
+          // A scratch card design to give with the bill (a plan feature).
+          if (scratchCardId != null) 'scratch_card_id': scratchCardId,
+          // A loyalty stamp card to stamp with the bill (a plan feature).
+          if (stampCardId != null) 'stamp_card_id': stampCardId,
           'bill_amount': billAmount,
           'redeem': redeem,
           if (billReference != null && billReference.trim().isNotEmpty) 'bill_reference': billReference.trim(),

@@ -78,6 +78,13 @@ NotificationTarget? notificationTarget(String type) {
     'product_coupon.requested' => const NotificationTarget(BusinessRoutes.productCouponRequests, AppMode.business),
     'product_coupon.approved' => const NotificationTarget('/coupons', AppMode.customer),
     'product_coupon.rejected' => const NotificationTarget('/shopping', AppMode.customer),
+    // A shop gave the customer a scratch card with their bill.
+    'scratch_card.received' => const NotificationTarget('/scratch-cards', AppMode.customer),
+    // A stamp landed, the card is full, or the reward was claimed.
+    'stamp_card.stamped' || 'stamp_card.full' || 'stamp_card.rewarded' =>
+      const NotificationTarget('/stamp-cards', AppMode.customer),
+    // A customer rated the shop 1-3 stars and left a private note.
+    'review_link.feedback' => const NotificationTarget(BusinessRoutes.reviewLinkFeedback, AppMode.business),
     // The winning customer's own wins list.
     'draw.won' => const NotificationTarget('/lucky-draw/my-wins', AppMode.customer),
     // The sponsoring merchant, never the winning customer.

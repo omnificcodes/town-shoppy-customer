@@ -71,20 +71,34 @@ void main() {
     expect(find.textContaining('You Save'), findsNothing);
   });
 
-  testWidgets('the quantity starts at one and cannot go below it', (tester) async {
+  testWidgets('adding to the bag turns the button into a stepper, and the order button then sends the bag', (tester) async {
     await pumpPage(tester, _product());
 
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Add'), findsOneWidget);
+    expect(find.text('Opens WhatsApp with your order details, addressed to the seller.'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Fewer'));
+    await tester.tap(find.text('Add'));
     await tester.pumpAndSettle();
-    expect(find.text('1'), findsOneWidget);
+    // Twice: the stepper, and the bag badge in the top bar.
+    expect(find.text('1'), findsNWidgets(2));
 
-    await tester.tap(find.byTooltip('More'));
+    await tester.tap(find.byTooltip('One more'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('More'));
+    await tester.tap(find.byTooltip('One more'));
     await tester.pumpAndSettle();
-    expect(find.text('3'), findsOneWidget);
+    expect(find.text('3'), findsNWidgets(2));
+    // 3 x 149, sent as one bag rather than a single product.
+    expect(find.textContaining('Sends your bag (3 items, ₹447)'), findsOneWidget);
+
+    // Back down to one; one fewer from there removes the line.
+    await tester.tap(find.byTooltip('One fewer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('One fewer'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Remove from bag'), findsOneWidget);
+    await tester.tap(find.byTooltip('Remove from bag'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add'), findsOneWidget);
   });
 
   testWidgets('a shop with no usable number cannot be ordered from, and says why', (tester) async {

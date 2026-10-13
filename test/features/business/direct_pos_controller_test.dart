@@ -55,6 +55,8 @@ class _FakeDirectPosRepository implements DirectPosRepository {
     required String idempotencyKey,
     int? branchId,
     String? billReference,
+    int? scratchCardId,
+    int? stampCardId,
   }) async {
     submittedKeys.add(idempotencyKey);
     lastIdentity = identity.toJson();

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/lucky_draw_repository.dart';
 import '../data/models/draw.dart';
+import '../data/models/draw_entry.dart';
 import '../data/models/draw_winner.dart';
 
 /// Same offset-paginated shape as `PurchasesListState` -- `GET /draws` uses
@@ -71,4 +72,16 @@ final drawDetailProvider = FutureProvider.family<Draw, int>((ref, id) {
 final drawWinnersProvider = FutureProvider.family<List<DrawWinner>, int>((ref, drawId) {
   ref.watch(sessionEpochProvider);
   return ref.watch(luckyDrawRepositoryProvider).winners(drawId);
+});
+
+/// One page of a draw's entries (BR-44); the key is `(drawId, page)`.
+final drawEntriesPageProvider = FutureProvider.family<DrawEntriesPage, (int, int)>((ref, key) {
+  ref.watch(sessionEpochProvider);
+  return ref.watch(luckyDrawRepositoryProvider).entries(key.$1, page: key.$2);
+});
+
+/// The shuffled sample of entrant names the draw show scrolls through.
+final drawEntriesSampleProvider = FutureProvider.family<List<DrawEntry>, int>((ref, drawId) {
+  ref.watch(sessionEpochProvider);
+  return ref.watch(luckyDrawRepositoryProvider).entriesSample(drawId);
 });

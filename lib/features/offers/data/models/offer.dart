@@ -23,6 +23,7 @@ class Offer {
     required this.coinDiscountRate,
     required this.applicableItem,
     required this.isCoinRedeemable,
+    this.isFlashSale = false,
   });
 
   factory Offer.fromJson(Map<String, dynamic> json) {
@@ -44,6 +45,7 @@ class Offer {
       coinDiscountRate: json['coin_discount_rate'] != null ? (json['coin_discount_rate'] as num).toDouble() : null,
       applicableItem: json['applicable_item'] as String?,
       isCoinRedeemable: json['is_coin_redeemable'] as bool? ?? false,
+      isFlashSale: json['is_flash_sale'] as bool? ?? false,
     );
   }
 
@@ -69,4 +71,7 @@ class Offer {
   final double? coinDiscountRate;
   final String? applicableItem;
   final bool isCoinRedeemable;
+
+  /// BR-43: a flash sale, shown with a live countdown on Home.
+  final bool isFlashSale;
 }

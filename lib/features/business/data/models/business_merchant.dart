@@ -28,6 +28,9 @@ class BusinessMerchant {
     required this.discountRate,
     required this.acceptsTownCoin,
     required this.isFeatured,
+    this.slug,
+    this.storeUrl,
+    this.freeTrialUsedAt,
     required this.category,
     required this.association,
     required this.branch,
@@ -59,6 +62,9 @@ class BusinessMerchant {
       discountRate: json['discount_rate'] != null ? (json['discount_rate'] as num).toDouble() : null,
       acceptsTownCoin: json['accepts_town_coin'] as bool? ?? false,
       isFeatured: json['is_featured'] as bool? ?? false,
+      slug: json['slug'] as String?,
+      storeUrl: json['store_url'] as String?,
+      freeTrialUsedAt: json['free_trial_used_at'] != null ? DateTime.tryParse(json['free_trial_used_at'] as String) : null,
       category: json['category'] is Map ? MerchantCategory.fromJson(json['category'] as Map<String, dynamic>) : null,
       association: json['association'] is Map ? AssociationRef.fromJson(json['association'] as Map<String, dynamic>) : null,
       branch: json['branch'] is Map ? MerchantBranchRef.fromJson(json['branch'] as Map<String, dynamic>) : null,
@@ -85,6 +91,13 @@ class BusinessMerchant {
   final double? discountRate;
   final bool acceptsTownCoin;
   final bool isFeatured;
+
+  /// BR-43: the shop's public page slug and link (the owner always sees
+  /// the link; customers only while the plan includes it), and whether the
+  /// one free trial has been used.
+  final String? slug;
+  final String? storeUrl;
+  final DateTime? freeTrialUsedAt;
   final MerchantCategory? category;
   final AssociationRef? association;
   final MerchantBranchRef? branch;

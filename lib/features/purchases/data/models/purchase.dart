@@ -80,6 +80,7 @@ class Purchase {
     required this.currency,
     required this.billReference,
     required this.coinsAwarded,
+    this.couponQuotaExhausted = false,
     required this.couponsIssued,
     required this.status,
     required this.reviewedAt,
@@ -93,6 +94,8 @@ class Purchase {
     this.isFirstPurchaseBonus = false,
     this.transactionId,
     this.coinPayment,
+    this.scratchCardTitle,
+    this.stamp,
   });
 
   factory Purchase.fromJson(Map<String, dynamic> json) {
@@ -107,6 +110,7 @@ class Purchase {
       currency: json['currency'] as String? ?? 'INR',
       billReference: json['bill_reference'] as String?,
       coinsAwarded: json['coins_awarded'] as int? ?? 0,
+      couponQuotaExhausted: json['coupon_quota_exhausted'] as bool? ?? false,
       couponsIssued: json['coupons_issued'] as int?,
       status: json['status'] as String,
       reviewedAt: json['reviewed_at'] != null ? DateTime.tryParse(json['reviewed_at'] as String) : null,
@@ -121,6 +125,8 @@ class Purchase {
       expectedCoins: json['expected_coins'] as int?,
       isFirstPurchaseBonus: json['is_first_purchase_bonus'] as bool? ?? false,
       transactionId: json['transaction_id'] as String?,
+      scratchCardTitle: (json['scratch_card'] as Map<String, dynamic>?)?['title'] as String?,
+      stamp: json['stamp'] is Map ? PurchaseStamp.fromJson(json['stamp'] as Map<String, dynamic>) : null,
       coinPayment: json['coin_payment'] is Map
           ? CoinPayment.fromJson(json['coin_payment'] as Map<String, dynamic>)
           : null,
@@ -135,6 +141,10 @@ class Purchase {
   final String currency;
   final String? billReference;
   final int coinsAwarded;
+
+  /// BR-43: true on the response to a bill that earned coupons by rule but
+  /// issued none because the plan's monthly quota is used up.
+  final bool couponQuotaExhausted;
   final int? couponsIssued;
   final String status;
   final DateTime? reviewedAt;
@@ -166,6 +176,12 @@ class Purchase {
   /// The Town Coin payment on this bill, if any.
   final CoinPayment? coinPayment;
 
+  /// The scratch card the shop gave with this bill, when it gave one.
+  final String? scratchCardTitle;
+
+  /// The loyalty stamp this bill earned, with where the card now stands.
+  final PurchaseStamp? stamp;
+
   /// What this bill's reference reads as: the server's transaction ID, or
   /// the plain id from an API too old to send one.
   String get reference => transactionId ?? '#$id';
@@ -180,4 +196,28 @@ class Purchase {
   bool get isPending => status == 'pending';
 
   bool get isRejected => status == 'rejected';
+}
+
+/// `PurchaseResource.stamp` -- the loyalty stamp a bill earned (BR-20c).
+class PurchaseStamp {
+  const PurchaseStamp({required this.cardId, required this.stampsCount, required this.stampsRequired, required this.rewardText, required this.status});
+
+  factory PurchaseStamp.fromJson(Map<String, dynamic> json) => PurchaseStamp(
+    cardId: json['card_id'] as int? ?? 0,
+    stampsCount: json['stamps_count'] as int? ?? 0,
+    stampsRequired: json['stamps_required'] as int? ?? 0,
+    rewardText: json['reward_text'] as String? ?? '',
+    status: json['status'] as String? ?? 'collecting',
+  );
+
+  final int cardId;
+  final int stampsCount;
+  final int stampsRequired;
+  final String rewardText;
+  final String status;
+
+  bool get isFull => status == 'full';
+
+  /// "Stamp 3 of 5 added" / "Card full! Give: Free coffee".
+  String get summary => isFull ? 'Card full! Give the customer their $rewardText.' : 'Stamp $stampsCount of $stampsRequired added · $rewardText when full';
 }

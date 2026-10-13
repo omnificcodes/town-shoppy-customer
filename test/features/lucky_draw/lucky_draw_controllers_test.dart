@@ -6,6 +6,7 @@ import 'package:customer/features/lucky_draw/application/draws_list_controller.d
 import 'package:customer/features/lucky_draw/application/my_vouchers_controller.dart';
 import 'package:customer/features/lucky_draw/data/lucky_draw_repository.dart';
 import 'package:customer/features/lucky_draw/data/models/draw.dart';
+import 'package:customer/features/lucky_draw/data/models/draw_entry.dart';
 import 'package:customer/features/lucky_draw/data/models/draw_winner.dart';
 import 'package:customer/features/lucky_draw/data/models/voucher.dart';
 
@@ -48,7 +49,7 @@ class FakeLuckyDrawRepository implements LuckyDrawRepository {
   void queueVoucherPage(OffsetPage<Voucher> page) => _voucherResponses.add(page);
 
   @override
-  Future<OffsetPage<Draw>> draws({int page = 1, int perPage = 20}) async {
+  Future<OffsetPage<Draw>> draws({int page = 1, int perPage = 20, int? associationId}) async {
     drawsCallCount++;
     final next = _drawResponses.first;
     if (next is AppException) throw next;
@@ -70,6 +71,12 @@ class FakeLuckyDrawRepository implements LuckyDrawRepository {
 
   @override
   Future<List<DrawWinner>> winners(int drawId) async => throw UnimplementedError();
+
+  @override
+  Future<DrawEntriesPage> entries(int drawId, {int page = 1, int perPage = 50}) async => throw UnimplementedError();
+
+  @override
+  Future<List<DrawEntry>> entriesSample(int drawId) async => throw UnimplementedError();
 
   @override
   Future<Voucher> voucher(int id) async => throw UnimplementedError();

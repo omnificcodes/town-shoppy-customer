@@ -54,6 +54,10 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
   };
   final Map<String, DayHours> _hours = {};
 
+  /// While on, a time picked for one day is copied to every open day. On by
+  /// default for a business that has never set its hours.
+  bool _applyToAllDays = false;
+
   /// Saved links under any other platform name, kept as-is.
   Map<String, String> _otherSocial = const {};
 
@@ -107,8 +111,12 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     }
     _otherSocial = other;
 
+    // A business that never set its hours starts open 9 to 6 every day.
+    final saved = m.businessHours;
+    final hours = saved == null || saved.isEmpty ? BusinessHours.standard : saved;
+    _applyToAllDays = saved == null || saved.isEmpty;
     for (final day in merchantWeekdays) {
-      _hours[day] = m.businessHours?.forDay(day) ?? DayHours.unset;
+      _hours[day] = hours.forDay(day);
     }
   }
 
@@ -149,7 +157,15 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
     final picked = await showTimePicker(context: context, initialTime: initial);
     if (picked == null) return;
     final text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-    setState(() => _hours[day] = opening ? current.copyWith(open: text) : current.copyWith(close: text));
+    DayHours withTime(DayHours h) => opening ? h.copyWith(open: text) : h.copyWith(close: text);
+    setState(() {
+      _hours[day] = withTime(current);
+      if (_applyToAllDays) {
+        for (final other in merchantWeekdays) {
+          if (other != day && !_hours[other]!.closed) _hours[other] = withTime(_hours[other]!);
+        }
+      }
+    });
   }
 
   void _submit(int merchantId) {
@@ -368,8 +384,12 @@ class _EditBusinessProfileScreenState extends ConsumerState<EditBusinessProfileS
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    for (final (i, day) in merchantWeekdays.indexed) ...[
-                      if (i > 0) const Divider(height: 1, indent: AppSpacing.md, endIndent: AppSpacing.md),
+                    _ApplyToAllRow(
+                      value: _applyToAllDays,
+                      onChanged: (v) => setState(() => _applyToAllDays = v),
+                    ),
+                    for (final day in merchantWeekdays) ...[
+                      const Divider(height: 1, indent: AppSpacing.md, endIndent: AppSpacing.md),
                       _DayHoursRow(
                         label: weekdayLabel(day),
                         hours: _hours[day]!,
@@ -481,6 +501,39 @@ class _SocialLinkField extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The small switch above the days: while on, a time picked for one day is
+/// copied to every open day, so a shop with one set of hours sets it once.
+class _ApplyToAllRow extends StatelessWidget {
+  const _ApplyToAllRow({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+      child: Row(
+        children: [
+          const Icon(Icons.copy_all_rounded, size: AppIconSize.md, color: AppColors.businessInk),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Apply to all days', style: textTheme.titleSmall),
+                Text('A time you change copies to every open day.', style: textTheme.bodySmall),
+              ],
+            ),
+          ),
+          Switch.adaptive(value: value, activeColor: AppColors.businessInk, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }

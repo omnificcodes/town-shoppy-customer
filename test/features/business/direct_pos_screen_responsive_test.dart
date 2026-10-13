@@ -71,6 +71,8 @@ class _FakeDirectPosRepository implements DirectPosRepository {
     required String idempotencyKey,
     int? branchId,
     String? billReference,
+    int? scratchCardId,
+    int? stampCardId,
   }) => throw UnimplementedError();
 }
 

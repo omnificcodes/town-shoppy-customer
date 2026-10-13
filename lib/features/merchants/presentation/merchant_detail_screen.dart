@@ -13,6 +13,7 @@ import '../../../core/utils/indian_mobile.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
+import '../../cart/presentation/bag_bar.dart';
 import '../../offers/application/merchant_offers_provider.dart';
 import '../../offers/data/models/offer.dart';
 import '../../offers/presentation/offer_labels.dart';
@@ -51,7 +52,20 @@ class MerchantDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceMuted,
-      bottomNavigationBar: merchant == null ? null : _PayBar(merchant: merchant),
+      // The bag docks above the pay bar once a product is added from the
+      // shop's own product grid below; it renders nothing while empty.
+      bottomNavigationBar: merchant == null
+          ? null
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(AppSpacing.page, 0, AppSpacing.page, AppSpacing.sm),
+                  child: BagBar(),
+                ),
+                _PayBar(merchant: merchant),
+              ],
+            ),
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -376,6 +390,21 @@ class _ProfileCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                       ),
+                      if (merchant.planPerks.officialPartnerBadge) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 3),
+                          decoration: BoxDecoration(color: AppColors.goldLight, borderRadius: BorderRadius.circular(AppSpacing.radiusPill)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.verified_rounded, size: AppIconSize.xs, color: AppColors.goldDark),
+                              const SizedBox(width: AppSpacing.xxs),
+                              Text('Official partner', style: AppTypography.badgeLabel.copyWith(color: AppColors.goldDark)),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (subtitle.isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.xxs),
                         Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTypography.caption),
@@ -627,8 +656,8 @@ class _QuickActions extends ConsumerWidget {
               icon: Icons.map_outlined,
               tint: AppColors.info,
               label: 'Directions',
-              hint: located == null ? 'No location yet' : 'Open in Maps',
-              onTap: located == null
+              hint: !merchant.planPerks.mapLocation ? 'Not available' : (located == null ? 'No location yet' : 'Open in Maps'),
+              onTap: located == null || !merchant.planPerks.mapLocation
                   ? null
                   : () => _launch(
                       context,
@@ -734,7 +763,8 @@ class _AboutCard extends StatelessWidget {
         : CategoryVisual.fallback;
     final description = merchant.description?.trim();
     final tagline = merchant.tagline?.trim();
-    final website = merchant.websiteUrl?.trim();
+    // BR-43: the shop's own online store page comes first when its plan has it.
+    final website = merchant.planPerks.storeUrl ?? merchant.websiteUrl?.trim();
 
     return DecoratedBox(
       decoration: BoxDecoration(

@@ -12,7 +12,9 @@ import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/application/auth_state.dart';
+import '../application/business_context.dart';
 import '../application/password_controller.dart';
+import '../application/voice_alert_service.dart';
 import 'business_routes.dart';
 import 'widgets/business_page_header.dart';
 
@@ -82,8 +84,71 @@ class BusinessSecurityScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.section),
+          const _VoiceAlertSection(),
         ],
       ),
+    );
+  }
+}
+
+/// BR-43 payment voice alert: on per device, only while the plan carries
+/// the item. Lives here with the other counter-phone settings.
+class _VoiceAlertSection extends ConsumerWidget {
+  const _VoiceAlertSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    final inPlan = ref.watch(merchantEntitlementProvider).value?.has('voice_alert') ?? true;
+    final enabled = ref.watch(voiceAlertEnabledProvider).value ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(
+          title: 'Payment voice alert',
+          subtitle: 'This phone announces every bill and redemption out loud, like a soundbox.',
+          icon: Icons.volume_up_rounded,
+        ),
+        const SizedBox(height: AppSpacing.smd),
+        AppCard(
+          child: inPlan
+              ? Row(
+                  children: [
+                    Container(
+                      width: AppSize.avatarMd,
+                      height: AppSize.avatarMd,
+                      decoration: BoxDecoration(color: AppColors.businessTint, borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
+                      child: const Icon(Icons.campaign_rounded, color: AppColors.businessInk, size: AppIconSize.md),
+                    ),
+                    const SizedBox(width: AppSpacing.smd),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(enabled ? 'Voice alert is on' : 'Voice alert is off', style: textTheme.titleMedium),
+                          const SizedBox(height: AppSpacing.xxs),
+                          Text('"Payment received. 300 rupees from Asha."', style: textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: enabled,
+                      activeColor: AppColors.businessInk,
+                      onChanged: (v) async {
+                        await ref.read(voiceAlertServiceProvider).setEnabled(v);
+                        ref.invalidate(voiceAlertEnabledProvider);
+                      },
+                    ),
+                  ],
+                )
+              : const InfoBox(
+                  icon: Icons.workspace_premium_outlined,
+                  message: 'The payment voice alert is not included in your current plan.',
+                ),
+        ),
+      ],
     );
   }
 }

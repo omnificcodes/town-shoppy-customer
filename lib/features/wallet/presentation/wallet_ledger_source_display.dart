@@ -24,6 +24,8 @@ class WalletLedgerSourceDisplay {
     // Blue Coin the customer's own business earned, mirrored here so it
     // can be spent in Customer mode (BlueCoinMirrorService on the API).
     'business_blue_coin': WalletLedgerSourceDisplay('Blue Coin from your business', Icons.store_rounded),
+    // Town Coins hidden under a shop's scratch card.
+    'scratch_card_reward': WalletLedgerSourceDisplay('Scratch card prize', Icons.card_giftcard_rounded),
   };
 
   static const _fallback = WalletLedgerSourceDisplay('Town Coin activity', Icons.swap_horiz_rounded);

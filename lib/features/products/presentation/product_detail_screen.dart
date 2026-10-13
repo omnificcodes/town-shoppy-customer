@@ -13,8 +13,11 @@ import '../../../core/utils/indian_mobile.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_skeleton.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../cart/application/cart_controller.dart';
+import '../../cart/presentation/bag_bar.dart';
 import '../../merchants/presentation/merchant_logo.dart';
 import '../application/products_list_controller.dart';
+import 'add_to_bag_button.dart';
 import '../../product_coupons/presentation/product_coupon_button.dart';
 import '../data/models/product.dart';
 import 'product_price.dart';
@@ -109,6 +112,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
+          const BagButton(),
           SizedBox.square(
             dimension: AppSize.controlSm,
             child: canShare ? _CopyLinkButton(productId: product!.id) : null,
@@ -535,26 +539,27 @@ class _Card extends StatelessWidget {
 }
 
 /// The docked bar: how many, then the order itself.
-class _OrderBar extends StatefulWidget {
+/// The docked bar: put this product in the bag (a stepper once it is in),
+/// and order on WhatsApp -- the whole bag when it already holds this shop's
+/// products, otherwise just this product, once. A bag order empties the bag
+/// once WhatsApp has opened with it.
+class _OrderBar extends ConsumerWidget {
   const _OrderBar({required this.product});
 
   final Product product;
 
   @override
-  State<_OrderBar> createState() => _OrderBarState();
-}
-
-class _OrderBarState extends State<_OrderBar> {
-  static const _maxQuantity = 99;
-
-  int _quantity = 1;
-
-  @override
-  Widget build(BuildContext context) {
-    final product = widget.product;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cart = ref.watch(cartControllerProvider);
     // The shop's number normalized once, here: a stored "+91 98765 43210"
     // and a stored "9876543210" must both reach WhatsApp as one 91.
     final number = dialableIndianMobile(product.merchantContactMobileNumber);
+    final bagForThisShop = !cart.isEmpty && cart.merchantId == product.merchantId;
+    final caption = number == null
+        ? 'This shop has not published a WhatsApp number yet.'
+        : bagForThisShop
+        ? 'Sends your bag (${cart.itemCount} ${cart.itemCount == 1 ? 'item' : 'items'}, ${formatRupees(cart.total)}) to the seller on WhatsApp.'
+        : 'Opens WhatsApp with your order details, addressed to the seller.';
 
     return Container(
       decoration: BoxDecoration(
@@ -571,25 +576,17 @@ class _OrderBarState extends State<_OrderBar> {
             children: [
               Row(
                 children: [
-                  _QuantityStepper(
-                    quantity: _quantity,
-                    max: _maxQuantity,
-                    onChanged: (value) => setState(() => _quantity = value),
-                  ),
+                  AddToBagButton(product: product, large: true),
                   const SizedBox(width: AppSpacing.smd),
                   Expanded(
-                    child: _WhatsAppOrderButton(onPressed: number == null ? null : () => _order(context, number)),
+                    child: _WhatsAppOrderButton(
+                      onPressed: number == null ? null : () => _order(context, ref, number, bag: bagForThisShop),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
-              Text(
-                number != null
-                    ? 'Opens WhatsApp with your order details, addressed to the seller.'
-                    : 'This shop has not published a WhatsApp number yet.',
-                style: AppTypography.caption,
-                textAlign: TextAlign.center,
-              ),
+              Text(caption, style: AppTypography.caption, textAlign: TextAlign.center),
             ],
           ),
         ),
@@ -597,96 +594,23 @@ class _OrderBarState extends State<_OrderBar> {
     );
   }
 
-  Future<void> _order(BuildContext context, String number) async {
-    final message = buildProductOrderMessage(widget.product, quantity: _quantity);
-    final uri = whatsappUri(number, text: message);
-
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp on this device.')));
+  Future<void> _order(BuildContext context, WidgetRef ref, String number, {required bool bag}) async {
+    final message = bag ? buildCartOrderMessage(ref.read(cartControllerProvider)) : buildProductOrderMessage(product);
+    final launched = await launchUrl(whatsappUri(number, text: message), mode: LaunchMode.externalApplication);
+    if (!context.mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp on this device.')));
+      return;
+    }
+    if (bag) {
+      // The order is with the seller now; a bag that stayed full would
+      // invite sending it twice.
+      ref.read(cartControllerProvider.notifier).clear();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order sent to WhatsApp. Your bag has been emptied.')));
     }
   }
 }
 
-class _QuantityStepper extends StatelessWidget {
-  const _QuantityStepper({required this.quantity, required this.max, required this.onChanged});
-
-  final int quantity;
-  final int max;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.xs),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StepButton(
-            icon: Icons.remove_rounded,
-            tooltip: 'Fewer',
-            onPressed: quantity > 1 ? () => onChanged(quantity - 1) : null,
-          ),
-          SizedBox(
-            width: AppSpacing.xl,
-            child: Semantics(
-              label: 'Quantity $quantity',
-              excludeSemantics: true,
-              child: Text('$quantity', textAlign: TextAlign.center, style: AppTypography.textTheme.titleMedium),
-            ),
-          ),
-          _StepButton(
-            icon: Icons.add_rounded,
-            tooltip: 'More',
-            onPressed: quantity < max ? () => onChanged(quantity + 1) : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepButton extends StatelessWidget {
-  const _StepButton({required this.icon, required this.tooltip, this.onPressed});
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: AppSize.controlSm,
-      child: Material(
-        color: onPressed == null ? AppColors.silverLight : AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusControl),
-        clipBehavior: Clip.antiAlias,
-        child: IconButton(
-          tooltip: tooltip,
-          padding: EdgeInsets.zero,
-          iconSize: AppIconSize.md,
-          onPressed: onPressed,
-          icon: Icon(icon, color: onPressed == null ? AppColors.textDisabled : AppColors.textPrimary),
-        ),
-      ),
-    );
-  }
-}
-
-/// The page's primary action. Opens a `wa.me` deep link -- the merchant's
-/// own published contact number (India-only app, hence the hardcoded "91"
-/// country code, same assumption every phone field in this app already
-/// makes), pre-filled with the product's details and its public web link so
-/// the message is useful even to a merchant who never opens the app. The
-/// backend is never involved in sending this -- it is a plain
-/// `https://wa.me/...` URL the device's own WhatsApp app opens.
 class _WhatsAppOrderButton extends StatelessWidget {
   const _WhatsAppOrderButton({this.onPressed});
 

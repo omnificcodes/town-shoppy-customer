@@ -82,16 +82,18 @@ void main() {
         expect(find.text('+91 99900 03001'), findsOneWidget);
         expect(find.text('Switch'), findsOneWidget);
         // Branches, Customers, Purchases, Direct POS, Offers, Products,
-        // Offer redemptions and Coupon requests -- no separate Redemptions
+        // Offer redemptions, Coupon requests, Scratch cards, Stamp cards, Review link and Online store -- no separate Redemptions
         // any more.
-        expect(find.text('8 services'), findsOneWidget);
+        expect(find.text('12 services'), findsOneWidget);
         expect(find.text('2 pending'), findsOneWidget);
         // Offer claims are not purchases: they have their own count.
         expect(find.text('1 pending'), findsOneWidget);
 
         final page = find.byType(CustomScrollView);
-        await tester.dragUntilVisible(find.text('Sign out'), page, const Offset(0, -300));
+        // The list is lazy: bring each item on screen before checking it.
+        await tester.dragUntilVisible(find.text('Sponsored prizes'), page, const Offset(0, -300));
         expect(find.text('Sponsored prizes'), findsOneWidget);
+        await tester.dragUntilVisible(find.text('Sign out'), page, const Offset(0, -300));
         expect(find.text('Security'), findsOneWidget);
         expect(find.text('Help & merchant support'), findsOneWidget);
         expect(find.text('Sign out'), findsOneWidget);

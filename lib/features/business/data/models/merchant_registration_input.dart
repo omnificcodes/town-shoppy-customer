@@ -1,3 +1,5 @@
+import 'business_hours.dart';
+
 /// Everything `POST /merchants` (`RegisterMerchantRequest`) accepts. The
 /// required set is exactly the backend's; the optional strings are sent
 /// only when non-empty, matching the merchant web app's payload builder.
@@ -51,6 +53,9 @@ class MerchantRegistrationInput {
       'latitude': latitude,
       'longitude': longitude,
       'discount_rate': discountRate,
+      // A new business starts open 9 to 6 every day; it can change this
+      // from its profile at any time.
+      'business_hours': BusinessHours.standard.toJson(),
       if (clean(city) != null) 'city': clean(city),
       if (clean(state) != null) 'state': clean(state),
       if (clean(postalCode) != null) 'postal_code': clean(postalCode),
