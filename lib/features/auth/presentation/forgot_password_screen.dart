@@ -58,7 +58,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     context.push(
       '/reset-password',
-      extra: ResetPasswordArgs(mobileNumber: mobileNumber, otpRequestId: result.otpRequestId, channelUsed: result.channelUsed),
+      extra: ResetPasswordArgs(
+        mobileNumber: mobileNumber,
+        otpRequestId: result.otpRequestId,
+        channelUsed: result.channelUsed,
+        deliveries: result.deliveries,
+        debugCode: result.debugCode,
+      ),
     );
   }
 

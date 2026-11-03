@@ -8,18 +8,31 @@ import '../../../core/theme/app_spacing.dart';
 import '../application/password_reset_controller.dart';
 import '../application/password_reset_state.dart';
 import 'widgets/auth_background.dart';
+import '../data/models/otp_request_result.dart';
 import 'widgets/auth_widgets.dart';
+import 'widgets/otp_delivery_debug_panel.dart';
 
 /// Passed from [ForgotPasswordScreen] as `extra` — [otpRequestId] is
 /// reassigned locally on a resend (a new OTP request each time), so it's
 /// held as screen state below rather than re-read from this immutable args
 /// object after the first request.
 class ResetPasswordArgs {
-  const ResetPasswordArgs({required this.mobileNumber, required this.otpRequestId, required this.channelUsed});
+  const ResetPasswordArgs({
+    required this.mobileNumber,
+    required this.otpRequestId,
+    required this.channelUsed,
+    this.deliveries = const [],
+    this.debugCode,
+  });
 
   final String mobileNumber;
   final int otpRequestId;
   final String channelUsed;
+
+  /// OTP delivery debugging details, empty unless the API has
+  /// `OTP_EXPOSE_DELIVERY_ERRORS` on — see [OtpDeliveryDebugPanel].
+  final List<OtpDelivery> deliveries;
+  final String? debugCode;
 }
 
 /// Step 2 -- `POST /auth/password/reset`. A wrong/expired/wrong-purpose code
@@ -47,11 +60,15 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   late int _otpRequestId;
+  late List<OtpDelivery> _deliveries;
+  String? _debugCode;
 
   @override
   void initState() {
     super.initState();
     _otpRequestId = widget.args.otpRequestId;
+    _deliveries = widget.args.deliveries;
+    _debugCode = widget.args.debugCode;
     WidgetsBinding.instance.addPostFrameCallback((_) => ref.read(passwordResetControllerProvider.notifier).clearError());
   }
 
@@ -81,7 +98,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Future<void> _resend() async {
     final result = await ref.read(passwordResetControllerProvider.notifier).requestOtp(widget.args.mobileNumber);
     if (result == null || !mounted) return;
-    setState(() => _otpRequestId = result.otpRequestId);
+    setState(() {
+      _otpRequestId = result.otpRequestId;
+      _deliveries = result.deliveries;
+      _debugCode = result.debugCode;
+    });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A new code has been sent.')));
   }
 
@@ -136,6 +157,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                           'Enter the 6-digit code sent to +91 ${widget.args.mobileNumber} and choose a new password.',
                           style: textTheme.bodyMedium?.copyWith(color: AuthPalette.mutedText),
                         ),
+                        if (_deliveries.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          OtpDeliveryDebugPanel(deliveries: _deliveries, debugCode: _debugCode),
+                        ],
                         const SizedBox(height: AppSpacing.lg),
                         AuthTextField(
                           label: '6-digit code',
