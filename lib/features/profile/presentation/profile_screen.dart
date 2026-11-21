@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/app_mode/app_mode.dart';
 import '../../../core/app_mode/app_mode_controller.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_elevation.dart';
 import '../../../core/theme/app_gradients.dart';
@@ -144,6 +146,22 @@ class ProfileScreen extends ConsumerWidget {
                     title: 'Edit profile',
                     subtitle: 'Update your name, dates and social links',
                     onTap: () => context.push('/profile/edit'),
+                  ),
+                  _LinkRow(
+                    icon: Icons.privacy_tip_outlined,
+                    tint: AppColors.silverDark,
+                    title: 'Privacy policy',
+                    subtitle: 'What we collect and how it is used',
+                    onTap: () => launchUrl(Uri.parse(AppConstants.privacyPolicyUrl), mode: LaunchMode.externalApplication),
+                  ),
+                  // Required by the app stores: an account made in the app
+                  // must be deletable in the app.
+                  _LinkRow(
+                    icon: Icons.delete_outline_rounded,
+                    tint: AppColors.error,
+                    title: 'Delete account',
+                    subtitle: 'Permanently remove your account and details',
+                    onTap: () => context.push('/profile/delete-account'),
                   ),
                 ],
               ),

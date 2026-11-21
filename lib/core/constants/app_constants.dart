@@ -4,6 +4,13 @@ class AppConstants {
 
   static const String appName = 'Town Shoppy';
 
+  /// Public pages on townshoppy.com that the app links to. The app stores
+  /// list the same two URLs, so they must stay live.
+  static const String privacyPolicyUrl = 'https://townshoppy.com/privacy-policy/';
+  static const String deleteAccountHelpUrl = 'https://townshoppy.com/delete-account/';
+
+  static const String supportEmail = 'support@townshoppy.com';
+
   static const Duration networkConnectTimeout = Duration(seconds: 15);
   static const Duration networkReceiveTimeout = Duration(seconds: 15);
 

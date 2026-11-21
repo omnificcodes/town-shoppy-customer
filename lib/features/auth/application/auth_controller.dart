@@ -255,6 +255,21 @@ class AuthController extends Notifier<AuthState> {
     state = const AuthUnauthenticated();
   }
 
+  /// Deletes the signed-in account for good, then drops the session exactly
+  /// as a sign-out would. Throws the server's [AppException] (wrong
+  /// password, a business account that must go through support) and leaves
+  /// the customer signed in, so the screen can show why.
+  ///
+  /// The state flips to signed-out BEFORE the local cleanup: that cleanup
+  /// makes one last best-effort call with a token the server has already
+  /// revoked, and its 401 must not be read as "your session expired".
+  Future<void> deleteAccount({String? password}) async {
+    await _repository.deleteAccount(password: password);
+
+    state = const AuthUnauthenticated();
+    await _clearSessionAndCustomerState();
+  }
+
   void _handleSessionExpired() {
     if (state is AuthUnauthenticated || state is AuthSessionExpired || state is AuthInitial) return;
 

@@ -92,6 +92,7 @@ import '../../features/offers/presentation/offers_list_screen.dart';
 import '../../features/products/data/models/product.dart';
 import '../../features/products/presentation/product_detail_screen.dart';
 import '../../features/products/presentation/products_list_screen.dart';
+import '../../features/profile/presentation/delete_account_screen.dart';
 import '../../features/profile/presentation/edit_profile_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/wallet/presentation/wallet_screen.dart';
@@ -299,6 +300,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // than a dead page.
       GoRoute(path: '$_merchantsPath/:id/redeem', redirect: (context, state) => '/purchases/scan'),
       GoRoute(path: '$_profilePath/edit', builder: (context, state) => const EditProfileScreen()),
+      GoRoute(path: '$_profilePath/delete-account', builder: (context, state) => const DeleteAccountScreen()),
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.matchedLocation, child: child),
         routes: [

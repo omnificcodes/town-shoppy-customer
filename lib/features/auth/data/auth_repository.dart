@@ -145,6 +145,24 @@ class AuthRepository {
     }
   }
 
+  /// `DELETE /auth/account` -- the signed-in customer deletes their own
+  /// account for good. The server wants the literal word DELETE (the screen
+  /// has the customer type it) and the password when the account has one.
+  /// On success every session is ended server-side, this one included.
+  Future<void> deleteAccount({String? password}) async {
+    try {
+      await _dio.delete(
+        '/auth/account',
+        data: {
+          'confirmation': 'DELETE',
+          if (password != null && password.isNotEmpty) 'password': password,
+        },
+      );
+    } on DioException catch (e) {
+      ApiEnvelope.rethrowAsAppException(e);
+    }
+  }
+
   /// Best-effort — the caller always clears local session state regardless
   /// of whether this succeeds (a network failure during logout must never
   /// leave the app stuck showing a "signed in" screen).

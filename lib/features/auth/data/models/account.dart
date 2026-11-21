@@ -16,6 +16,7 @@ class Account {
     required this.customerProfile,
     this.email,
     this.hasPassword = true,
+    this.canDeleteAccount = true,
     this.merchantOwnerProfiles = const [],
     this.merchantStaffProfiles = const [],
   });
@@ -32,6 +33,7 @@ class Account {
           : null,
       email: json['email'] as String?,
       hasPassword: json['has_password'] as bool? ?? true,
+      canDeleteAccount: json['can_delete_account'] as bool? ?? true,
       merchantOwnerProfiles: _profiles(json['merchant_owner_profiles']),
       merchantStaffProfiles: _profiles(json['merchant_staff_profiles']),
     );
@@ -54,6 +56,12 @@ class Account {
   /// "Change" password). Defaults to true when absent so an older payload
   /// never offers "set a password" to someone who already has one.
   final bool hasPassword;
+
+  /// `can_delete_account` -- false for an account that runs a business or
+  /// holds an admin role: the server closes those through support, so the
+  /// Delete account screen explains that instead of offering the button.
+  /// Defaults to true when absent; the server refuses on its own anyway.
+  final bool canDeleteAccount;
 
   final List<MerchantProfileRef> merchantOwnerProfiles;
   final List<MerchantProfileRef> merchantStaffProfiles;
