@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "442613321737",
+    "project_id": "town-shoppy",
+    "storage_bucket": "town-shoppy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:442613321737:android:1f008d8a088f912772a8d8",
+        "android_client_info": {
+          "package_name": "com.townshoppy.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAn-nn5NRVRGvy0FSWaz3r7EEIyNYf0xm0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
