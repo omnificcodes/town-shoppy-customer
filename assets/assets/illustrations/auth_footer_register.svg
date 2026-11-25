@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 130" width="400" height="130">
+  <!-- soft hills -->
+  <path d="M0,130 V92 C60,58 140,68 200,86 C260,104 330,58 400,78 V130 Z" fill="#FFE6D0"/>
+  <path d="M0,130 V108 C80,82 160,102 240,94 C300,88 350,102 400,98 V130 Z" fill="#FFDEC3"/>
+
+  <!-- small town cluster (left) -->
+  <g stroke="#E7A66D" stroke-width="1.6" stroke-linejoin="round" fill="#FFD5AE">
+    <rect x="82" y="74" width="34" height="36" rx="2"/>
+    <rect x="120" y="62" width="28" height="48" rx="2"/>
+    <rect x="152" y="80" width="36" height="30" rx="2"/>
+    <path d="M120,72 h28 v5 q-4.7,5 -9.3,0 q-4.7,5 -9.3,0 q-4.7,5 -9.3,0 z" fill="#FFF1E3"/>
+  </g>
+  <g fill="#FFF4E8">
+    <rect x="88" y="82" width="7" height="8"/><rect x="101" y="82" width="7" height="8"/>
+    <rect x="88" y="96" width="7" height="8"/><rect x="101" y="96" width="7" height="8"/>
+    <rect x="128" y="86" width="12" height="18"/>
+    <rect x="158" y="88" width="7" height="8"/><rect x="171" y="88" width="7" height="8"/>
+  </g>
+
+  <!-- small town cluster (right-centre) -->
+  <g stroke="#E7A66D" stroke-width="1.6" stroke-linejoin="round" fill="#FFD5AE">
+    <rect x="236" y="78" width="30" height="32" rx="2"/>
+    <rect x="270" y="68" width="26" height="42" rx="2"/>
+  </g>
+  <g fill="#FFF4E8">
+    <rect x="242" y="86" width="7" height="8"/><rect x="254" y="86" width="7" height="8"/>
+    <rect x="276" y="76" width="6" height="7"/><rect x="286" y="76" width="6" height="7"/>
+    <rect x="276" y="90" width="6" height="7"/><rect x="286" y="90" width="6" height="7"/>
+  </g>
+
+  <!-- trees -->
+  <g stroke="#B5763F" stroke-width="2" stroke-linecap="round">
+    <line x1="30" y1="96" x2="30" y2="110"/>
+    <line x1="60" y1="102" x2="60" y2="110"/>
+    <line x1="210" y1="98" x2="210" y2="110"/>
+    <line x1="312" y1="100" x2="312" y2="110"/>
+    <line x1="372" y1="96" x2="372" y2="110"/>
+  </g>
+  <g fill="#7CC47F">
+    <circle cx="30" cy="86" r="12"/>
+    <circle cx="60" cy="96" r="8"/>
+    <circle cx="210" cy="88" r="11"/>
+    <circle cx="312" cy="92" r="9"/>
+    <circle cx="372" cy="84" r="13"/>
+  </g>
+  <g fill="#5FAF67">
+    <circle cx="34" cy="90" r="7"/>
+    <circle cx="214" cy="92" r="6"/>
+    <circle cx="376" cy="88" r="8"/>
+  </g>
+
+  <!-- location pin above the town -->
+  <path d="M134,14 C122,14 114,23 114,34 C114,47 134,64 134,64 C134,64 154,47 154,34 C154,23 146,14 134,14 Z" fill="#FF7A1F"/>
+  <circle cx="134" cy="34" r="7" fill="#FFFFFF"/>
+
+  <!-- sparkle + underline for the script tagline (text overlaid by Flutter) -->
+  <g stroke="#FF8A2B" stroke-width="3.5" stroke-linecap="round">
+    <line x1="252" y1="74" x2="244" y2="62"/>
+    <line x1="262" y1="70" x2="262" y2="56"/>
+    <line x1="272" y1="74" x2="280" y2="62"/>
+    <line x1="290" y1="60" x2="392" y2="40"/>
+  </g>
+</svg>

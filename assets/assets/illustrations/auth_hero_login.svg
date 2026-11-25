@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 260" width="330" height="260">
+  <defs>
+    <linearGradient id="bagGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB45C"/>
+      <stop offset="0.55" stop-color="#FF8F30"/>
+      <stop offset="1" stop-color="#FF741A"/>
+    </linearGradient>
+    <linearGradient id="sideGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EE7222"/>
+      <stop offset="1" stop-color="#D65A12"/>
+    </linearGradient>
+    <linearGradient id="rimGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F5811F"/>
+      <stop offset="1" stop-color="#E86A14"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9BDB96"/>
+      <stop offset="1" stop-color="#4E9F58"/>
+    </linearGradient>
+    <linearGradient id="leafGradDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7CC57F"/>
+      <stop offset="1" stop-color="#3E8A49"/>
+    </linearGradient>
+    <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFECDA"/>
+      <stop offset="1" stop-color="#FFDABC"/>
+    </linearGradient>
+    <clipPath id="awningClip">
+      <rect x="190" y="66" width="140" height="30" rx="6"/>
+    </clipPath>
+  </defs>
+
+  <!-- soft glow behind everything -->
+  <ellipse cx="180" cy="150" rx="150" ry="110" fill="#FFE3C8" opacity="0.35"/>
+
+  <!-- cloud -->
+  <g fill="#FFE7D3" opacity="0.95">
+    <circle cx="44" cy="62" r="11"/>
+    <circle cx="60" cy="52" r="15"/>
+    <circle cx="78" cy="60" r="11"/>
+    <rect x="32" y="60" width="58" height="12" rx="6"/>
+  </g>
+
+  <!-- storefront (behind the bag, cropped by the right edge) -->
+  <g>
+    <rect x="200" y="96" width="140" height="130" rx="5" fill="url(#wallGrad)"/>
+    <rect x="200" y="86" width="140" height="14" fill="#FFD4AC"/>
+    <!-- awning stripes -->
+    <g clip-path="url(#awningClip)">
+      <rect x="190" y="66" width="140" height="30" fill="#FFF3E6"/>
+      <rect x="190" y="66" width="12" height="30" fill="#FFB25E"/>
+      <rect x="214" y="66" width="12" height="30" fill="#FFB25E"/>
+      <rect x="238" y="66" width="12" height="30" fill="#FFB25E"/>
+      <rect x="262" y="66" width="12" height="30" fill="#FFB25E"/>
+      <rect x="286" y="66" width="12" height="30" fill="#FFB25E"/>
+      <rect x="310" y="66" width="12" height="30" fill="#FFB25E"/>
+    </g>
+    <!-- awning scallops -->
+    <g>
+      <circle cx="196" cy="96" r="6" fill="#FFB25E"/>
+      <circle cx="208" cy="96" r="6" fill="#FFF3E6"/>
+      <circle cx="220" cy="96" r="6" fill="#FFB25E"/>
+      <circle cx="232" cy="96" r="6" fill="#FFF3E6"/>
+      <circle cx="244" cy="96" r="6" fill="#FFB25E"/>
+      <circle cx="256" cy="96" r="6" fill="#FFF3E6"/>
+      <circle cx="268" cy="96" r="6" fill="#FFB25E"/>
+      <circle cx="280" cy="96" r="6" fill="#FFF3E6"/>
+      <circle cx="292" cy="96" r="6" fill="#FFB25E"/>
+      <circle cx="304" cy="96" r="6" fill="#FFF3E6"/>
+      <circle cx="316" cy="96" r="6" fill="#FFB25E"/>
+      <circle cx="328" cy="96" r="6" fill="#FFF3E6"/>
+    </g>
+    <rect x="190" y="62" width="140" height="6" rx="3" fill="#F39B4B"/>
+    <!-- awning shadow on wall -->
+    <rect x="200" y="100" width="140" height="8" fill="#F2B98C" opacity="0.45"/>
+    <!-- sign board (text is overlaid by Flutter) -->
+    <rect x="230" y="112" width="96" height="50" rx="7" fill="#FFFFFF" stroke="#F1CBA5" stroke-width="2"/>
+    <!-- windows -->
+    <rect x="212" y="172" width="42" height="44" rx="4" fill="#FFF9F2" stroke="#F1CBA5" stroke-width="2"/>
+    <line x1="233" y1="172" x2="233" y2="216" stroke="#F1CBA5" stroke-width="2"/>
+    <line x1="212" y1="194" x2="254" y2="194" stroke="#F1CBA5" stroke-width="2"/>
+    <rect x="266" y="172" width="42" height="44" rx="4" fill="#FFF9F2" stroke="#F1CBA5" stroke-width="2"/>
+    <line x1="287" y1="172" x2="287" y2="216" stroke="#F1CBA5" stroke-width="2"/>
+    <line x1="266" y1="194" x2="308" y2="194" stroke="#F1CBA5" stroke-width="2"/>
+    <!-- doorstep -->
+    <rect x="196" y="222" width="140" height="10" rx="3" fill="#F5D1B0"/>
+  </g>
+
+  <!-- back leaves -->
+  <g transform="translate(66 154) rotate(-58) scale(1.15)">
+    <path d="M0,0 C22,-34 62,-42 90,-8 C64,26 26,30 0,0 Z" fill="url(#leafGradDark)"/>
+    <path d="M5,-1 C30,-9 58,-13 84,-8" stroke="#DDF2DA" stroke-width="2" fill="none" opacity="0.7" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(36 214) rotate(-18) scale(0.92)">
+    <path d="M0,0 C22,-34 62,-42 90,-8 C64,26 26,30 0,0 Z" fill="url(#leafGrad)"/>
+    <path d="M5,-1 C30,-9 58,-13 84,-8" stroke="#E4F5E1" stroke-width="2" fill="none" opacity="0.75" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(232 226) rotate(12) scale(0.85)">
+    <path d="M0,0 C22,-34 62,-42 90,-8 C64,26 26,30 0,0 Z" fill="url(#leafGrad)"/>
+    <path d="M5,-1 C30,-9 58,-13 84,-8" stroke="#E4F5E1" stroke-width="2" fill="none" opacity="0.75" stroke-linecap="round"/>
+  </g>
+
+  <!-- ground shadow -->
+  <ellipse cx="164" cy="242" rx="102" ry="9" fill="#E7B98D" opacity="0.5"/>
+
+  <!-- back handle -->
+  <path d="M120,122 C116,58 178,58 176,122" fill="none" stroke="#D95F14" stroke-width="10" stroke-linecap="round"/>
+  <path d="M120,122 C116,58 178,58 176,122" fill="none" stroke="#F58A34" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- bag: right side facet (depth) -->
+  <path d="M214,118 L240,110 L256,222 Q258,233 246,234 L220,239 Q231,238 230,227 Z" fill="url(#sideGrad)"/>
+  <!-- bag: front face -->
+  <path d="M96,118 L214,118 L230,227 Q232,239 220,239 L88,239 Q76,239 78,227 Z" fill="url(#bagGrad)"/>
+  <!-- left highlight facet -->
+  <path d="M96,118 L112,118 L104,239 L88,239 Q76,239 78,227 Z" fill="#FFC57A" opacity="0.5"/>
+  <!-- top rim -->
+  <path d="M96,118 L214,118 L216,131 L94,131 Z" fill="url(#rimGrad)"/>
+  <path d="M94,131 L216,131" stroke="#FFD09A" stroke-width="1.5" opacity="0.8"/>
+  <!-- grommets -->
+  <circle cx="130" cy="124" r="4.5" fill="#B84A0C"/>
+  <circle cx="184" cy="124" r="4.5" fill="#B84A0C"/>
+  <!-- front handle -->
+  <path d="M130,124 C132,62 182,62 184,124" fill="none" stroke="#DA6114" stroke-width="10" stroke-linecap="round"/>
+  <path d="M130,124 C132,62 182,62 184,124" fill="none" stroke="#FFA24A" stroke-width="5" stroke-linecap="round"/>
+  <!-- handwriting underline flourish (text itself is overlaid by Flutter) -->
+  <path d="M120,212 Q142,205 164,212 T208,211" stroke="#7A3A12" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- sparkles -->
+  <g stroke="#FF8A2B" stroke-width="4" stroke-linecap="round">
+    <line x1="72" y1="106" x2="60" y2="88"/>
+    <line x1="88" y1="100" x2="86" y2="80"/>
+    <line x1="102" y1="106" x2="114" y2="92"/>
+  </g>
+</svg>
